@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
+import math
+import time
 import sys
 import ctypes
 import pyglet
 import pyglet.gl as gl
 from mpv import MPV, MpvRenderContext, OpenGlCbGetProcAddrFn
+pyglet.options['vsync'] = False
 
 
 # FIXME: texture is a fixed 1920x1080
@@ -46,11 +49,14 @@ def get_process_address(_, name):
 
 mpv = MPV()
 mpv['hwdec'] = 'vaapi-copy'
+mpv['video-timing-offset'] = 0
 mpv_ctx = MpvRenderContext(mpv, 'opengl', opengl_init_params={'get_proc_address': OpenGlCbGetProcAddrFn(get_process_address)})
 
 video_coords = [0, 0, 1, 1]
 
 
+overlay_target = 0
+overlay_current = 0
 timepos = 0
 @mpv.property_observer('percent-pos')
 def time_observer(_name, value):
@@ -58,19 +64,25 @@ def time_observer(_name, value):
 	if value is not None:
 		timepos = value / 100
 
+last_time = 0
 @window.event
 def on_draw(foo=None):
-	gl.glClearColor(0, 0, 0, 1)
-	window.clear()
+	global last_time
+	t = time.time()
+	frame_time = t - last_time
+	fps = 1 / frame_time
+	last_time = t
 
-	if mpv_ctx.update():
-		mpv_ctx.render(flip_y=True, opengl_fbo={'w': 1920, 'h': 1080, 'fbo': vfboid})
+	print(f'on_draw @ {fps:.1f} fps, elapsed = {int(frame_time * 1000)} ms')
 
 	# MPV seems to reset some of this stuff, so re-init
 	gl.glViewport(0, 0, window.width, window.height)
 	gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 	gl.glEnable(gl.GL_BLEND)
 	gl.glEnable(gl.GL_TEXTURE_2D)
+
+	gl.glClearColor(0, 0, 0, 1)
+	window.clear()
 
 	x1 = window.width * video_coords[0]
 	x2 = window.width * video_coords[2]
@@ -92,18 +104,31 @@ def on_draw(foo=None):
 
 	global timepos
 
-	x1, y1, x2, y2 = 0, 0, window.width, 3
+	x1, y1, x2, y2 = 0, 0, window.width, 4
 	gl.glBegin(gl.GL_QUADS)
-	gl.glColor4f(0, 0, 0, 0.75)
+	gl.glColor4f(0, 0, 0, 1)
 	gl.glVertex2f(x1, y1)
 	gl.glVertex2f(x2, y1)
-	gl.glColor4f(0, 0, 0, 0.75)
+	gl.glColor4f(0, 0, 0, 1)
 	gl.glVertex2f(x2, y2)
 	gl.glVertex2f(x1, y2)
 	gl.glEnd()
 
 	x1, y1, x2, y2 = 0, 0, timepos * window.width, 1
-	gl.glColor4f(0.5, 0.5, 1, 1)
+	gl.glColor4f(0.4, 0.4, 1, 1)
+	gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
+	global overlay_current
+	shade = math.sqrt(overlay_current)
+	shade = math.sin(overlay_current * math.pi / 2)
+	shade = math.sin((overlay_current - 0.5) * math.pi) / 2 + 0.5
+
+	x1, y1, x2, y2 = 0, 0, window.width, window.height
+	gl.glColor4f(0, 0, 0, shade * 0.75)
+	gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
+	x1, y1, x2, y2 = 0, 0, shade * 0.4 * window.width, window.height
+	gl.glColor4f(1, 1, 1, 0.5)
 	gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 
@@ -156,23 +181,59 @@ def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
 
 @window.event
 def on_key_press(symbol, modifiers):
+	global overlay_target
 	key = pyglet.window.key
 
 	if symbol == key.Q: exit()
-	if symbol == key.O: mpv['osd-level'] = 3 - mpv['osd-level']
+	if symbol == key.O: mpv['osd-level'] ^= 2
 	if symbol == key.SPACE: mpv.cycle('pause')
 	if symbol == key.RIGHT: mpv.seek(5)
 	if symbol == key.LEFT: mpv.seek(-5)
 	if symbol == key.UP: mpv.seek(60)
 	if symbol == key.DOWN: mpv.seek(-60)
+	if symbol == key.LSHIFT: overlay_target = 1; animate()
 
-# Set up a 1ms NOP callback. Somehow pyglet limits the updates to the framerate of the video. How?
-# How does it even know? Something vsync related?
-#mpv_ctx.update_cb = None
-def nop(foo=None):
-	print(pyglet.clock.get_fps())
-	pass
-pyglet.clock.schedule_interval(nop, 1/1000)
+@window.event
+def on_key_release(symbol, modifiers):
+	global overlay_target
+	key = pyglet.window.key
+
+	if symbol == key.LSHIFT: overlay_target = 0; animate()
+
+
+#### MPV render new frame when available
+def mpv_render(tdelta):
+	print('mpv_render')
+	mpv_ctx.render(flip_y=True, opengl_fbo={'w': 1920, 'h': 1080, 'fbo': vfboid})
+
+
+def mpv_update():
+	print('mpv_update')
+	pyglet.clock.schedule_once(mpv_render, 0)
+	pyglet.app.platform_event_loop.notify()
+
+mpv_ctx.update_cb = mpv_update
+
+
+def animate(foo=None):
+
+	global overlay_current, overlay_target
+	delta = 0.04
+
+	if overlay_current < overlay_target:
+		overlay_current = min(overlay_current + delta, 1)
+	if overlay_current > overlay_target:
+		overlay_current = max(overlay_current - delta, 0)
+
+	pyglet.clock.unschedule(animate)
+	if overlay_current != overlay_target:
+		pyglet.clock.schedule_once(animate, 1/50)
+
+#def nop(foo=None):
+#	pass
+#pyglet.clock.schedule_interval(nop, 1/30)
+
+
 
 mpv.play(sys.argv[1])
 pyglet.app.run()
