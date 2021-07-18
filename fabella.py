@@ -5,6 +5,7 @@ import time
 import sys
 import ctypes
 import pyglet
+#pyglet.options["headless"] = True
 import pyglet.gl as gl
 from mpv import MPV, MpvRenderContext, OpenGlCbGetProcAddrFn
 pyglet.options['vsync'] = False
@@ -35,6 +36,7 @@ gl.glBindTexture(gl.GL_TEXTURE_2D, vtid)
 gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
 gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
 gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, 1920, 1080, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, None)
+#gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA16F, 1920, 1080, 0, gl.GL_RGBA, gl.GL_HALF_FLOAT, None)
 gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, vtid, 0)
 assert gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER) == gl.GL_FRAMEBUFFER_COMPLETE
 
