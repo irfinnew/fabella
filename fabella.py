@@ -53,11 +53,14 @@ def my_log(loglevel, component, message):
 	print('\x1b[32m[{}] {}: {}\x1b[0m'.format(loglevel, component, message))
 
 mpv = MPV(log_handler=my_log, loglevel='debug')
+mpv['osd-duration'] = 1000
+mpv['osd-level'] = 1
 mpv['hwdec'] = 'auto'
 mpv['video-timing-offset'] = 0
 mpv_ctx = MpvRenderContext(mpv, 'opengl', opengl_init_params={'get_proc_address': OpenGlCbGetProcAddrFn(get_process_address)})
 
 video_coords = [0, 0, 1, 1]
+fullscreen = False
 
 
 overlay_target = 0
@@ -78,7 +81,7 @@ def on_draw(foo=None):
 	fps = 1 / frame_time
 	last_time = t
 
-	print(f'on_draw @ {fps:.1f} fps, elapsed = {int(frame_time * 1000)} ms')
+	#print(f'on_draw @ {fps:.1f} fps, elapsed = {int(frame_time * 1000)} ms')
 
 	# MPV seems to reset some of this stuff, so re-init
 	gl.glViewport(0, 0, window.width, window.height)
@@ -186,20 +189,38 @@ def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
 
 @window.event
 def on_key_press(symbol, modifiers):
-	global overlay_target
+	print(f'key_press {symbol}')
+	global overlay_target, fullscreen
 	key = pyglet.window.key
 
 	if symbol == key.Q: exit()
 	if symbol == key.O: mpv['osd-level'] ^= 2
+	if symbol == key.F: fullscreen = not fullscreen; print(fullscreen); window.set_fullscreen(fullscreen)
 	if symbol == key.SPACE: mpv.cycle('pause')
-	if symbol == key.RIGHT: mpv.seek(5)
+	if symbol == key.RIGHT: mpv.seek(5); mpv.show_progress()
 	if symbol == key.LEFT: mpv.seek(-5)
 	if symbol == key.UP: mpv.seek(60)
 	if symbol == key.DOWN: mpv.seek(-60)
 	if symbol == key.LSHIFT: overlay_target = 1; animate()
 
+	if symbol in [key.J, key.K]:
+		if symbol == key.J:
+			mpv.cycle('sub')
+		else:
+			mpv.cycle('sub', 'down')
+		subid = mpv.sub
+		sublang = 'unknown'
+		subtitle = ''
+		for track in mpv.track_list:
+			if track['type'] == 'sub' and track['id'] == subid:
+				sublang = track.get('lang', sublang)
+				subtitle = track.get('title', subtitle)
+
+		mpv.show_text(f'Subtitles track {subid}/{sublang.upper()}\n{subtitle}')
+
 @window.event
 def on_key_release(symbol, modifiers):
+	print(f'key_release {symbol}')
 	global overlay_target
 	key = pyglet.window.key
 
@@ -208,12 +229,12 @@ def on_key_release(symbol, modifiers):
 
 #### MPV render new frame when available
 def mpv_render(tdelta):
-	print('mpv_render')
+	#print('mpv_render')
 	mpv_ctx.render(flip_y=True, opengl_fbo={'w': 1920, 'h': 1080, 'fbo': vfboid})
 
 
 def mpv_update():
-	print('mpv_update')
+	#print('mpv_update')
 	pyglet.clock.schedule_once(mpv_render, 0)
 	pyglet.app.platform_event_loop.notify()
 
