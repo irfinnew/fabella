@@ -53,7 +53,7 @@ def my_log(loglevel, component, message):
 	print('\x1b[32m[{}] {}: {}\x1b[0m'.format(loglevel, component, message))
 
 mpv = MPV(log_handler=my_log, loglevel='debug')
-#mpv['hwdec'] = 'vaapi'
+mpv['hwdec'] = 'auto'
 mpv['video-timing-offset'] = 0
 mpv_ctx = MpvRenderContext(mpv, 'opengl', opengl_init_params={'get_proc_address': OpenGlCbGetProcAddrFn(get_process_address)})
 
