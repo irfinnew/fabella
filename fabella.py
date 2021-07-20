@@ -112,7 +112,7 @@ def on_draw(foo=None):
 
 	global timepos
 
-	x1, y1, x2, y2 = 0, 0, window.width, 4
+	x1, y1, x2, y2 = 0, 0, window.width, 5
 	gl.glBegin(gl.GL_QUADS)
 	gl.glColor4f(0, 0, 0, 1)
 	gl.glVertex2f(x1, y1)
@@ -122,7 +122,7 @@ def on_draw(foo=None):
 	gl.glVertex2f(x1, y2)
 	gl.glEnd()
 
-	x1, y1, x2, y2 = 0, 0, timepos * window.width, 1
+	x1, y1, x2, y2 = 0, 0, timepos * window.width, 3
 	gl.glColor4f(0.4, 0.4, 1, 1)
 	gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
@@ -197,7 +197,7 @@ def on_key_press(symbol, modifiers):
 	if symbol == key.O: mpv['osd-level'] ^= 2
 	if symbol == key.F: fullscreen = not fullscreen; print(fullscreen); window.set_fullscreen(fullscreen)
 	if symbol == key.SPACE: mpv.cycle('pause')
-	if symbol == key.RIGHT: mpv.seek(5); mpv.show_progress()
+	if symbol == key.RIGHT: mpv.seek(5)
 	if symbol == key.LEFT: mpv.seek(-5)
 	if symbol == key.UP: mpv.seek(60)
 	if symbol == key.DOWN: mpv.seek(-60)
@@ -209,14 +209,18 @@ def on_key_press(symbol, modifiers):
 		else:
 			mpv.cycle('sub', 'down')
 		subid = mpv.sub
-		sublang = 'unknown'
-		subtitle = ''
-		for track in mpv.track_list:
-			if track['type'] == 'sub' and track['id'] == subid:
-				sublang = track.get('lang', sublang)
-				subtitle = track.get('title', subtitle)
 
-		mpv.show_text(f'Subtitles track {subid}/{sublang.upper()}\n{subtitle}')
+		if subid is False:
+			mpv.show_text('Subtitles off')
+		else:
+			sublang = 'unknown'
+			subtitle = ''
+			for track in mpv.track_list:
+				if track['type'] == 'sub' and track['id'] == subid:
+					sublang = track.get('lang', sublang)
+					subtitle = track.get('title', subtitle)
+
+			mpv.show_text(f'Subtitles track {subid}/{sublang.upper()}\n{subtitle}')
 
 @window.event
 def on_key_release(symbol, modifiers):
