@@ -2,6 +2,9 @@
 
 # Requires PyOpenGL, PyGame, python-mpv
 
+# https://github.com/mpv-player/mpv/blob/master/libmpv/render_gl.h#L91
+# mpv vaapic-copy seems broken on i965; driver bug?
+
 import os
 if not os.environ.get( 'PYOPENGL_PLATFORM' ):
 	os.environ['PYOPENGL_PLATFORM'] = 'egl'
