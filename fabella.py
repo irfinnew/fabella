@@ -224,7 +224,7 @@ video = Video()
 
 
 #### Menu stuffs ####
-menu = False
+menu = True
 current_path = sys.argv[1]
 files = sorted(os.listdir(current_path))
 current_file = 0
