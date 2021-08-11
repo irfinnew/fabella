@@ -1,14 +1,16 @@
 #! /usr/bin/env python3
 
-# Requires pyGLFW, PyOpenGL, python-mpv
+# Requires pyGLFW, PyOpenGL, python-mpv, pillow >= 6.2.0
 # https://github.com/mpv-player/mpv/blob/master/libmpv/render_gl.h#L91
 
+import os
 import sys
 import glfw
 import time
 import math
 import ctypes
 import mpv
+import PIL.Image, PIL.ImageDraw, PIL.ImageFont
 import OpenGL.GL as gl
 
 
@@ -217,9 +219,27 @@ class Window:
 				return
 
 
-
 window = Window(1280, 720, "libmpv wayland/egl/opengl example")
 video = Video()
+
+
+#### Menu stuffs ####
+menu = False
+current_path = sys.argv[1]
+files = sorted(os.listdir(current_path))
+current_file = 0
+
+menu_font = PIL.ImageFont.truetype('DejaVuSans', 35) # 64
+menu_image = PIL.Image.new('RGBA', (1920, 1080), (0, 164, 201, 0))
+menu_drawer = PIL.ImageDraw.Draw(menu_image)
+menu_texture = gl.glGenTextures(1)
+gl.glBindTexture(gl.GL_TEXTURE_2D, menu_texture)
+gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+# FIXME: fixed size
+gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, 1920, 1080, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, menu_image.tobytes())
+gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+
 
 #### Main loop
 last_time = 0
@@ -227,51 +247,82 @@ frame_count = 0
 while not window.closed():
 	window.wait()
 
-	for key, scancode, action, modifiers  in window.get_events():
-		if action == glfw.PRESS:
-			if key in [glfw.KEY_ESCAPE, glfw.KEY_Q]:
-				window.terminate()
-				exit()
-			if key == glfw.KEY_ENTER:
-				video.start(sys.argv[1])
-			if key == glfw.KEY_BACKSPACE:
-				video.stop()
-			if key == glfw.KEY_F:
-				window.set_fullscreen()
-			if key == glfw.KEY_O:
-				video.mpv['osd-level'] ^= 2
-			if key == glfw.KEY_SPACE:
-				video.mpv.cycle('pause')
-			if key == glfw.KEY_RIGHT:
-				video.seek(5)
-			if key == glfw.KEY_LEFT:
-				video.seek(-5)
-			if key == glfw.KEY_UP:
-				video.seek(60)
-			if key == glfw.KEY_DOWN:
-				video.seek(-60)
+	if not menu:
+		for key, scancode, action, modifiers  in window.get_events():
+			if action == glfw.PRESS:
+				if key in [glfw.KEY_ESCAPE, glfw.KEY_Q]:
+					window.terminate()
+					exit()
+				if key == glfw.KEY_BACKSPACE:
+					menu = True
+				if key == glfw.KEY_F:
+					window.set_fullscreen()
+				if key == glfw.KEY_O:
+					video.mpv['osd-level'] ^= 2
+				if key == glfw.KEY_SPACE:
+					video.mpv.cycle('pause')
+				if key == glfw.KEY_RIGHT:
+					video.seek(5)
+				if key == glfw.KEY_LEFT:
+					video.seek(-5)
+				if key == glfw.KEY_UP:
+					video.seek(60)
+				if key == glfw.KEY_DOWN:
+					video.seek(-60)
 
-			if key in [glfw.KEY_J, glfw.KEY_K]:
-				if key == glfw.KEY_J:
-					video.mpv.cycle('sub')
-				else:
-					video.mpv.cycle('sub', 'down')
-				subid = video.mpv.sub
+				if key in [glfw.KEY_J, glfw.KEY_K]:
+					if key == glfw.KEY_J:
+						video.mpv.cycle('sub')
+					else:
+						video.mpv.cycle('sub', 'down')
+					subid = video.mpv.sub
 
-				if subid is False:
-					video.mpv.show_text('Subtitles off')
-				else:
-					sublang = 'unknown'
-					subtitle = ''
-					sub_count = 0
-					for track in video.mpv.track_list:
-						if track['type'] == 'sub':
-							sub_count += 1
-							if track['id'] == subid:
-								sublang = track.get('lang', sublang)
-								subtitle = track.get('title', subtitle)
+					if subid is False:
+						video.mpv.show_text('Subtitles off')
+					else:
+						sublang = 'unknown'
+						subtitle = ''
+						sub_count = 0
+						for track in video.mpv.track_list:
+							if track['type'] == 'sub':
+								sub_count += 1
+								if track['id'] == subid:
+									sublang = track.get('lang', sublang)
+									subtitle = track.get('title', subtitle)
 
-					video.mpv.show_text(f'Subtitles {subid}/{sub_count}: {sublang.upper()}\n{subtitle}')
+						video.mpv.show_text(f'Subtitles {subid}/{sub_count}: {sublang.upper()}\n{subtitle}')
+
+	if menu:
+		for key, scancode, action, modifiers  in window.get_events():
+			if action == glfw.PRESS:
+				if key in [glfw.KEY_ESCAPE, glfw.KEY_Q]:
+					window.terminate()
+					exit()
+				if key == glfw.KEY_F:
+					window.set_fullscreen()
+				if key == glfw.KEY_BACKSPACE:
+					menu = False
+				if key == glfw.KEY_ENTER:
+					selected = os.path.join(current_path, files[current_file])
+					if not os.path.isdir(selected):
+						video.start(selected)
+						menu = False
+				if key == glfw.KEY_RIGHT:
+					selected = os.path.join(current_path, files[current_file])
+					if os.path.isdir(selected):
+						current_path = selected
+						files = sorted(os.listdir(current_path))
+						current_file = 0
+				if key == glfw.KEY_LEFT:
+					selected = os.path.dirname(current_path)
+					if selected != current_path:
+						current_path = selected
+						files = sorted(os.listdir(current_path))
+						current_file = 0
+				if key == glfw.KEY_UP:
+					current_file = max(0, current_file - 1)
+				if key == glfw.KEY_DOWN:
+					current_file = min(len(files) - 1, current_file + 1)
 
 	width, height = window.size()
 
@@ -291,6 +342,36 @@ while not window.closed():
 	gl.glMatrixMode (gl.GL_MODELVIEW)
 
 	video.draw(width, height)
+
+	if menu:
+		x1, y1, x2, y2 = 0, 0, width, height
+		gl.glColor4f(0, 0, 0, 0.66)
+		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
+		menu_image.paste((0, 164, 201, 0), (0, 0, 1920, 1080))
+		textheight = 80
+		for p, i in enumerate(range(current_file - 6, current_file + 7)):
+			if i >= 0 and i < len(files):
+				fill = (255, 0, 0) if i == current_file else (255, 255, 255)
+				menu_drawer.text((200, p * textheight + 20), files[i], font=menu_font, fill=fill, stroke_width=4, stroke_fill=(0, 0, 0))
+
+		x1, y1, x2, y2 = 0, 0, width, height
+		gl.glBindTexture(gl.GL_TEXTURE_2D, menu_texture)
+		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, 1920, 1080, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, menu_image.tobytes())
+		gl.glColor4f(1, 1, 1, 1)
+		gl.glBegin(gl.GL_QUADS)
+		gl.glTexCoord2f(0.0, 1.0)
+		gl.glVertex2f(x1, y1)
+		gl.glTexCoord2f(1.0, 1.0)
+		gl.glVertex2f(x2, y1)
+		gl.glTexCoord2f(1.0, 0.0)
+		gl.glVertex2f(x2, y2)
+		gl.glTexCoord2f(0.0, 0.0)
+		gl.glVertex2f(x1, y2)
+		gl.glEnd()
+		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+
+
 
 	window.swap_buffers()
 
