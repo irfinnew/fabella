@@ -73,6 +73,9 @@ class Video:
 
 	def position_changed(self, prop, value):
 		assert prop == 'percent-pos'
+		if value is None:
+			# FIXME: close file? Return to menu?
+			value = 100
 		self.position = value / 100
 
 	def start(self, filename):
@@ -135,8 +138,8 @@ class Video:
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# Draw position bar + shadow
-		position_bar_height = 2
-		position_shadow_height = 5
+		position_bar_height = 3
+		position_shadow_height = 6
 		position_shadow_top_color = (0, 0, 0, 0)
 		position_shadow_bottom_color = (0, 0, 0, 1)
 		position_bar_color = (0.4, 0.4, 1, 1)
@@ -240,13 +243,13 @@ while not window.closed():
 			if key == glfw.KEY_SPACE:
 				video.mpv.cycle('pause')
 			if key == glfw.KEY_RIGHT:
-				video.seek(10)
+				video.seek(5)
 			if key == glfw.KEY_LEFT:
-				video.seek(-10)
+				video.seek(-5)
 			if key == glfw.KEY_UP:
-				video.seek(120)
+				video.seek(60)
 			if key == glfw.KEY_DOWN:
-				video.seek(-120)
+				video.seek(-60)
 
 			if key in [glfw.KEY_J, glfw.KEY_K]:
 				if key == glfw.KEY_J:
