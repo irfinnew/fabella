@@ -25,6 +25,7 @@ class Video:
 	video_size_old = (None, None)
 	position = 0
 	rendered = False
+	tile = None
 
 	def __init__(self):
 		def my_log(loglevel, component, message):
@@ -75,26 +76,45 @@ class Video:
 
 	def position_changed(self, prop, value):
 		assert prop == 'percent-pos'
+		force = False
 		if value is None:
 			# FIXME: close file? Return to menu?
-			value = 100
+			value = self.position * 100
+			if value > 99.8:
+				value = 100
+				force = True
 		self.position = value / 100
 
-	def start(self, filename):
+		if self.tile:
+			self.tile.update_pos(self.position, force=force)
+
+	def start(self, filename, tile=None):
+		if self.current_file:
+			self.stop()
+
 		self.current_file = filename
 		self.rendered = False
-		percent_pos = 0
+		self.position = 0
+		self.tile = tile
+
 		self.mpv.play(filename)
+		if self.tile and self.tile.last_pos > 0.001 and self.tile.last_pos < 0.999:
+			last_pos = self.tile.last_pos
+			while not self.context.update():
+				time.sleep(0.01)
+			self.mpv.percent_pos = last_pos * 100
 
 	def stop(self):
+		if self.tile:
+			self.tile.update_pos(self.position, force=True)
+
 		self.current_file = None
 		self.rendered = False
-		percent_pos = 0
 		self.mpv.stop()
 
-	def seek(self, amount):
+	def seek(self, amount, whence='relative'):
 		try:
-			self.mpv.seek(amount)
+			self.mpv.seek(amount, whence)
 		except SystemError:
 			pass
 
@@ -235,12 +255,41 @@ class Tile:
 	height = 0
 	path = ''
 	isdir = False
+	state_file = None
+	state_last_update = 0
+	last_pos = 0
 
 	def __init__(self, name, path, font):
 		self.name = name
 		self.path = os.path.join(path, name)
 		self.isdir = os.path.isdir(self.path)
 		self.font = font
+
+		if not self.isdir:
+			self.state_file = os.path.join(path, '.fabella', 'state', name)
+			self.read_state()
+
+	def update_pos(self, position, force=False):
+		if self.last_pos == position:
+			return
+
+		now = time.time()
+		if now - self.state_last_update > 5 or abs(self.last_pos - position) > 0.01 or force:
+			self.state_last_update = now
+			self.last_pos = position
+			self.write_state()
+
+	def read_state(self):
+		try:
+			with open(self.state_file) as fd:
+				self.last_pos = float(fd.read())
+		except FileNotFoundError:
+			pass
+
+	def write_state(self):
+		os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
+		with open(self.state_file, 'w') as fd:
+			fd.write(str(self.last_pos) + '\n')
 
 	def render(self):
 		if self.texture is not None:
@@ -250,6 +299,9 @@ class Tile:
 		name = self.name
 		if self.isdir:
 			name = name + '/'
+
+		if self.last_pos > 0.01:
+			name = name + f' [{round(self.last_pos * 100)}%]'
 
 		# Get text size
 		image = PIL.Image.new('RGBA', (8, 8), (0, 164, 201))
@@ -272,12 +324,13 @@ class Tile:
 		if self.texture is None:
 			return
 
+		new = 0.5 if self.last_pos == 1 else 1.0
 		x1, y1, x2, y2 = x, y, x + self.width, y + self.height
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
 		if selected:
-			gl.glColor4f(1, 0, 0, 1)
+			gl.glColor4f(new, 0, 0, 1)
 		else:
-			gl.glColor4f(1, 1, 1, 1)
+			gl.glColor4f(new, new, new, 1)
 		gl.glBegin(gl.GL_QUADS)
 		gl.glTexCoord2f(0.0, 1.0)
 		gl.glVertex2f(x1, y1)
@@ -311,7 +364,10 @@ class Menu:
 		self.forget()
 
 		self.path = path
-		self.tiles = [Tile(f, path, self.font) for f in sorted(os.listdir(self.path))]
+		self.tiles = []
+		for f in sorted(os.listdir(self.path)):
+			if not f.startswith('.'):
+				self.tiles.append(Tile(f, path, self.font))
 		self.current_idx = 0
 
 	def forget(self):
@@ -337,7 +393,7 @@ class Menu:
 		if tile.isdir:
 			self.load(tile.path)
 		else:
-			video.start(tile.path)
+			video.start(tile.path, tile=tile)
 			self.enabled = False
 
 	def back(self):
@@ -374,7 +430,7 @@ class Menu:
 			tile = self.tiles[idx]
 			ypos = cy - i * line_height - tile.height // 2
 
-			tile.draw(cx - tile.width // 2, ypos, i == 0)
+			tile.draw(cx - tile.width // 2, ypos, selected=i == 0)
 
 
 window = Window(1280, 720, "libmpv wayland/egl/opengl example")
@@ -391,9 +447,13 @@ while not window.closed():
 		for key, scancode, action, modifiers  in window.get_events():
 			if action == glfw.PRESS:
 				if key in [glfw.KEY_ESCAPE, glfw.KEY_Q]:
+					video.stop()
 					window.terminate()
 					exit()
 				if key == glfw.KEY_BACKSPACE:
+					menu.enabled = True
+				if key == glfw.KEY_ENTER:
+					video.seek(-1, 'absolute')
 					menu.enabled = True
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
@@ -436,6 +496,7 @@ while not window.closed():
 		for key, scancode, action, modifiers  in window.get_events():
 			if action == glfw.PRESS:
 				if key in [glfw.KEY_ESCAPE, glfw.KEY_Q]:
+					video.stop()
 					window.terminate()
 					exit()
 				if key == glfw.KEY_F:
