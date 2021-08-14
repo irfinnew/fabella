@@ -125,7 +125,8 @@ class Video:
 		x2 = window_width - x1
 		# We need to make the width of the quad the width of the window, but the height is -1?
 		# I don't understand why, but that results in a 1-in-1 pixel rendering...
-		y2 = window_height - y1 - 1
+		y2 = window_height - y1
+		print(x1, y1, x2, y2, video_width, video_height)
 
 		gl.glColor4f(1, 1, 1, 1)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, video.texture)
@@ -149,22 +150,22 @@ class Video:
 		#position_bar_color = (0.4, 0.4, 1, 1)
 		position_bar_color = (0.8, 0.1, 0.1, 1)
 
-		gl.glBegin(gl.GL_QUADS)
-		gl.glColor4f(*position_shadow_bottom_color)
-		gl.glVertex2f(0, position_bar_height)
-		gl.glVertex2f(window_width, position_bar_height)
-		gl.glColor4f(*position_shadow_top_color)
-		gl.glVertex2f(window_width, position_bar_height + position_shadow_height)
-		gl.glVertex2f(0, position_bar_height + position_shadow_height)
-		gl.glEnd()
+		#gl.glBegin(gl.GL_QUADS)
+		#gl.glColor4f(*position_shadow_bottom_color)
+		#gl.glVertex2f(0, position_bar_height)
+		#gl.glVertex2f(window_width, position_bar_height)
+		#gl.glColor4f(*position_shadow_top_color)
+		#gl.glVertex2f(window_width, position_bar_height + position_shadow_height)
+		#gl.glVertex2f(0, position_bar_height + position_shadow_height)
+		#gl.glEnd()
 
-		x1, y1, x2, y2 = self.position * window_width, 0, window_width, position_bar_height
-		gl.glColor4f(*position_shadow_bottom_color)
-		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+		#x1, y1, x2, y2 = self.position * window_width, 0, window_width, position_bar_height
+		#gl.glColor4f(*position_shadow_bottom_color)
+		#gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
-		x1, y1, x2, y2 = 0, 0, self.position * window_width, position_bar_height
-		gl.glColor4f(*position_bar_color)
-		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+		#x1, y1, x2, y2 = 0, 0, self.position * window_width, position_bar_height
+		#gl.glColor4f(*position_bar_color)
+		#gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 
 
