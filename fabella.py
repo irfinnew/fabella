@@ -397,8 +397,11 @@ class Menu:
 			self.enabled = False
 
 	def back(self):
+		new = os.path.dirname(self.path)
+		if not new:
+			return
 		previous = os.path.basename(self.path)
-		self.load(os.path.dirname(self.path))
+		self.load(new)
 		for i, tile in enumerate(self.tiles):
 			if tile.name == previous:
 				self.current_idx = i
