@@ -186,6 +186,7 @@ class Window:
 		glfw.set_key_callback(self.window, self.on_keypress)
 		#glfw.set_window_user_pointer(window, 5)
 		#print(glfw.get_window_user_pointer(window))
+		glfw.set_input_mode(self.window, glfw.CURSOR, glfw.CURSOR_HIDDEN)
 
 	def terminate(self):
 		#glfw.destroy_window(self.window)
