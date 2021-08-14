@@ -222,6 +222,7 @@ class Window:
 class Tile:
 	name = ''
 	texture = None
+	font = None
 	width = 0
 	height = 0
 	path = ''
@@ -231,17 +232,24 @@ class Tile:
 		self.name = name
 		self.path = os.path.join(path, name)
 		self.isdir = os.path.isdir(self.path)
-		stroke_width = 2
+		self.font = font
 
+	def render(self):
+		if self.texture is not None:
+			raise 5
+
+		stroke_width = 2
+		name = self.name
 		if self.isdir:
 			name = name + '/'
+
 		# Get text size
 		image = PIL.Image.new('RGBA', (8, 8), (0, 164, 201))
-		w, h = PIL.ImageDraw.Draw(image).textsize(name, font, stroke_width=stroke_width)
+		w, h = PIL.ImageDraw.Draw(image).textsize(name, self.font, stroke_width=stroke_width)
 
 		# Draw text
 		image = PIL.Image.new('RGBA', (w, h), (0, 164, 201, 0))
-		PIL.ImageDraw.Draw(image).text((0, 0), name, font=font, align='center', fill=(255, 255, 255), stroke_width=stroke_width, stroke_fill=(0, 0, 0))
+		PIL.ImageDraw.Draw(image).text((0, 0), name, font=self.font, align='center', fill=(255, 255, 255), stroke_width=stroke_width, stroke_fill=(0, 0, 0))
 
 		self.width = w
 		self.height = h
@@ -252,7 +260,10 @@ class Tile:
 		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, w, h, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image.tobytes())
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
-	def render(self, x, y, selected=False):
+	def draw(self, x, y, selected=False):
+		if self.texture is None:
+			return
+
 		x1, y1, x2, y2 = x, y, x + self.width, y + self.height
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
 		if selected:
@@ -272,7 +283,8 @@ class Tile:
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 	def destroy(self):
-		gl.glDeleteTextures([self.texture])
+		if self.texture is not None:
+			gl.glDeleteTextures([self.texture])
 
 
 class Menu:
@@ -328,7 +340,7 @@ class Menu:
 				self.current_idx = i
 				break
 
-	def render(self, width, height):
+	def draw(self, width, height):
 		x1, y1, x2, y2 = 0, 0, width, height
 		gl.glColor4f(0, 0, 0, 0.66)
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
@@ -340,6 +352,12 @@ class Menu:
 		cx = width // 2
 		cy = height // 2
 
+		# Render at most one tile per frame
+		for tile in self.tiles:
+			if tile.texture is None:
+				tile.render()
+				break
+
 		for i in range(-(num_lines // 2), num_lines // 2 + 1):
 			idx = self.current_idx + i
 			if idx < 0 or idx >= len(self.tiles):
@@ -348,7 +366,7 @@ class Menu:
 			tile = self.tiles[idx]
 			ypos = cy - i * line_height - tile.height // 2
 
-			tile.render(cx - tile.width // 2, ypos, i == 0)
+			tile.draw(cx - tile.width // 2, ypos, i == 0)
 
 
 window = Window(1280, 720, "libmpv wayland/egl/opengl example")
@@ -445,9 +463,7 @@ while not window.closed():
 	video.draw(width, height)
 
 	if menu.enabled:
-		menu.render(width, height)
-
-
+		menu.draw(width, height)
 
 	window.swap_buffers()
 
