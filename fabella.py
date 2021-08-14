@@ -147,25 +147,25 @@ class Video:
 		position_shadow_height = 4
 		position_shadow_top_color = (0, 0, 0, 0.25)
 		position_shadow_bottom_color = (0, 0, 0, 1)
-		#position_bar_color = (0.4, 0.4, 1, 1)
-		position_bar_color = (0.8, 0.1, 0.1, 1)
+		#position_bar_color = (0.4, 0.4, 1, 1)  # Blueish
+		position_bar_color = (0.8, 0.1, 0.1, 1)  # Red
 
-		#gl.glBegin(gl.GL_QUADS)
-		#gl.glColor4f(*position_shadow_bottom_color)
-		#gl.glVertex2f(0, position_bar_height)
-		#gl.glVertex2f(window_width, position_bar_height)
-		#gl.glColor4f(*position_shadow_top_color)
-		#gl.glVertex2f(window_width, position_bar_height + position_shadow_height)
-		#gl.glVertex2f(0, position_bar_height + position_shadow_height)
-		#gl.glEnd()
+		gl.glBegin(gl.GL_QUADS)
+		gl.glColor4f(*position_shadow_bottom_color)
+		gl.glVertex2f(0, position_bar_height)
+		gl.glVertex2f(window_width, position_bar_height)
+		gl.glColor4f(*position_shadow_top_color)
+		gl.glVertex2f(window_width, position_bar_height + position_shadow_height)
+		gl.glVertex2f(0, position_bar_height + position_shadow_height)
+		gl.glEnd()
 
-		#x1, y1, x2, y2 = self.position * window_width, 0, window_width, position_bar_height
-		#gl.glColor4f(*position_shadow_bottom_color)
-		#gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+		x1, y1, x2, y2 = self.position * window_width, 0, window_width, position_bar_height
+		gl.glColor4f(*position_shadow_bottom_color)
+		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
-		#x1, y1, x2, y2 = 0, 0, self.position * window_width, position_bar_height
-		#gl.glColor4f(*position_bar_color)
-		#gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+		x1, y1, x2, y2 = 0, 0, self.position * window_width, position_bar_height
+		gl.glColor4f(*position_bar_color)
+		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 
 
