@@ -147,8 +147,8 @@ class Video:
 		position_shadow_height = 4
 		position_shadow_top_color = (0, 0, 0, 0.25)
 		position_shadow_bottom_color = (0, 0, 0, 1)
-		#position_bar_color = (0.4, 0.4, 1, 1)  # Blueish
-		position_bar_color = (0.8, 0.1, 0.1, 1)  # Red
+		position_bar_color = (0.4, 0.4, 1, 1)  # Blueish
+		#position_bar_color = (0.8, 0.1, 0.1, 1)  # Red
 
 		gl.glBegin(gl.GL_QUADS)
 		gl.glColor4f(*position_shadow_bottom_color)
