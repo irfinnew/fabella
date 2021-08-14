@@ -120,13 +120,13 @@ class Video:
 		video_width, video_height = self.video_size
 
 		# Fit video to screen, preserving aspect
-		x1 = int(max((window_width - video_width / video_height * height) / 2, 0))
-		y1 = int(max((window_height - video_height / video_width * width) / 2, 0))
+		x1 = max((window_width - video_width / video_height * height) / 2, 0)
+		y1 = max((window_height - video_height / video_width * width) / 2, 0)
+
 		x2 = window_width - x1
-		# We need to make the width of the quad the width of the window, but the height is -1?
-		# I don't understand why, but that results in a 1-in-1 pixel rendering...
 		y2 = window_height - y1
-		print(x1, y1, x2, y2, video_width, video_height)
+
+		x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
 
 		gl.glColor4f(1, 1, 1, 1)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, video.texture)
