@@ -120,22 +120,24 @@ class Video:
 		video_width, video_height = self.video_size
 
 		# Fit video to screen, preserving aspect
-		x1 = max((window_width - video_width / video_height * height) / 2, 0)
-		y1 = max((window_height - video_height / video_width * width) / 2, 0)
+		x1 = int(max((window_width - video_width / video_height * height) / 2, 0))
+		y1 = int(max((window_height - video_height / video_width * width) / 2, 0))
 		x2 = window_width - x1
-		y2 = window_height - y1
+		# We need to make the width of the quad the width of the window, but the height is -1?
+		# I don't understand why, but that results in a 1-in-1 pixel rendering...
+		y2 = window_height - y1 - 1
 
 		gl.glColor4f(1, 1, 1, 1)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, video.texture)
 		gl.glBegin(gl.GL_QUADS)
 		gl.glTexCoord2f(0.0, 0.0)
-		gl.glVertex2f(x1, y1)
+		gl.glVertex2i(x1, y1)
 		gl.glTexCoord2f(1.0, 0.0)
-		gl.glVertex2f(x2, y1)
+		gl.glVertex2i(x2, y1)
 		gl.glTexCoord2f(1.0, 1.0)
-		gl.glVertex2f(x2, y2)
+		gl.glVertex2i(x2, y2)
 		gl.glTexCoord2f(0.0, 1.0)
-		gl.glVertex2f(x1, y2)
+		gl.glVertex2i(x1, y2)
 		gl.glEnd()
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
