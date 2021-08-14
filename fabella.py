@@ -219,27 +219,141 @@ class Window:
 				return
 
 
+class Tile:
+	name = ''
+	texture = None
+	width = 0
+	height = 0
+	path = ''
+	isdir = False
+
+	def __init__(self, name, path, font):
+		self.name = name
+		self.path = os.path.join(path, name)
+		self.isdir = os.path.isdir(self.path)
+		stroke_width = 2
+
+		if self.isdir:
+			name = name + '/'
+		# Get text size
+		image = PIL.Image.new('RGBA', (8, 8), (0, 164, 201))
+		w, h = PIL.ImageDraw.Draw(image).textsize(name, font, stroke_width=stroke_width)
+
+		# Draw text
+		image = PIL.Image.new('RGBA', (w, h), (0, 164, 201, 0))
+		PIL.ImageDraw.Draw(image).text((0, 0), name, font=font, align='center', fill=(255, 255, 255), stroke_width=stroke_width, stroke_fill=(0, 0, 0))
+
+		self.width = w
+		self.height = h
+		self.texture = gl.glGenTextures(1)
+		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
+		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, w, h, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image.tobytes())
+		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+
+	def render(self, x, y, selected=False):
+		x1, y1, x2, y2 = x, y, x + self.width, y + self.height
+		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
+		if selected:
+			gl.glColor4f(1, 0, 0, 1)
+		else:
+			gl.glColor4f(1, 1, 1, 1)
+		gl.glBegin(gl.GL_QUADS)
+		gl.glTexCoord2f(0.0, 1.0)
+		gl.glVertex2f(x1, y1)
+		gl.glTexCoord2f(1.0, 1.0)
+		gl.glVertex2f(x2, y1)
+		gl.glTexCoord2f(1.0, 0.0)
+		gl.glVertex2f(x2, y2)
+		gl.glTexCoord2f(0.0, 0.0)
+		gl.glVertex2f(x1, y2)
+		gl.glEnd()
+		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+
+	def destroy(self):
+		gl.glDeleteTextures([self.texture])
+
+
+class Menu:
+	enabled = False
+	path = None
+	tiles = []
+	current_idx = 0
+	font = None
+
+	def __init__(self, path='/', enabled=False):
+		self.font = PIL.ImageFont.truetype('DejaVuSans', 35)
+		self.load(path)
+		self.enabled = enabled
+
+	def load(self, path):
+		self.forget()
+
+		self.path = path
+		self.tiles = [Tile(f, path, self.font) for f in sorted(os.listdir(self.path))]
+		self.current_idx = 0
+
+	def forget(self):
+		for tile in self.tiles:
+			tile.destroy()
+		self.tiles = []
+		self.current_idx = None
+
+	@property
+	def current(self):
+		return self.tiles[self.current_idx]
+
+	def up(self):
+		if self.current_idx > 0:
+			self.current_idx -= 1
+
+	def down(self):
+		if self.current_idx < len(self.tiles) - 1:
+			self.current_idx += 1
+
+	def enter(self, video):
+		tile = self.current
+		if tile.isdir:
+			self.load(tile.path)
+		else:
+			video.start(tile.path)
+			self.enabled = False
+
+	def back(self):
+		previous = os.path.basename(self.path)
+		self.load(os.path.dirname(self.path))
+		for i, tile in enumerate(self.tiles):
+			if tile.name == previous:
+				self.current_idx = i
+				break
+
+	def render(self, width, height):
+		x1, y1, x2, y2 = 0, 0, width, height
+		gl.glColor4f(0, 0, 0, 0.66)
+		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
+		line_height = 50
+		num_lines = height // line_height + 2
+		if num_lines % 2 == 0:
+			num_lines -= 1
+		cx = width // 2
+		cy = height // 2
+
+		for i in range(-(num_lines // 2), num_lines // 2 + 1):
+			idx = self.current_idx + i
+			if idx < 0 or idx >= len(self.tiles):
+				continue
+
+			tile = self.tiles[idx]
+			ypos = cy - i * line_height - tile.height // 2
+
+			tile.render(cx - tile.width // 2, ypos, i == 0)
+
+
 window = Window(1280, 720, "libmpv wayland/egl/opengl example")
+menu = Menu(sys.argv[1], enabled=True)
 video = Video()
-
-
-#### Menu stuffs ####
-menu = True
-current_path = sys.argv[1]
-files = sorted(os.listdir(current_path))
-current_file = 0
-
-menu_font = PIL.ImageFont.truetype('DejaVuSans', 35) # 64
-menu_image = PIL.Image.new('RGBA', (1920, 1080), (0, 164, 201, 0))
-menu_drawer = PIL.ImageDraw.Draw(menu_image)
-menu_texture = gl.glGenTextures(1)
-gl.glBindTexture(gl.GL_TEXTURE_2D, menu_texture)
-gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-# FIXME: fixed size
-gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, 1920, 1080, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, menu_image.tobytes())
-gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-
 
 #### Main loop
 last_time = 0
@@ -247,14 +361,14 @@ frame_count = 0
 while not window.closed():
 	window.wait()
 
-	if not menu:
+	if not menu.enabled:
 		for key, scancode, action, modifiers  in window.get_events():
 			if action == glfw.PRESS:
 				if key in [glfw.KEY_ESCAPE, glfw.KEY_Q]:
 					window.terminate()
 					exit()
 				if key == glfw.KEY_BACKSPACE:
-					menu = True
+					menu.enabled = True
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
 				if key == glfw.KEY_O:
@@ -292,7 +406,7 @@ while not window.closed():
 
 						video.mpv.show_text(f'Subtitles {subid}/{sub_count}: {sublang.upper()}\n{subtitle}')
 
-	if menu:
+	if menu.enabled:
 		for key, scancode, action, modifiers  in window.get_events():
 			if action == glfw.PRESS:
 				if key in [glfw.KEY_ESCAPE, glfw.KEY_Q]:
@@ -301,28 +415,15 @@ while not window.closed():
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
 				if key == glfw.KEY_BACKSPACE:
-					menu = False
-				if key == glfw.KEY_ENTER:
-					selected = os.path.join(current_path, files[current_file])
-					if not os.path.isdir(selected):
-						video.start(selected)
-						menu = False
-				if key == glfw.KEY_RIGHT:
-					selected = os.path.join(current_path, files[current_file])
-					if os.path.isdir(selected):
-						current_path = selected
-						files = sorted(os.listdir(current_path))
-						current_file = 0
+					menu.enabled = False
+				if key in [glfw.KEY_ENTER, glfw.KEY_RIGHT]:
+					menu.enter(video)
 				if key == glfw.KEY_LEFT:
-					selected = os.path.dirname(current_path)
-					if selected != current_path:
-						current_path = selected
-						files = sorted(os.listdir(current_path))
-						current_file = 0
+					menu.back()
 				if key == glfw.KEY_UP:
-					current_file = max(0, current_file - 1)
+					menu.up()
 				if key == glfw.KEY_DOWN:
-					current_file = min(len(files) - 1, current_file + 1)
+					menu.down()
 
 	width, height = window.size()
 
@@ -343,33 +444,8 @@ while not window.closed():
 
 	video.draw(width, height)
 
-	if menu:
-		x1, y1, x2, y2 = 0, 0, width, height
-		gl.glColor4f(0, 0, 0, 0.66)
-		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
-
-		menu_image.paste((0, 164, 201, 0), (0, 0, 1920, 1080))
-		textheight = 80
-		for p, i in enumerate(range(current_file - 6, current_file + 7)):
-			if i >= 0 and i < len(files):
-				fill = (255, 0, 0) if i == current_file else (255, 255, 255)
-				menu_drawer.text((200, p * textheight + 20), files[i], font=menu_font, fill=fill, stroke_width=4, stroke_fill=(0, 0, 0))
-
-		x1, y1, x2, y2 = 0, 0, width, height
-		gl.glBindTexture(gl.GL_TEXTURE_2D, menu_texture)
-		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, 1920, 1080, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, menu_image.tobytes())
-		gl.glColor4f(1, 1, 1, 1)
-		gl.glBegin(gl.GL_QUADS)
-		gl.glTexCoord2f(0.0, 1.0)
-		gl.glVertex2f(x1, y1)
-		gl.glTexCoord2f(1.0, 1.0)
-		gl.glVertex2f(x2, y1)
-		gl.glTexCoord2f(1.0, 0.0)
-		gl.glVertex2f(x2, y2)
-		gl.glTexCoord2f(0.0, 0.0)
-		gl.glVertex2f(x1, y2)
-		gl.glEnd()
-		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+	if menu.enabled:
+		menu.render(width, height)
 
 
 
