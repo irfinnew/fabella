@@ -365,6 +365,9 @@ class Tile:
 		if self.texture is not None:
 			gl.glDeleteTextures([self.texture])
 
+	def __str__(self):
+		return f'Tile(name={self.name}, isdir={self.isdir}, last_pos={self.last_pos}, texture={self.texture})'
+
 
 class Menu:
 	enabled = False
