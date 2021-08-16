@@ -72,6 +72,8 @@ class Video:
 		print('EOF REACHED')
 		self.position = 1.0
 		self.stop()
+		if self.menu:
+			self.menu.open()
 
 	def size_changed(self, prop, value):
 		print('SIZE CHANGED', prop, value)
@@ -86,7 +88,7 @@ class Video:
 			raise 5
 
 	def position_changed(self, prop, value):
-		print('POS CHANGED', prop, value)
+		#print('POS CHANGED', prop, value)
 		if self.position_immune_until > time.time():
 			print('IMMUNE')
 			return
@@ -98,7 +100,7 @@ class Video:
 		if self.tile:
 			self.tile.update_pos(self.position)
 
-	def start(self, filename, tile=None):
+	def start(self, filename, menu=None, tile=None):
 		print('START', filename, tile)
 		if self.current_file:
 			self.stop()
@@ -107,6 +109,7 @@ class Video:
 		self.rendered = False
 		self.position = 0
 		self.tile = tile
+		self.menu = menu
 
 		self.position_immune_until = time.time() + 1
 		self.mpv.play(filename)
@@ -381,6 +384,14 @@ class Menu:
 		self.load(path)
 		self.enabled = enabled
 
+	def open(self):
+		print('MENU OPEN')
+		self.enabled = True
+
+	def close(self):
+		print('MENU CLOSE')
+		self.enabled = False
+
 	def load(self, path):
 		self.forget()
 
@@ -425,8 +436,8 @@ class Menu:
 			print('ENTER', video.tile.name if video.tile else 'None', tile.name, video.tile is tile)
 			if tile is not video.tile:
 				# Not already playing this
-				video.start(tile.path, tile=tile)
-			self.enabled = False
+				video.start(tile.path, menu=self, tile=tile)
+			self.close()
 
 	def back(self):
 		new = os.path.dirname(self.path)
@@ -486,10 +497,10 @@ while not window.closed():
 					window.terminate()
 					exit()
 				if key == glfw.KEY_BACKSPACE:
-					menu.enabled = True
+					menu.open()
 				if key == glfw.KEY_ENTER:
 					video.seek(-0.1, 'absolute')
-					menu.enabled = True
+					menu.open()
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
 				if key == glfw.KEY_O:
@@ -537,7 +548,7 @@ while not window.closed():
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
 				if key == glfw.KEY_BACKSPACE:
-					menu.enabled = False
+					menu.close()
 				if key in [glfw.KEY_ENTER, glfw.KEY_RIGHT]:
 					menu.enter(video)
 				if key == glfw.KEY_LEFT:
