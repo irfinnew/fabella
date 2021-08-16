@@ -369,6 +369,10 @@ class Menu:
 			if not f.startswith('.'):
 				self.tiles.append(Tile(f, path, self.font))
 		self.current_idx = 0
+		for i, tile in enumerate(self.tiles):
+			if tile.last_pos != 1.0:
+				self.current_idx = i
+				break
 
 	def forget(self):
 		for tile in self.tiles:
@@ -383,10 +387,14 @@ class Menu:
 	def up(self):
 		if self.current_idx > 0:
 			self.current_idx -= 1
+		else:
+			self.current_idx = len(self.tiles) - 1
 
 	def down(self):
 		if self.current_idx < len(self.tiles) - 1:
 			self.current_idx += 1
+		else:
+			self.current_idx = 0
 
 	def enter(self, video):
 		tile = self.current
@@ -456,7 +464,7 @@ while not window.closed():
 				if key == glfw.KEY_BACKSPACE:
 					menu.enabled = True
 				if key == glfw.KEY_ENTER:
-					video.seek(-1, 'absolute')
+					video.seek(-0.1, 'absolute')
 					menu.enabled = True
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
