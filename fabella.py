@@ -38,6 +38,8 @@ class Video:
 		self.mpv['osd-duration'] = 1000
 		self.mpv['osd-level'] = 1
 		self.mpv['video-timing-offset'] = 0
+		self.mpv['af'] = 'lavfi=[dynaudnorm=p=1]'
+
 		self.context = mpv.MpvRenderContext(
 			self.mpv,
 			'opengl',
