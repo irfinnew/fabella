@@ -24,6 +24,7 @@ class Video:
 	video_size = (640, 360)
 	video_size_old = (None, None)
 	position = 0
+	position_immune_until = 0
 	rendered = False
 	tile = None
 
@@ -46,6 +47,7 @@ class Video:
 		self.mpv.observe_property('width', self.size_changed)
 		self.mpv.observe_property('height', self.size_changed)
 		self.mpv.observe_property('percent-pos', self.position_changed)
+		self.mpv.register_event_callback(self.mpv_event)
 
 		# FIXME
 		self.fbo = gl.glGenFramebuffers(1)
@@ -62,6 +64,15 @@ class Video:
 		gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
+	def mpv_event(self, event):
+		if event['event'] == {'prefix': 'cplayer', 'level': 'v', 'text': 'video EOF reached'}:
+			self.eof_reached()
+
+	def eof_reached(self):
+		print('EOF REACHED')
+		self.position = 1.0
+		self.stop()
+
 	def size_changed(self, prop, value):
 		print('SIZE CHANGED', prop, value)
 		if value is None:
@@ -75,20 +86,20 @@ class Video:
 			raise 5
 
 	def position_changed(self, prop, value):
+		print('POS CHANGED', prop, value)
+		if self.position_immune_until > time.time():
+			print('IMMUNE')
+			return
 		assert prop == 'percent-pos'
-		force = False
 		if value is None:
-			# FIXME: close file? Return to menu?
-			value = self.position * 100
-			if value > 99.8:
-				value = 100
-				force = True
+			return
 		self.position = value / 100
 
 		if self.tile:
-			self.tile.update_pos(self.position, force=force)
+			self.tile.update_pos(self.position)
 
 	def start(self, filename, tile=None):
+		print('START', filename, tile)
 		if self.current_file:
 			self.stop()
 
@@ -97,6 +108,7 @@ class Video:
 		self.position = 0
 		self.tile = tile
 
+		self.position_immune_until = time.time() + 1
 		self.mpv.play(filename)
 		if self.tile and self.tile.last_pos > 0.001 and self.tile.last_pos < 0.999:
 			last_pos = self.tile.last_pos
@@ -105,12 +117,15 @@ class Video:
 			self.mpv.percent_pos = last_pos * 100
 
 	def stop(self):
+		print('STOP')
+		self.mpv.stop()
+
 		if self.tile:
 			self.tile.update_pos(self.position, force=True)
 
 		self.current_file = None
 		self.rendered = False
-		self.mpv.stop()
+		self.tile = None
 
 	def seek(self, amount, whence='relative'):
 		try:
@@ -258,6 +273,7 @@ class Tile:
 	state_file = None
 	state_last_update = 0
 	last_pos = 0
+	rendered_last_pos = 0
 
 	def __init__(self, name, path, font):
 		self.name = name
@@ -292,9 +308,6 @@ class Tile:
 			fd.write(str(self.last_pos) + '\n')
 
 	def render(self):
-		if self.texture is not None:
-			raise 5
-
 		stroke_width = 2
 		name = self.name
 		if self.isdir:
@@ -302,6 +315,7 @@ class Tile:
 
 		if self.last_pos > 0.01:
 			name = name + f' [{round(self.last_pos * 100)}%]'
+		self.rendered_last_pos = self.last_pos
 
 		# Get text size
 		image = PIL.Image.new('RGBA', (8, 8), (0, 164, 201))
@@ -313,7 +327,8 @@ class Tile:
 
 		self.width = w
 		self.height = h
-		self.texture = gl.glGenTextures(1)
+		if self.texture is None:
+			self.texture = gl.glGenTextures(1)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
@@ -323,6 +338,9 @@ class Tile:
 	def draw(self, x, y, selected=False):
 		if self.texture is None:
 			return
+
+		if abs(self.last_pos - self.rendered_last_pos) > 0.01:
+			self.render()
 
 		new = 0.5 if self.last_pos == 1 else 1.0
 		x1, y1, x2, y2 = x, y, x + self.width, y + self.height
@@ -370,7 +388,7 @@ class Menu:
 				self.tiles.append(Tile(f, path, self.font))
 		self.current_idx = 0
 		for i, tile in enumerate(self.tiles):
-			if tile.last_pos != 1.0:
+			if tile.last_pos < 0.999:
 				self.current_idx = i
 				break
 
@@ -401,7 +419,10 @@ class Menu:
 		if tile.isdir:
 			self.load(tile.path)
 		else:
-			video.start(tile.path, tile=tile)
+			print('ENTER', video.tile.name if video.tile else 'None', tile.name, video.tile is tile)
+			if tile is not video.tile:
+				# Not already playing this
+				video.start(tile.path, tile=tile)
 			self.enabled = False
 
 	def back(self):
