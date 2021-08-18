@@ -1,11 +1,9 @@
-#! /usr/bin/env python3
-
 import os  # FIXME
-import PIL.Image, PIL.ImageDraw, PIL.ImageFont  # FIXME
 import OpenGL.GL as gl
 
 from logger import Logger
 from tile import Tile
+from font import Font
 
 class Menu:
 	log = Logger(module='Menu', color=Logger.Cyan)
@@ -17,7 +15,7 @@ class Menu:
 
 	def __init__(self, path='/', enabled=False):
 		self.log.info(f'Created instance, path={path}, enabled={enabled}')
-		self.font = PIL.ImageFont.truetype('DejaVuSans', 35)
+		self.font = Font('DejaVuSans', 35, stroke_width=2)
 		self.load(path)
 		self.enabled = enabled
 
@@ -113,7 +111,7 @@ class Menu:
 
 		# Render at most one tile per frame
 		for tile in self.tiles:
-			if tile.texture is None:
+			if tile.rendered is None:
 				tile.render()
 				break
 
@@ -123,6 +121,6 @@ class Menu:
 				continue
 
 			tile = self.tiles[idx]
-			ypos = cy - i * line_height - tile.height // 2
-
-			tile.draw(cx - tile.width // 2, ypos, selected=i == 0)
+			if tile.rendered:
+				ypos = cy - i * line_height - tile.rendered.height // 2
+				tile.draw(cx - tile.rendered.width // 2, ypos, selected=i == 0)

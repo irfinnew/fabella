@@ -1,8 +1,7 @@
-#! /usr/bin/env python3
-
 import datetime
 
 class Logger:
+	Black = '\x1b[30m'
 	Red = '\x1b[31m'
 	Green = '\x1b[32m'
 	Yellow = '\x1b[33m'

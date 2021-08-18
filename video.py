@@ -1,5 +1,3 @@
-#! /usr/bin/env python3
-
 # https://github.com/mpv-player/mpv/blob/master/libmpv/render_gl.h#L91
 
 import glfw  # FIXME: abstract out

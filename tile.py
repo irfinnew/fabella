@@ -1,8 +1,5 @@
-#! /usr/bin/env python3
-
 import os
 import time
-import PIL.Image, PIL.ImageDraw, PIL.ImageFont
 import OpenGL.GL as gl
 
 from logger import Logger
@@ -10,10 +7,8 @@ from logger import Logger
 class Tile:
 	log = Logger(module='Tile', color=Logger.Magenta)
 	name = ''
-	texture = None
 	font = None
-	width = 0
-	height = 0
+	rendered = None
 	path = ''
 	isdir = False
 	state_file = None
@@ -59,7 +54,6 @@ class Tile:
 
 	def render(self):
 		self.log.info(f'Rendering for {self.name}')
-		stroke_width = 2
 		name = self.name
 		if self.isdir:
 			name = name + '/'
@@ -68,34 +62,19 @@ class Tile:
 			name = name + f' [{round(self.last_pos * 100)}%]'
 		self.rendered_last_pos = self.last_pos
 
-		# Get text size
-		image = PIL.Image.new('RGBA', (8, 8), (0, 164, 201))
-		w, h = PIL.ImageDraw.Draw(image).textsize(name, self.font, stroke_width=stroke_width)
-
-		# Draw text
-		image = PIL.Image.new('RGBA', (w, h), (0, 164, 201, 0))
-		PIL.ImageDraw.Draw(image).text((0, 0), name, font=self.font, align='center', fill=(255, 255, 255), stroke_width=stroke_width, stroke_fill=(0, 0, 0))
-
-		self.width = w
-		self.height = h
-		if self.texture is None:
-			self.texture = gl.glGenTextures(1)
-		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
-		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, w, h, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image.tobytes())
-		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		texture = self.rendered.texture if self.rendered else None
+		self.rendered = self.font.render(name, texture)
 
 	def draw(self, x, y, selected=False):
-		if self.texture is None:
+		if self.rendered is None:
 			return
 
 		if abs(self.last_pos - self.rendered_last_pos) > 0.01:
 			self.render()
 
 		new = 0.5 if self.last_pos == 1 else 1.0
-		x1, y1, x2, y2 = x, y, x + self.width, y + self.height
-		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
+		x1, y1, x2, y2 = x, y, x + self.rendered.width, y + self.rendered.height
+		gl.glBindTexture(gl.GL_TEXTURE_2D, self.rendered.texture)
 		if selected:
 			gl.glColor4f(new, 0, 0, 1)
 		else:
@@ -114,8 +93,8 @@ class Tile:
 
 	def destroy(self):
 		self.log.info(f'Destroying {self.name}')
-		if self.texture is not None:
-			gl.glDeleteTextures([self.texture])
+		if self.rendered is not None:
+			gl.glDeleteTextures([self.rendered.texture])
 
 	def __str__(self):
-		return f'Tile(name={self.name}, isdir={self.isdir}, last_pos={self.last_pos}, texture={self.texture})'
+		return f'Tile(name={self.name}, isdir={self.isdir}, last_pos={self.last_pos}, rendered={self.rendered})'
