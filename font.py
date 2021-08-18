@@ -1,5 +1,3 @@
-#! /usr/bin/env python3
-
 import PIL.Image, PIL.ImageDraw, PIL.ImageFont
 import OpenGL.GL as gl
 from dataclasses import dataclass
