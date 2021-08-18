@@ -5,3 +5,8 @@
  - Add background
  - Thumbnails
  - Menu animations
+ - OpenGL error checking
+ - Improve drawing effiency (remove OpenGL immediate mode)
+ - split out font rendering to its own file
+ - Abstract out glfw key events
+ - split out file I/O etc to its own file
