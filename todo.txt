@@ -1,0 +1,7 @@
+ - Add configuration file
+ - Better "watched" logic
+ - Upgrade to full state files
+ - Tile view
+ - Add background
+ - Thumbnails
+ - Menu animations
