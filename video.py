@@ -32,7 +32,7 @@ class Video:
 
 		self.mpv = mpv.MPV(log_handler=mpv_log, loglevel='debug')
 		self.log.warning('FIXME: setting MPV options')
-		#self.mpv['hwdec'] = 'auto'
+		self.mpv['hwdec'] = 'auto'
 		self.mpv['osd-duration'] = 1000
 		self.mpv['osd-level'] = 1
 		self.mpv['video-timing-offset'] = 0
