@@ -18,8 +18,9 @@ class Menu:
 	tile_hspace = 128
 	tile_height = 192
 	tile_vspace = 64
+	text_margin = 8
 	text_width = 256
-	text_height = 128
+	text_height = 96
 
 	def __init__(self, path='/', enabled=False):
 		self.log.info(f'Created instance, path={path}, enabled={enabled}')
@@ -132,8 +133,8 @@ class Menu:
 		htiles = width // (self.tile_width + self.tile_hspace)
 		self.htiles = htiles  # FIXME: ughhh
 		hoffset = (width - htiles * (self.tile_width + self.tile_hspace) + self.tile_hspace) // 2
-		vtiles = height // (self.tile_height + self.tile_hspace)
-		voffset = (height - vtiles * (self.tile_height + self.text_height + self.tile_vspace) + self.tile_vspace) // 2
+		vtiles = height // (self.tile_height + self.tile_vspace + self.text_height + self.text_margin)
+		voffset = (height - vtiles * (self.tile_height + self.text_height + self.tile_vspace + self.text_margin) + self.tile_vspace) // 2
 
 		while self.current_idx // htiles < self.current_offset:
 			self.current_offset -= 1
@@ -150,9 +151,9 @@ class Menu:
 					break
 				if tile.rendered:
 					xpos = hoffset + (self.tile_width + self.tile_hspace) * x
-					ypos = height - (voffset + (self.tile_height + self.text_height + self.tile_vspace) * y) - self.text_height - self.tile_height
+					ypos = height - (voffset + (self.tile_height + self.text_height + self.text_margin + self.tile_vspace) * y) - self.text_height - self.text_margin - self.tile_height
 					# FIXME
-					x1, y1, x2, y2 = xpos, ypos + self.text_height, xpos + self.tile_width, ypos + self.text_height + self.tile_height
+					x1, y1, x2, y2 = xpos, ypos + self.text_height + self.text_margin, xpos + self.tile_width, ypos + self.text_height + self.tile_height
 					gl.glColor4f(0.5, 0, 0, 1)
 					gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 					tile.draw(xpos, ypos, selected=idx == self.current_idx)
