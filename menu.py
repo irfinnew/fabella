@@ -15,16 +15,16 @@ class Menu:
 	font = None
 
 	tile_width = 256
-	tile_hspace = 128
-	tile_height = 192
+	tile_hspace = 64
+	tile_height = 144
 	tile_vspace = 64
 	text_margin = 8
 	text_width = 256
-	text_height = 96
+	text_height = 48
 
 	def __init__(self, path='/', enabled=False):
 		self.log.info(f'Created instance, path={path}, enabled={enabled}')
-		self.font = Font('DejaVuSans', 25, stroke_width=2)
+		self.font = Font('DejaVuSans', 19, stroke_width=2)
 		self.load(path)
 		self.enabled = enabled
 
@@ -136,11 +136,18 @@ class Menu:
 		vtiles = height // (self.tile_height + self.tile_vspace + self.text_height + self.text_margin)
 		voffset = (height - vtiles * (self.tile_height + self.text_height + self.tile_vspace + self.text_margin) + self.tile_vspace) // 2
 
+		# Fix offset
 		while self.current_idx // htiles < self.current_offset:
 			self.current_offset -= 1
 
 		while self.current_idx // htiles >= (self.current_offset + vtiles):
 			self.current_offset += 1
+
+		if self.current_offset > (len(self.tiles) - 1) // htiles + 1 - vtiles:
+			self.current_offset = (len(self.tiles) - 1) // htiles + 1 - vtiles
+
+		if self.current_offset < 0:
+			self.current_offset = 0
 
 		for y in range(vtiles):
 			for x in range(htiles):
