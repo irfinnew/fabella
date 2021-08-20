@@ -14,17 +14,17 @@ class Menu:
 	current_offset = 0
 	font = None
 
-	tile_width = 256
+	tile_width = 320
 	tile_hspace = 64
-	tile_height = 144
+	tile_height = 180
 	tile_vspace = 64
 	text_margin = 8
-	text_width = 256
-	text_height = 48
+	text_width = 320
+	text_height = 50
 
 	def __init__(self, path='/', enabled=False):
 		self.log.info(f'Created instance, path={path}, enabled={enabled}')
-		self.font = Font('DejaVuSans', 19, stroke_width=2)
+		self.font = Font('DejaVuSans', 20, stroke_width=2)
 		self.load(path)
 		self.enabled = enabled
 
