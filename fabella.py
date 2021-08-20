@@ -6,7 +6,6 @@ import sys
 import glfw
 import time
 import OpenGL.GL as gl
-
 from logger import Logger
 from window import Window
 from menu import Menu
@@ -28,12 +27,12 @@ while not window.closed():
 		for key, scancode, action, modifiers  in window.get_events():
 			if action == glfw.PRESS:
 				log.info(f'Parsing key {key} in video mode')
-				if key in [glfw.KEY_ESCAPE, glfw.KEY_Q]:
+				if key == glfw.KEY_Q:
 					log.info('Quitting.')
 					video.stop()
 					window.terminate()
 					exit()
-				if key == glfw.KEY_BACKSPACE:
+				if key == glfw.KEY_ESCAPE:
 					menu.open()
 				if key == glfw.KEY_ENTER:
 					video.seek(-0.1, 'absolute')
@@ -82,23 +81,27 @@ while not window.closed():
 		for key, scancode, action, modifiers  in window.get_events():
 			if action == glfw.PRESS:
 				log.info(f'Parsing key {key} in menu mode')
-				if key in [glfw.KEY_ESCAPE, glfw.KEY_Q]:
+				if key == glfw.KEY_Q:
 					log.info('Quitting.')
 					video.stop()
 					window.terminate()
 					exit()
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
-				if key == glfw.KEY_BACKSPACE:
+				if key == glfw.KEY_ESCAPE:
 					menu.close()
-				if key in [glfw.KEY_ENTER, glfw.KEY_RIGHT]:
+				if key in [glfw.KEY_ENTER, glfw.KEY_SPACE]:
 					menu.enter(video)
-				if key == glfw.KEY_LEFT:
+				if key == glfw.KEY_BACKSPACE:
 					menu.back()
 				if key == glfw.KEY_UP:
 					menu.up()
 				if key == glfw.KEY_DOWN:
 					menu.down()
+				if key == glfw.KEY_RIGHT:
+					menu.right()
+				if key == glfw.KEY_LEFT:
+					menu.left()
 
 	width, height = window.size()
 	log.debug(f'Window size {width}x{height}')

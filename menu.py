@@ -11,11 +11,19 @@ class Menu:
 	path = None
 	tiles = []
 	current_idx = 0
+	current_offset = 0
 	font = None
+
+	tile_width = 256
+	tile_hspace = 128
+	tile_height = 192
+	tile_vspace = 64
+	text_width = 256
+	text_height = 128
 
 	def __init__(self, path='/', enabled=False):
 		self.log.info(f'Created instance, path={path}, enabled={enabled}')
-		self.font = Font('DejaVuSans', 35, stroke_width=2)
+		self.font = Font('DejaVuSans', 25, stroke_width=2)
 		self.load(path)
 		self.enabled = enabled
 
@@ -37,6 +45,7 @@ class Menu:
 			if not f.startswith('.'):
 				self.tiles.append(Tile(f, path, self.font))
 		self.current_idx = 0
+		self.current_offset = 0
 		for i, tile in enumerate(self.tiles):
 			if tile.last_pos < 0.999:
 				self.current_idx = i
@@ -55,17 +64,27 @@ class Menu:
 
 	def up(self):
 		self.log.info('Select above')
-		if self.current_idx > 0:
-			self.current_idx -= 1
-		else:
-			self.current_idx = len(self.tiles) - 1
+		if self.current_idx >= self.htiles:
+			self.current_idx -= self.htiles
 
 	def down(self):
 		self.log.info('Select below')
+		if self.current_idx < len(self.tiles) - self.htiles:
+			self.current_idx += self.htiles
+
+	def left(self):
+		self.log.info('Select left')
+		if self.current_idx > 0:
+			self.current_idx -= 1
+		#else:
+		#	self.current_idx = len(self.tiles) - 1
+
+	def right(self):
+		self.log.info('Select right')
 		if self.current_idx < len(self.tiles) - 1:
 			self.current_idx += 1
-		else:
-			self.current_idx = 0
+		#else:
+		#	self.current_idx = 0
 
 	def enter(self, video):
 		self.log.info('Enter')
@@ -98,29 +117,42 @@ class Menu:
 				break
 
 	def draw(self, width, height):
+		# Background
 		x1, y1, x2, y2 = 0, 0, width, height
 		gl.glColor4f(0, 0, 0, 0.66)
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
-		line_height = 50
-		num_lines = height // line_height + 2
-		if num_lines % 2 == 0:
-			num_lines -= 1
-		cx = width // 2
-		cy = height // 2
-
 		# Render at most one tile per frame
 		for tile in self.tiles:
 			if tile.rendered is None:
-				tile.render()
+				tile.render(self.text_width, self.text_height)
 				break
 
-		for i in range(-(num_lines // 2), num_lines // 2 + 1):
-			idx = self.current_idx + i
-			if idx < 0 or idx >= len(self.tiles):
-				continue
+		# draw tiles
+		htiles = width // (self.tile_width + self.tile_hspace)
+		self.htiles = htiles  # FIXME: ughhh
+		hoffset = (width - htiles * (self.tile_width + self.tile_hspace) + self.tile_hspace) // 2
+		vtiles = height // (self.tile_height + self.tile_hspace)
+		voffset = (height - vtiles * (self.tile_height + self.text_height + self.tile_vspace) + self.tile_vspace) // 2
 
-			tile = self.tiles[idx]
-			if tile.rendered:
-				ypos = cy - i * line_height - tile.rendered.height // 2
-				tile.draw(cx - tile.rendered.width // 2, ypos, selected=i == 0)
+		while self.current_idx // htiles < self.current_offset:
+			self.current_offset -= 1
+
+		while self.current_idx // htiles >= (self.current_offset + vtiles):
+			self.current_offset += 1
+
+		for y in range(vtiles):
+			for x in range(htiles):
+				idx = y * htiles + x + self.current_offset * htiles
+				try:
+					tile = self.tiles[idx]
+				except IndexError:
+					break
+				if tile.rendered:
+					xpos = hoffset + (self.tile_width + self.tile_hspace) * x
+					ypos = height - (voffset + (self.tile_height + self.text_height + self.tile_vspace) * y) - self.text_height - self.tile_height
+					# FIXME
+					x1, y1, x2, y2 = xpos, ypos + self.text_height, xpos + self.tile_width, ypos + self.text_height + self.tile_height
+					gl.glColor4f(0.5, 0, 0, 1)
+					gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+					tile.draw(xpos, ypos, selected=idx == self.current_idx)

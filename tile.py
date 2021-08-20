@@ -52,7 +52,7 @@ class Tile:
 		with open(self.state_file, 'w') as fd:
 			fd.write(str(self.last_pos) + '\n')
 
-	def render(self):
+	def render(self, width, height):
 		self.log.info(f'Rendering for {self.name}')
 		name = self.name
 		if self.isdir:
@@ -63,14 +63,19 @@ class Tile:
 		self.rendered_last_pos = self.last_pos
 
 		texture = self.rendered.texture if self.rendered else None
-		self.rendered = self.font.render(name, texture)
+		#self.rendered = self.font.render(name, texture)
+		self.rendered = self.font.multiline(name, width, height, texture)
 
 	def draw(self, x, y, selected=False):
 		if self.rendered is None:
 			return
 
 		if abs(self.last_pos - self.rendered_last_pos) > 0.01:
-			self.render()
+			self.log.warning('Tile re-render leaks texture')
+			# FIXME: leaks textures probably
+			#self.render()
+			self.rendered = None
+			return
 
 		new = 0.5 if self.last_pos == 1 else 1.0
 		x1, y1, x2, y2 = x, y, x + self.rendered.width, y + self.rendered.height
