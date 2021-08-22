@@ -58,8 +58,9 @@ class Tile:
 		if self.isdir:
 			name = name + '/'
 
-		if self.last_pos > 0.01:
-			name = name + f' [{round(self.last_pos * 100)}%]'
+		# FIXME: remove
+		#if self.last_pos > 0.01:
+		#	name = name + f' [{round(self.last_pos * 100)}%]'
 		self.rendered_last_pos = self.last_pos
 
 		texture = self.rendered.texture if self.rendered else None
@@ -70,20 +71,21 @@ class Tile:
 		if self.rendered is None:
 			return
 
-		if abs(self.last_pos - self.rendered_last_pos) > 0.01:
-			self.log.warning('Tile re-render leaks texture')
-			# FIXME: leaks textures probably
-			#self.render()
-			self.rendered = None
-			return
+		# FIXME: disabled re-render because no more pct in title
+		#if abs(self.last_pos - self.rendered_last_pos) > 0.01:
+		#	self.log.warning('Tile re-render leaks texture')
+		#	# FIXME: leaks textures probably
+		#	#self.render()
+		#	self.rendered = None
+		#	return
 
-		new = 0.5 if self.last_pos == 1 else 1.0
+		color = 0.4 if self.last_pos == 1 else 0.7
+		if selected:
+			color = 1.0
+		gl.glColor4f(color, color, color, 1)
+
 		x1, y1, x2, y2 = x, y, x + self.rendered.width, y + self.rendered.height
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self.rendered.texture)
-		if selected:
-			gl.glColor4f(new, 0, 0, 1)
-		else:
-			gl.glColor4f(new, new, new, 1)
 		gl.glBegin(gl.GL_QUADS)
 		gl.glTexCoord2f(0.0, 1.0)
 		gl.glVertex2f(x1, y1)

@@ -14,6 +14,14 @@ class Menu:
 	current_offset = 0
 	font = None
 
+	# TODO: new stuff
+	#tile_size = (320, 180)
+	#tile_margin = (32, 64)
+	#tile_hspace = 32
+	#tile_font_size = 20
+	#tile_name_lines = 2
+	#text_margin = 8
+
 	tile_width = 320
 	tile_hspace = 64
 	tile_height = 180
@@ -160,7 +168,17 @@ class Menu:
 					xpos = hoffset + (self.tile_width + self.tile_hspace) * x
 					ypos = height - (voffset + (self.tile_height + self.text_height + self.text_margin + self.tile_vspace) * y) - self.text_height - self.text_margin - self.tile_height
 					# FIXME
+					color = 0.4 if tile.last_pos == 1 else 0.7
+					if idx == self.current_idx:
+						color = 1.0
+					gl.glColor4f(color, 0, 0, 1)
+
 					x1, y1, x2, y2 = xpos, ypos + self.text_height + self.text_margin, xpos + self.tile_width, ypos + self.text_height + self.tile_height
-					gl.glColor4f(0.5, 0, 0, 1)
 					gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
+					# Pos bar
+					x1, y1, x2, y2 = x1, y1 - 1, x1 + self.tile_width * tile.last_pos, y1 - 3
+					gl.glColor4f(0.4, 0.4, 1, 1)
+					gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
 					tile.draw(xpos, ypos, selected=idx == self.current_idx)
