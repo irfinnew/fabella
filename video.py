@@ -98,6 +98,14 @@ class Video:
 		if self.tile:
 			self.tile.update_pos(self.position)
 
+	def pause(self, pause=None):
+		if pause is None:
+			pause = not self.mpv.pause
+
+		if pause != self.mpv.pause:
+			self.log.info('Pausing video' if pause else 'Unpausing video')
+			self.mpv.pause = pause
+
 	def start(self, filename, menu=None, tile=None):
 		if self.current_file:
 			self.stop()
@@ -111,6 +119,7 @@ class Video:
 
 		self.position_immune_until = time.time() + 1
 		self.mpv.play(filename)
+		self.pause(False)
 		if self.tile and self.tile.last_pos > 0.001 and self.tile.last_pos < 0.999:
 			last_pos = self.tile.last_pos
 			self.log.info(f'Starting playback at position {last_pos}')
@@ -120,6 +129,7 @@ class Video:
 
 	def stop(self):
 		self.log.info(f'Stopping playback for {self.current_file}')
+		self.pause(False)
 		self.mpv.stop()
 
 		if self.tile:

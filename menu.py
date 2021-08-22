@@ -106,11 +106,11 @@ class Menu:
 	def play(self, tile, video):
 		self.log.info(f'Play; (currently {video.tile})')
 		if tile is not video.tile:
-			# Not already playing this
 			self.log.info(f'Starting new video: {tile}')
 			video.start(tile.path, menu=self, tile=tile)
 		else:
-			self.log.info('Already playing this video, NOP')
+			self.log.info('Already playing this video, just maybe unpause')
+			video.pause(False)
 		self.close()
 
 	def back(self):

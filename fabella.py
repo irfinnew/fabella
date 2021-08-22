@@ -33,6 +33,7 @@ while not window.closed():
 					window.terminate()
 					exit()
 				if key == glfw.KEY_ESCAPE:
+					#video.pause(True)  # Dunno
 					menu.open()
 				if key == glfw.KEY_ENTER:
 					video.seek(-0.1, 'absolute')
@@ -43,8 +44,7 @@ while not window.closed():
 					log.info('Cycling OSD')
 					video.mpv['osd-level'] ^= 2
 				if key == glfw.KEY_SPACE:
-					log.info('Cycling pause')
-					video.mpv.cycle('pause')
+					video.pause()
 				if key == glfw.KEY_RIGHT:
 					video.seek(5)
 				if key == glfw.KEY_LEFT:
@@ -90,6 +90,7 @@ while not window.closed():
 					window.set_fullscreen()
 				if key == glfw.KEY_ESCAPE:
 					menu.close()
+					#video.pause(False)
 				if key in [glfw.KEY_ENTER, glfw.KEY_SPACE]:
 					menu.enter(video)
 				if key == glfw.KEY_BACKSPACE:
