@@ -10,6 +10,7 @@ class Tile:
 	name = ''
 	font = None
 	rendered_title = None
+	thumb_file = ''
 	thumb_texture = None
 	path = ''
 	full_path = ''
@@ -59,6 +60,22 @@ class Tile:
 	def watched(self):
 		return self.last_pos >= 0.99
 
+	def find_folder_cover(self, path=None):
+		if not path:
+			path = self.full_path
+		for thumb_file in config.tile.thumb_files:
+			thumb_file = os.path.join(path, thumb_file)
+			if os.path.isfile(thumb_file):
+				return thumb_file
+		return None
+
+	def find_file_cover(self):
+		for thumb_dir in config.tile.thumb_dirs:
+			thumb_file = os.path.join(self.path, thumb_dir, os.path.splitext(self.name)[0] + '.jpg')
+			if os.path.isfile(thumb_file):
+				return thumb_file
+		return None
+
 	def render(self):
 		self.log.info(f'Rendering for {self.name}')
 		assert self.rendered_title is None
@@ -67,16 +84,26 @@ class Tile:
 		# Title
 		if self.isdir:
 			name = self.name + '/'
+			self.thumb_file = self.find_folder_cover()
 		else:
 			name = os.path.splitext(self.name)[0]
+			self.thumb_file = self.find_file_cover()
+
+		if not self.thumb_file:
+			path = self.full_path
+			while path != '/' and not self.thumb_file:
+				path = os.path.dirname(path)
+				self.thumb_file = self.find_folder_cover(path)
+
+		if self.thumb_file:
+			self.thumb_texture = self.load_thumbnail(self.thumb_file)
+
 		self.rendered_title = self.font.multiline(name, config.tile.width, config.tile.text_height, None)
 
-		# Thumbnail
-		thumb_file = os.path.join(self.path, 'thumbs', os.path.splitext(self.name)[0] + '.jpg')
-		if os.path.isfile(thumb_file):
-			self.thumb_texture = self.load_thumbnail(thumb_file)
-
 	def load_thumbnail(self, thumb_file):
+		if thumb_file is None:
+			return None
+
 		self.log.info(f'Loading thumbnail from {thumb_file}')
 		from PIL import Image, ImageOps
 		thumb_full = Image.open(thumb_file)
@@ -147,6 +174,8 @@ class Tile:
 		self.log.info(f'Destroying {self.name}')
 		if self.rendered_title is not None:
 			gl.glDeleteTextures([self.rendered_title.texture])
+		if self.thumb_texture is not None:
+			gl.glDeleteTextures([self.thumb_texture])
 
 	def __str__(self):
 		return f'Tile(name={self.name}, isdir={self.isdir}, last_pos={self.last_pos}, rendered={self.rendered_title})'

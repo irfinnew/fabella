@@ -10,3 +10,6 @@ class tile:
 
 	pos_bar_height = 2
 	pos_bar_color = (0.4, 0.4, 1, 1)
+
+	thumb_dirs = ['covers']
+	thumb_files = ['cover.jpg']

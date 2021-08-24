@@ -37,8 +37,13 @@ class Menu:
 		self.path = path
 		self.tiles = []
 		for f in sorted(os.listdir(self.path)):
-			if not f.startswith('.'):
-				self.tiles.append(Tile(f, path, self.font))
+			if f.startswith('.'):
+				continue
+			if f in config.tile.thumb_dirs:
+				continue
+			if f in config.tile.thumb_files:
+				continue
+			self.tiles.append(Tile(f, path, self.font))
 		self.current_idx = 0
 		self.current_offset = 0
 		for i, tile in enumerate(self.tiles):
