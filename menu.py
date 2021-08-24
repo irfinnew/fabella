@@ -81,7 +81,7 @@ class Menu:
 		self.log.info('Enter')
 		tile = self.current
 		if tile.isdir:
-			self.load(tile.path)
+			self.load(tile.full_path)
 		else:
 			self.play(tile, video)
 
@@ -89,7 +89,7 @@ class Menu:
 		self.log.info(f'Play; (currently {video.tile})')
 		if tile is not video.tile:
 			self.log.info(f'Starting new video: {tile}')
-			video.start(tile.path, menu=self, tile=tile)
+			video.start(tile.full_path, menu=self, tile=tile)
 		else:
 			self.log.info('Already playing this video, just maybe unpause')
 			video.pause(False)
@@ -115,7 +115,7 @@ class Menu:
 
 		# Render at most one tile per frame
 		for tile in self.tiles:
-			if tile.rendered is None:
+			if tile.rendered_title is None:
 				tile.render()
 				break
 
@@ -135,7 +135,6 @@ class Menu:
 		tile_rows = max(height // tile_vtotal, 1)
 		tile_voffset = (height - tile_rows * tile_vtotal + tile_vspace) // 2
 
-		print(tile_rows, tiles_per_row)
 		# Fix offset
 		while self.current_idx // tiles_per_row < self.current_offset:
 			self.current_offset -= 1
