@@ -91,7 +91,8 @@ class Tile:
 
 		if not self.thumb_file:
 			path = self.full_path
-			while path != '/' and not self.thumb_file:
+			while len(path) > 2 and not self.thumb_file:
+				print(path)
 				path = os.path.dirname(path)
 				self.thumb_file = self.find_folder_cover(path)
 
