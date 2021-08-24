@@ -64,8 +64,11 @@ class Menu:
 
 	def down(self):
 		self.log.info('Select below')
-		if self.current_idx < len(self.tiles) - self.tiles_per_row:
-			self.current_idx += self.tiles_per_row
+		if self.current_idx // self.tiles_per_row < (len(self.tiles) - 1) // self.tiles_per_row:
+			self.current_idx = min(
+				len(self.tiles) - 1,
+				self.current_idx + self.tiles_per_row
+			)
 
 	def left(self):
 		self.log.info('Select left')
