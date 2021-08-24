@@ -1,8 +1,8 @@
 import os  # FIXME
 import OpenGL.GL as gl
 
+import config
 from logger import Logger
-from config import Config
 from tile import Tile
 from font import Font
 
@@ -119,12 +119,12 @@ class Menu:
 				tile.render()
 				break
 
-		tile_width = Config.tile_size[0]
-		tile_hspace = Config.tile_margin[0]
+		tile_width = config.tile.width
+		tile_hspace = config.tile.min_hspace
 		tile_htotal = tile_width + tile_hspace
 
-		tile_height = Config.tile_size[1] + Config.tile_margin[1] + Config.tile_text_height
-		tile_vspace = Config.tile_margin[2]
+		tile_height = config.tile.thumb_height + config.tile.text_vspace + config.tile.text_height
+		tile_vspace = config.tile.min_vspace
 		tile_vtotal = tile_height + tile_vspace
 
 		tiles_per_row = max(width // tile_htotal, 1)

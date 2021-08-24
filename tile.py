@@ -2,8 +2,8 @@ import os
 import time
 import OpenGL.GL as gl
 
+import config
 from logger import Logger
-from config import Config
 
 class Tile:
 	log = Logger(module='Tile', color=Logger.Magenta)
@@ -69,25 +69,30 @@ class Tile:
 			name = self.name + '/'
 		else:
 			name = os.path.splitext(self.name)[0]
-		self.rendered_title = self.font.multiline(name, Config.tile_size[0], Config.tile_text_height, None)
+		self.rendered_title = self.font.multiline(name, config.tile.width, config.tile.text_height, None)
 
 		# Thumbnail
 		thumb_file = os.path.join(self.path, 'thumbs', os.path.splitext(self.name)[0] + '.jpg')
 		if os.path.isfile(thumb_file):
-			self.log.info(f'Loading thumbnail {thumb_file}')
-			from PIL import Image, ImageOps
-			thumb_full = Image.open(thumb_file)
-			thumb = ImageOps.fit(thumb_full, Config.tile_size)
-			del thumb_full
+			self.thumb_texture = self.load_thumbnail(thumb_file)
 
-			# FIXME: properly detect image format (RGB8 etc)
-			self.thumb_texture = gl.glGenTextures(1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.thumb_texture)
-			gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-			gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-			gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, *Config.tile_size, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, thumb.tobytes())
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-			del thumb
+	def load_thumbnail(self, thumb_file):
+		self.log.info(f'Loading thumbnail from {thumb_file}')
+		from PIL import Image, ImageOps
+		thumb_full = Image.open(thumb_file)
+		thumb = ImageOps.fit(thumb_full, (config.tile.width, config.tile.thumb_height))
+		del thumb_full
+
+		# FIXME: properly detect image format (RGB8 etc)
+		texture = gl.glGenTextures(1)
+		gl.glBindTexture(gl.GL_TEXTURE_2D, texture)
+		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, config.tile.width, config.tile.thumb_height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, thumb.tobytes())
+		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		del thumb
+
+		return texture
 
 	def draw(self, x, y, selected=False):
 		# FIXME
@@ -95,7 +100,7 @@ class Tile:
 		color = 1.0 if selected else 0.7
 
 		# Thumbnail
-		x1, y1, x2, y2 = x, y - Config.tile_size[1], x + Config.tile_size[0], y
+		x1, y1, x2, y2 = x, y - config.tile.thumb_height, x + config.tile.width, y
 		if self.thumb_texture is not None:
 			gl.glColor4f(color, color, color, 1)
 			gl.glBindTexture(gl.GL_TEXTURE_2D, self.thumb_texture)
@@ -114,16 +119,15 @@ class Tile:
 			gl.glColor4f(color, 0, 0, 1)
 			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
-		# Pos bar
-		pos_bar_height = 2  # FIXME
-		x1, y1 = x, y - Config.tile_size[1] - 1 - pos_bar_height
-		x2, y2 = x1 + Config.tile_size[0] * self.last_pos, y1 + pos_bar_height
-		gl.glColor4f(0.4, 0.4, 1, 1)
+		# Position bar
+		x1, y1 = x, y - config.tile.thumb_height - 1 - config.tile.pos_bar_height
+		x2, y2 = x1 + config.tile.width * self.last_pos, y1 + config.tile.pos_bar_height
+		gl.glColor4f(*config.tile.pos_bar_color)
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Title
 		if self.rendered_title is not None:
-			x1, y1 = x, y - Config.tile_size[1] - Config.tile_margin[1] - self.rendered_title.height
+			x1, y1 = x, y - config.tile.thumb_height - config.tile.text_vspace - self.rendered_title.height
 			x2, y2 = x1 + self.rendered_title.width, y1 + self.rendered_title.height
 			gl.glColor4f(color, color, color, 1)
 			gl.glBindTexture(gl.GL_TEXTURE_2D, self.rendered_title.texture)
