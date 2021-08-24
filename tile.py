@@ -3,6 +3,7 @@ import time
 import OpenGL.GL as gl
 
 from logger import Logger
+from config import Config
 
 class Tile:
 	log = Logger(module='Tile', color=Logger.Magenta)
@@ -14,7 +15,6 @@ class Tile:
 	state_file = None
 	state_last_update = 0
 	last_pos = 0
-	rendered_last_pos = 0
 
 	def __init__(self, name, path, font):
 		self.log.info(f'Created Tile path={path}, name={name}')
@@ -52,39 +52,42 @@ class Tile:
 		with open(self.state_file, 'w') as fd:
 			fd.write(str(self.last_pos) + '\n')
 
-	def render(self, width, height):
+	@property
+	def watched(self):
+		return self.last_pos >= 0.99
+
+	def render(self):
 		self.log.info(f'Rendering for {self.name}')
 		name = self.name
 		if self.isdir:
 			name = name + '/'
 
-		# FIXME: remove
-		#if self.last_pos > 0.01:
-		#	name = name + f' [{round(self.last_pos * 100)}%]'
-		self.rendered_last_pos = self.last_pos
-
 		texture = self.rendered.texture if self.rendered else None
-		#self.rendered = self.font.render(name, texture)
-		self.rendered = self.font.multiline(name, width, height, texture)
+		self.rendered = self.font.multiline(name, Config.tile_size[0], Config.tile_text_height, texture)
 
 	def draw(self, x, y, selected=False):
 		if self.rendered is None:
 			return
 
-		# FIXME: disabled re-render because no more pct in title
-		#if abs(self.last_pos - self.rendered_last_pos) > 0.01:
-		#	self.log.warning('Tile re-render leaks texture')
-		#	# FIXME: leaks textures probably
-		#	#self.render()
-		#	self.rendered = None
-		#	return
+		# FIXME
+		color = 1.0 if selected else (0.4 if self.watched else 0.7)
 
-		color = 0.4 if self.last_pos == 1 else 0.7
-		if selected:
-			color = 1.0
+		# Thumbnail
+		x1, y1, x2, y2 = x, y - Config.tile_size[1], x + Config.tile_size[0], y
+		gl.glColor4f(color, 0, 0, 1)
+		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
+		# Pos bar
+		pos_bar_height = 2  # FIXME
+		x1, y1 = x, y - Config.tile_size[1] - 1 - pos_bar_height
+		x2, y2 = x1 + Config.tile_size[0] * self.last_pos, y1 + pos_bar_height
+		gl.glColor4f(0.4, 0.4, 1, 1)
+		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
+		# Title
+		x1, y1 = x, y - Config.tile_size[1] - Config.tile_margin[1] - self.rendered.height
+		x2, y2 = x1 + self.rendered.width, y1 + self.rendered.height
 		gl.glColor4f(color, color, color, 1)
-
-		x1, y1, x2, y2 = x, y, x + self.rendered.width, y + self.rendered.height
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self.rendered.texture)
 		gl.glBegin(gl.GL_QUADS)
 		gl.glTexCoord2f(0.0, 1.0)

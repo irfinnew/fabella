@@ -2,6 +2,7 @@ import os  # FIXME
 import OpenGL.GL as gl
 
 from logger import Logger
+from config import Config
 from tile import Tile
 from font import Font
 
@@ -10,25 +11,10 @@ class Menu:
 	enabled = False
 	path = None
 	tiles = []
+	tiles_per_row = 1
 	current_idx = 0
 	current_offset = 0
 	font = None
-
-	# TODO: new stuff
-	#tile_size = (320, 180)
-	#tile_margin = (32, 64)
-	#tile_hspace = 32
-	#tile_font_size = 20
-	#tile_name_lines = 2
-	#text_margin = 8
-
-	tile_width = 320
-	tile_hspace = 64
-	tile_height = 180
-	tile_vspace = 64
-	text_margin = 8
-	text_width = 320
-	text_height = 50
 
 	def __init__(self, path='/', enabled=False):
 		self.log.info(f'Created instance, path={path}, enabled={enabled}')
@@ -56,7 +42,7 @@ class Menu:
 		self.current_idx = 0
 		self.current_offset = 0
 		for i, tile in enumerate(self.tiles):
-			if tile.last_pos < 0.999:
+			if not tile.watched:
 				self.current_idx = i
 				break
 
@@ -73,27 +59,23 @@ class Menu:
 
 	def up(self):
 		self.log.info('Select above')
-		if self.current_idx >= self.htiles:
-			self.current_idx -= self.htiles
+		if self.current_idx >= self.tiles_per_row:
+			self.current_idx -= self.tiles_per_row
 
 	def down(self):
 		self.log.info('Select below')
-		if self.current_idx < len(self.tiles) - self.htiles:
-			self.current_idx += self.htiles
+		if self.current_idx < len(self.tiles) - self.tiles_per_row:
+			self.current_idx += self.tiles_per_row
 
 	def left(self):
 		self.log.info('Select left')
 		if self.current_idx > 0:
 			self.current_idx -= 1
-		#else:
-		#	self.current_idx = len(self.tiles) - 1
 
 	def right(self):
 		self.log.info('Select right')
 		if self.current_idx < len(self.tiles) - 1:
 			self.current_idx += 1
-		#else:
-		#	self.current_idx = 0
 
 	def enter(self, video):
 		self.log.info('Enter')
@@ -134,51 +116,44 @@ class Menu:
 		# Render at most one tile per frame
 		for tile in self.tiles:
 			if tile.rendered is None:
-				tile.render(self.text_width, self.text_height)
+				tile.render()
 				break
 
-		# draw tiles
-		htiles = width // (self.tile_width + self.tile_hspace)
-		self.htiles = htiles  # FIXME: ughhh
-		hoffset = (width - htiles * (self.tile_width + self.tile_hspace) + self.tile_hspace) // 2
-		vtiles = height // (self.tile_height + self.tile_vspace + self.text_height + self.text_margin)
-		voffset = (height - vtiles * (self.tile_height + self.text_height + self.tile_vspace + self.text_margin) + self.tile_vspace) // 2
+		tile_width = Config.tile_size[0]
+		tile_hspace = Config.tile_margin[0]
+		tile_htotal = tile_width + tile_hspace
 
+		tile_height = Config.tile_size[1] + Config.tile_margin[1] + Config.tile_text_height
+		tile_vspace = Config.tile_margin[2]
+		tile_vtotal = tile_height + tile_vspace
+
+		tiles_per_row = max(width // tile_htotal, 1)
+		tile_hoffset = (width - tiles_per_row * tile_htotal + tile_hspace) // 2
+		# Hmm, this is kinda dirty. But I need this in other places.
+		self.tiles_per_row = tiles_per_row
+
+		tile_rows = max(height // tile_vtotal, 1)
+		tile_voffset = (height - tile_rows * tile_vtotal + tile_vspace) // 2
+
+		print(tile_rows, tiles_per_row)
 		# Fix offset
-		while self.current_idx // htiles < self.current_offset:
+		while self.current_idx // tiles_per_row < self.current_offset:
 			self.current_offset -= 1
 
-		while self.current_idx // htiles >= (self.current_offset + vtiles):
+		while self.current_idx // tiles_per_row >= (self.current_offset + tile_rows):
 			self.current_offset += 1
 
-		if self.current_offset > (len(self.tiles) - 1) // htiles + 1 - vtiles:
-			self.current_offset = (len(self.tiles) - 1) // htiles + 1 - vtiles
+		if self.current_offset > (len(self.tiles) - 1) // tiles_per_row + 1 - tile_rows:
+			self.current_offset = (len(self.tiles) - 1) // tiles_per_row + 1 - tile_rows
 
 		if self.current_offset < 0:
 			self.current_offset = 0
 
-		for y in range(vtiles):
-			for x in range(htiles):
-				idx = y * htiles + x + self.current_offset * htiles
+		for y in range(tile_rows):
+			for x in range(tiles_per_row):
+				idx = y * tiles_per_row + x + self.current_offset * tiles_per_row
 				try:
 					tile = self.tiles[idx]
 				except IndexError:
 					break
-				if tile.rendered:
-					xpos = hoffset + (self.tile_width + self.tile_hspace) * x
-					ypos = height - (voffset + (self.tile_height + self.text_height + self.text_margin + self.tile_vspace) * y) - self.text_height - self.text_margin - self.tile_height
-					# FIXME
-					color = 0.4 if tile.last_pos == 1 else 0.7
-					if idx == self.current_idx:
-						color = 1.0
-					gl.glColor4f(color, 0, 0, 1)
-
-					x1, y1, x2, y2 = xpos, ypos + self.text_height + self.text_margin, xpos + self.tile_width, ypos + self.text_height + self.tile_height
-					gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
-
-					# Pos bar
-					x1, y1, x2, y2 = x1, y1 - 1, x1 + self.tile_width * tile.last_pos, y1 - 3
-					gl.glColor4f(0.4, 0.4, 1, 1)
-					gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
-
-					tile.draw(xpos, ypos, selected=idx == self.current_idx)
+				tile.draw(tile_hoffset + x * tile_htotal, height - tile_voffset - y * tile_vtotal, idx == self.current_idx)
