@@ -5,6 +5,34 @@ import OpenGL.GL as gl
 import config
 from logger import Logger
 
+# FIXME: UGH
+blursize = 32
+shadow_img = None
+shadow_texture = None
+
+def get_shadow():
+	global shadow_img, shadow_texture
+	if shadow_texture is not None:
+		return shadow_texture
+
+	import PIL.Image, PIL.ImageFilter
+	w, h = config.tile.width + blursize * 2, config.tile.thumb_height + blursize * 2
+
+	shadow_img = PIL.Image.new('RGBA', (w, h), (255, 255, 255, 0))
+	shadow_img.paste((255, 255, 255, 255), (blursize, blursize, w - blursize, h - blursize))
+	shadow_img = shadow_img.filter(PIL.ImageFilter.GaussianBlur(blursize // 3))
+	shadow_img.paste((255, 255, 255, 255), (blursize, blursize, w - blursize, h - blursize))
+	shadow_img = shadow_img.filter(PIL.ImageFilter.GaussianBlur(blursize // 3))
+
+	shadow_texture = gl.glGenTextures(1)
+	gl.glBindTexture(gl.GL_TEXTURE_2D, shadow_texture)
+	gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+	gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+	gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, w, h, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, shadow_img.tobytes())
+	gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+	return shadow_texture
+
+
 class Tile:
 	log = Logger(module='Tile', color=Logger.Magenta)
 	name = ''
@@ -18,6 +46,7 @@ class Tile:
 	state_file = None
 	state_last_update = 0
 	last_pos = 0
+
 
 	def __init__(self, name, path, font):
 		self.log.info(f'Created Tile path={path}, name={name}')
@@ -123,14 +152,33 @@ class Tile:
 		return texture
 
 	def draw(self, x, y, selected=False):
-		# FIXME
-		color = 1.0 if selected else (0.4 if self.watched else 0.7)
-		color = 1.0 if selected else 0.7
+		# Drop shadow
+		x1, y1, x2, y2 = x - blursize, y - config.tile.thumb_height - blursize, x + config.tile.width + blursize, y + blursize
+		if selected:
+			gl.glColor4f(*config.tile.highlight_color)
+		else:
+			gl.glColor4f(*config.tile.shadow_color)
+		gl.glBindTexture(gl.GL_TEXTURE_2D, get_shadow())
+		gl.glBegin(gl.GL_QUADS)
+		gl.glTexCoord2f(0.0, 1.0)
+		gl.glVertex2f(x1, y1)
+		gl.glTexCoord2f(1.0, 1.0)
+		gl.glVertex2f(x2, y1)
+		gl.glTexCoord2f(1.0, 0.0)
+		gl.glVertex2f(x2, y2)
+		gl.glTexCoord2f(0.0, 0.0)
+		gl.glVertex2f(x1, y2)
+		gl.glEnd()
+		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		# outline
+		x1, y1, x2, y2 = x - 2, y - config.tile.thumb_height - 2, x + config.tile.width + 2, y + 2
+		gl.glColor4f(*config.tile.shadow_color)
+		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Thumbnail
 		x1, y1, x2, y2 = x, y - config.tile.thumb_height, x + config.tile.width, y
 		if self.thumb_texture is not None:
-			gl.glColor4f(color, color, color, 1)
+			gl.glColor4f(1, 1, 1, 1)
 			gl.glBindTexture(gl.GL_TEXTURE_2D, self.thumb_texture)
 			gl.glBegin(gl.GL_QUADS)
 			gl.glTexCoord2f(0.0, 1.0)
@@ -144,8 +192,9 @@ class Tile:
 			gl.glEnd()
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 		else:
-			gl.glColor4f(color, 0, 0, 1)
-			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+			#gl.glColor4f(color, 0, 0, 1)
+			#gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+			pass
 
 		# Position bar
 		x1, y1 = x, y - config.tile.thumb_height - 1 - config.tile.pos_bar_height
@@ -157,7 +206,10 @@ class Tile:
 		if self.rendered_title is not None:
 			x1, y1 = x, y - config.tile.thumb_height - config.tile.text_vspace - self.rendered_title.height
 			x2, y2 = x1 + self.rendered_title.width, y1 + self.rendered_title.height
-			gl.glColor4f(color, color, color, 1)
+			if selected:
+				gl.glColor4f(*config.tile.text_hl_color)
+			else:
+				gl.glColor4f(*config.tile.text_color)
 			gl.glBindTexture(gl.GL_TEXTURE_2D, self.rendered_title.texture)
 			gl.glBegin(gl.GL_QUADS)
 			gl.glTexCoord2f(0.0, 1.0)

@@ -11,7 +11,7 @@ from window import Window
 from menu import Menu
 from video import Video
 
-window = Window(1280, 720, "libmpv wayland/egl/opengl example")
+window = Window(1920, 1080, "Fabella")
 menu = Menu(sys.argv[1], enabled=True)
 video = Video()
 log = Logger(module='Main', color=Logger.Red)
@@ -115,7 +115,7 @@ while not window.closed():
 	gl.glEnable(gl.GL_TEXTURE_2D)
 
 	gl.glViewport(0, 0, width, height)
-	gl.glClearColor(0.2, 0.2, 0.2, 1)
+	gl.glClearColor(0.0, 0.0, 0.0, 1)
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 	gl.glMatrixMode(gl.GL_PROJECTION)
 	gl.glLoadIdentity()
@@ -125,7 +125,7 @@ while not window.closed():
 	video.draw(width, height)
 
 	if menu.enabled:
-		menu.draw(width, height)
+		menu.draw(width, height, transparent=video.rendered)
 
 	window.swap_buffers()
 

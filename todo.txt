@@ -9,3 +9,4 @@
  - Improve drawing effiency (remove OpenGL immediate mode)
  - Abstract out glfw key events
  - split out file I/O etc to its own file
+ - make a library watch daemon

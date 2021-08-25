@@ -115,10 +115,13 @@ class Menu:
 				self.current_idx = i
 				break
 
-	def draw(self, width, height):
+	def draw(self, width, height, transparent=False):
 		# Background
 		x1, y1, x2, y2 = 0, 0, width, height
-		gl.glColor4f(0, 0, 0, 0.66)
+		if transparent:
+			gl.glColor4f(0, 0, 0, 0.66)
+		else:
+			gl.glColor4f(*config.menu.background_color)
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Render at most one tile per frame
