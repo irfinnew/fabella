@@ -36,8 +36,8 @@ while not window.closed():
 					#video.pause(True)  # Dunno
 					menu.open()
 				if key == glfw.KEY_ENTER:
-					video.seek(-0.1, 'absolute')
-					menu.open()
+					video.seek(-0.01, 'absolute')
+					#menu.open()
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
 				if key == glfw.KEY_O:
@@ -96,13 +96,13 @@ while not window.closed():
 				if key == glfw.KEY_BACKSPACE:
 					menu.back()
 				if key == glfw.KEY_UP:
-					menu.up()
+					menu.previous_row()
 				if key == glfw.KEY_DOWN:
-					menu.down()
+					menu.next_row()
 				if key == glfw.KEY_RIGHT:
-					menu.right()
+					menu.next()
 				if key == glfw.KEY_LEFT:
-					menu.left()
+					menu.previous()
 
 	width, height = window.size()
 	log.debug(f'Window size {width}x{height}')

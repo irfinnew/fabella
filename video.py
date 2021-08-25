@@ -70,7 +70,9 @@ class Video:
 		self.log.info('Reached video EOF')
 		self.position = 1.0
 		self.stop()
+		# FIXME: tight coupling
 		if self.menu:
+			time.sleep(0.5)
 			self.menu.open()
 
 	def size_changed(self, prop, value):
