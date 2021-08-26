@@ -137,7 +137,7 @@ class Tile:
 		self.log.info(f'Loading thumbnail from {thumb_file}')
 		from PIL import Image, ImageOps
 		thumb_full = Image.open(thumb_file)
-		thumb = ImageOps.fit(thumb_full, (config.tile.width, config.tile.thumb_height))
+		thumb = ImageOps.fit(thumb_full, (config.tile.width * 2, config.tile.thumb_height * 2))
 		del thumb_full
 
 		# FIXME: properly detect image format (RGB8 etc)
@@ -145,7 +145,7 @@ class Tile:
 		gl.glBindTexture(gl.GL_TEXTURE_2D, texture)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, config.tile.width, config.tile.thumb_height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, thumb.tobytes())
+		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, thumb.width, thumb.height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, thumb.tobytes())
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 		del thumb
 
@@ -154,6 +154,7 @@ class Tile:
 	def draw(self, x, y, selected=False):
 		# Drop shadow
 		x1, y1, x2, y2 = x - blursize, y - config.tile.thumb_height - blursize, x + config.tile.width + blursize, y + blursize
+		if selected: x1 -= 16; y1 -= 9; x2 += 16; y2 += 9
 		if selected:
 			gl.glColor4f(*config.tile.highlight_color)
 		else:
@@ -172,11 +173,13 @@ class Tile:
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 		# outline
 		x1, y1, x2, y2 = x - 2, y - config.tile.thumb_height - 2, x + config.tile.width + 2, y + 2
+		if selected: x1 -= 16; y1 -= 9; x2 += 16; y2 += 9
 		gl.glColor4f(*config.tile.shadow_color)
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Thumbnail
 		x1, y1, x2, y2 = x, y - config.tile.thumb_height, x + config.tile.width, y
+		if selected: x1 -= 16; y1 -= 9; x2 += 16; y2 += 9
 		if self.thumb_texture is not None:
 			gl.glColor4f(1, 1, 1, 1)
 			gl.glBindTexture(gl.GL_TEXTURE_2D, self.thumb_texture)
@@ -206,6 +209,7 @@ class Tile:
 		if self.rendered_title is not None:
 			x1, y1 = x, y - config.tile.thumb_height - config.tile.text_vspace - self.rendered_title.height
 			x2, y2 = x1 + self.rendered_title.width, y1 + self.rendered_title.height
+			if selected: y1 -= 9; y2 -= 9
 			if selected:
 				gl.glColor4f(*config.tile.text_hl_color)
 			else:
