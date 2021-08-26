@@ -1,7 +1,7 @@
 class tile:
 	width = 320
 	thumb_height = 180
-	min_hspace = 32
+	min_hspace = 48
 	min_vspace = 64
 	text_vspace = 8
 	text_size = 20
