@@ -194,7 +194,7 @@ class Menu:
 		self.tiles_per_row = tiles_per_row
 
 		# FIXME: yuck
-		height -= int(config.menu.header_vspace * 2 + config.menu.text_size * 1.25)
+		height -= int(config.menu.header_vspace + config.menu.text_size * 1.25)
 		tile_rows = max(height // tile_vtotal, 1)
 		tile_voffset = (height - tile_rows * tile_vtotal + tile_vspace) // 2
 
