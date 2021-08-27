@@ -1,0 +1,5 @@
+Copy of https://github.com/Diaoul/enzyme
+commit 9572bea606a6145dad153cd712653d6cf10ef18e
+
+The project seems abandoned (no commits since 2015, ignored pull requests), but
+fabella needs something to read MKV attachments. So this is a local copy.
