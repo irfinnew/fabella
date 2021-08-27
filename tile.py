@@ -123,7 +123,7 @@ class Tile:
 
 		# Title
 		if self.isdir:
-			name = self.name + '/'
+			name = self.name
 			self.thumb_file = self.find_folder_cover()
 		else:
 			name = os.path.splitext(self.name)[0]
