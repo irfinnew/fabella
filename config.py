@@ -7,6 +7,7 @@ class tile:
 	text_size = 20
 	text_lines = 2
 	text_height = 50  # FIXME
+	highlight_outset = 0.15
 
 	pos_bar_height = 2
 	#pos_bar_color = (0.4, 0.4, 1, 1)
