@@ -1,5 +1,6 @@
 import os  # FIXME
 import OpenGL.GL as gl
+import datetime
 
 import config
 from logger import Logger
@@ -14,11 +15,16 @@ class Menu:
 	tiles_per_row = 1
 	current_idx = 0
 	current_offset = 0
-	font = None
+	menu_font = None
+	tile_font = None
+	breadcrumbs = []
+	rendered_bread = None
+	rendered_clock = None
 
 	def __init__(self, path='/', enabled=False):
 		self.log.info(f'Created instance, path={path}, enabled={enabled}')
-		self.font = Font('DejaVuSans', 20, stroke_width=2)
+		self.tile_font = Font('DejaVuSans', config.tile.text_size, stroke_width=2)
+		self.menu_font = Font('DejaVuSans', config.menu.text_size, stroke_width=2)
 		self.load(path)
 		self.enabled = enabled
 
@@ -43,7 +49,7 @@ class Menu:
 				continue
 			if f in config.tile.thumb_files:
 				continue
-			self.tiles.append(Tile(f, path, self.font))
+			self.tiles.append(Tile(f, path, self.tile_font))
 		self.current_idx = 0
 		self.current_offset = 0
 		for i, tile in enumerate(self.tiles):
@@ -89,6 +95,7 @@ class Menu:
 		self.log.info('Enter')
 		tile = self.current
 		if tile.isdir:
+			self.breadcrumbs.append(tile.name)
 			self.load(tile.full_path)
 		else:
 			self.play(tile, video)
@@ -105,6 +112,7 @@ class Menu:
 
 	def back(self):
 		self.log.info('Back')
+		self.breadcrumbs.pop()
 		new = os.path.dirname(self.path)
 		if not new:
 			return
@@ -123,6 +131,48 @@ class Menu:
 		else:
 			gl.glColor4f(*config.menu.background_color)
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
+		# Breadcrumbs
+		breadcrumbs = ' › '.join(['Home'] + self.breadcrumbs)
+		if self.rendered_bread is None or self.rendered_bread.text != breadcrumbs:
+			self.rendered_bread = self.menu_font.render(breadcrumbs, self.rendered_bread.texture if self.rendered_bread else None)
+
+		x1, y1 = config.menu.header_hspace, height - config.menu.header_vspace - self.rendered_bread.height
+		x2, y2 = x1 + self.rendered_bread.width, y1 + self.rendered_bread.height
+		gl.glColor4f(1, 1, 1, 1)
+		gl.glBindTexture(gl.GL_TEXTURE_2D, self.rendered_bread.texture)
+		gl.glBegin(gl.GL_QUADS)
+		gl.glTexCoord2f(0.0, 1.0)
+		gl.glVertex2f(x1, y1)
+		gl.glTexCoord2f(1.0, 1.0)
+		gl.glVertex2f(x2, y1)
+		gl.glTexCoord2f(1.0, 0.0)
+		gl.glVertex2f(x2, y2)
+		gl.glTexCoord2f(0.0, 0.0)
+		gl.glVertex2f(x1, y2)
+		gl.glEnd()
+		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+
+		# Clock
+		clock = datetime.datetime.now().strftime('%H:%M')
+		if self.rendered_clock is None or self.rendered_clock.text != clock:
+			self.rendered_clock = self.menu_font.render(clock, self.rendered_clock.texture if self.rendered_clock else None)
+
+		x1, y1 = width - config.menu.header_hspace - self.rendered_clock.width, height - config.menu.header_vspace - self.rendered_clock.height
+		x2, y2 = x1 + self.rendered_clock.width, y1 + self.rendered_clock.height
+		gl.glColor4f(1, 1, 1, 1)
+		gl.glBindTexture(gl.GL_TEXTURE_2D, self.rendered_clock.texture)
+		gl.glBegin(gl.GL_QUADS)
+		gl.glTexCoord2f(0.0, 1.0)
+		gl.glVertex2f(x1, y1)
+		gl.glTexCoord2f(1.0, 1.0)
+		gl.glVertex2f(x2, y1)
+		gl.glTexCoord2f(1.0, 0.0)
+		gl.glVertex2f(x2, y2)
+		gl.glTexCoord2f(0.0, 0.0)
+		gl.glVertex2f(x1, y2)
+		gl.glEnd()
+		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# Render at most one tile per frame
 		for tile in self.tiles:
@@ -143,6 +193,8 @@ class Menu:
 		# Hmm, this is kinda dirty. But I need this in other places.
 		self.tiles_per_row = tiles_per_row
 
+		# FIXME: yuck
+		height -= int(config.menu.header_vspace * 2 + config.menu.text_size * 1.25)
 		tile_rows = max(height // tile_vtotal, 1)
 		tile_voffset = (height - tile_rows * tile_vtotal + tile_vspace) // 2
 

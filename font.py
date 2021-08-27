@@ -6,6 +6,7 @@ from logger import Logger
 
 @dataclass
 class RenderedText:
+	text: str
 	texture: int
 	width: int
 	height: int
@@ -42,7 +43,7 @@ class Font:
 
 		del image
 
-		return RenderedText(texture=texture, width=w, height=h)
+		return RenderedText(text=text, texture=texture, width=w, height=h)
 
 	def multiline(self, text, max_width, max_height, texture=None):
 		self.log.info(f'Rendering multiline into {"existing" if texture else "new"} texture: "{text}"')
@@ -82,4 +83,4 @@ class Font:
 
 		del image
 
-		return RenderedText(texture=texture, width=max_width, height=max_height)
+		return RenderedText(text=text, texture=texture, width=max_width, height=max_height)
