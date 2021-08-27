@@ -1,6 +1,7 @@
 import os
 import time
 import OpenGL.GL as gl
+import enzyme
 
 import config
 from logger import Logger
@@ -103,6 +104,15 @@ class Tile:
 			thumb_file = os.path.join(self.path, thumb_dir, os.path.splitext(self.name)[0] + '.jpg')
 			if os.path.isfile(thumb_file):
 				return thumb_file
+
+		if self.name.endswith('.mkv'):
+			with open(self.full_path, 'rb') as fd:
+				mkv = enzyme.MKV(fd)
+			for a in mkv.attachments:
+				# FIXME: just uses first jpg attachment it sees; check filename!
+				if a.mimetype == 'image/jpeg':
+					return a.data
+
 		return None
 
 	def render(self):
