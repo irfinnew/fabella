@@ -129,11 +129,11 @@ class Tile:
 			name = os.path.splitext(self.name)[0]
 			self.thumb_file = self.find_file_cover()
 
-		if not self.thumb_file:
-			path = self.full_path
-			while len(path) > 2 and not self.thumb_file:
-				path = os.path.dirname(path)
-				self.thumb_file = self.find_folder_cover(path)
+		#if not self.thumb_file:
+		#	path = self.full_path
+		#	while len(path) > 2 and not self.thumb_file:
+		#		path = os.path.dirname(path)
+		#		self.thumb_file = self.find_folder_cover(path)
 
 		if self.thumb_file:
 			self.thumb_texture = self.load_thumbnail(self.thumb_file)
