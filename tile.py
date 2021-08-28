@@ -138,7 +138,8 @@ class Tile:
 		if self.thumb_file:
 			self.thumb_texture = self.load_thumbnail(self.thumb_file)
 
-		self.rendered_title = self.font.multiline(name, config.tile.width, config.tile.text_height, None)
+		# FIXME: I dunno
+		self.rendered_title = self.font.multiline(name, config.tile.width, (config.tile.text_size + 8) * config.tile.text_lines - 6, None)
 
 	def load_thumbnail(self, thumb_file):
 		if thumb_file is None:

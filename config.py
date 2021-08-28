@@ -1,13 +1,12 @@
 class tile:
 	width = 320
-	thumb_height = 180
+	thumb_height = 200
 	min_hspace = 48
 	min_vspace = 64
 	text_vspace = 8
 	text_size = 20
 	text_lines = 2
-	text_height = 50  # FIXME
-	highlight_outset = 0.15
+	highlight_outset = 0.1
 
 	pos_bar_height = 2
 	#pos_bar_color = (0.4, 0.4, 1, 1)
