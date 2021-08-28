@@ -7,8 +7,8 @@ import config
 from logger import Logger
 
 # FIXME: UGH
-blursize = 16
-expand = 6
+blursize = 32
+expand = 10
 shadow_img = None
 shadow_texture = None
 

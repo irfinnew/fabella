@@ -23,8 +23,8 @@ class Menu:
 
 	def __init__(self, path='/', enabled=False):
 		self.log.info(f'Created instance, path={path}, enabled={enabled}')
-		self.tile_font = Font('DejaVuSans', config.tile.text_size, stroke_width=2)
-		self.menu_font = Font('DejaVuSans', config.menu.text_size, stroke_width=2)
+		self.tile_font = Font('DejaVuSans', config.tile.text_size, stroke_width=3)
+		self.menu_font = Font('DejaVuSans', config.menu.text_size, stroke_width=4)
 		self.load(path)
 		self.enabled = enabled
 
