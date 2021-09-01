@@ -14,3 +14,8 @@ cat *.py | ./freetype-pil.py Vera.ttf 40 4
 echo
 echo freetype-pil-cached.py
 cat *.py | ./freetype-pil-cached.py Vera.ttf 40 4
+
+/bin/rm output-*; sync
+echo
+echo pangofont.py
+cat *.py | ./pangofont.py ./Vera.ttf 30 4
