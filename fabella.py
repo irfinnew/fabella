@@ -36,8 +36,9 @@ while not window.closed():
 					#video.pause(True)  # Dunno
 					menu.open()
 				if key == glfw.KEY_ENTER:
-					video.seek(-0.01, 'absolute')
-					#menu.open()
+					#video.seek(-0.01, 'absolute')
+					video.stop()
+					menu.open()
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
 				if key == glfw.KEY_O:
@@ -91,6 +92,8 @@ while not window.closed():
 				if key == glfw.KEY_ESCAPE:
 					menu.close()
 					#video.pause(False)
+				if key == glfw.KEY_TAB:
+					menu.toggle_seen()
 				if key in [glfw.KEY_ENTER, glfw.KEY_SPACE]:
 					menu.enter(video)
 				if key == glfw.KEY_BACKSPACE:

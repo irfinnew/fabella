@@ -68,7 +68,7 @@ class Video:
 
 	def eof_reached(self):
 		self.log.info('Reached video EOF')
-		self.position = 1.0
+		self.position = 0.0
 		self.stop()
 		# FIXME: tight coupling
 		if self.menu:
@@ -115,7 +115,7 @@ class Video:
 
 		self.current_file = filename
 		self.rendered = False
-		self.position = 0
+		self.position = position
 		self.tile = tile
 		self.menu = menu
 
@@ -133,13 +133,15 @@ class Video:
 
 	def stop(self):
 		self.log.info(f'Stopping playback for {self.current_file}')
-		self.pause(False)
+		# Not sure why this'd be necessary
+		#self.pause(False)
 		self.mpv.stop()
 
 		if self.tile:
 			self.tile.update_pos(self.position, force=True)
 
 		self.current_file = None
+		# Hmm, maybe not do this? Is the memory valid after stop though?
 		self.rendered = False
 		self.tile = None
 

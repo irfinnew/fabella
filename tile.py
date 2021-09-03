@@ -65,9 +65,6 @@ class Tile:
 
 	def update_pos(self, position, force=False):
 		self.log.debug(f'Tile {self.name} update_pos({position}, {force})')
-		if self.position == position:
-			return
-
 		old_pos = self.position
 		self.position = position
 		# FIXME: detect if user was watching for a while before marking part as watched
@@ -97,8 +94,24 @@ class Tile:
 			json.dump({'position': self.position, 'parts_watched': parts_watched}, fd, indent=4)
 
 	@property
-	def watched(self):
-		return self.position >= 0.99
+	def unseen(self):
+		if self.isdir:
+			return False
+		return self.parts_watched == [False] * 10
+
+	@property
+	def watching(self):
+		if self.isdir:
+			return False
+		return self.parts_watched != [False] * 10 and self.parts_watched != [True] * 10
+
+	def toggle_seen(self):
+		if self.parts_watched == [True] * 10:
+			self.parts_watched = [False] * 10
+		else:
+			self.parts_watched = [True] * 10
+		self.position = 0
+		self.write_state()
 
 	def find_folder_cover(self, path=None):
 		if not path:
@@ -228,6 +241,26 @@ class Tile:
 		x2, y2 = x1 + config.tile.width * self.position, y1 + config.tile.pos_bar_height
 		gl.glColor4f(*config.tile.pos_bar_color)
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
+		# "Watching" emblem
+		if self.watching:
+			x1, y1 = x + config.tile.width - 20, y + 10
+			x2, y2 = x1 + 30, y1 - 30
+			gl.glColor4f(0, 0, 0, 1)
+			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+			x1 += 2; y1 -= 2; x2 -= 2; y2 += 2
+			gl.glColor4f(1, 0, 0, 1)
+			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
+		# "Unseen" emblem
+		if self.unseen:
+			x1, y1 = x + config.tile.width - 20, y + 10
+			x2, y2 = x1 + 30, y1 - 30
+			gl.glColor4f(0, 0, 0, 1)
+			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+			x1 += 2; y1 -= 2; x2 -= 2; y2 += 2
+			gl.glColor4f(1, 1, 0, 1)
+			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Title
 		if self.rendered_title is not None:

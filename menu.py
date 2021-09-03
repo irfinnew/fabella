@@ -52,10 +52,18 @@ class Menu:
 			self.tiles.append(Tile(f, path, self.tile_font))
 		self.current_idx = 0
 		self.current_offset = 0
+
+		# Find first "watching" video
 		for i, tile in enumerate(self.tiles):
-			if not tile.watched:
+			if tile.watching:
 				self.current_idx = i
-				break
+				return
+
+		# Otherwise, find first "unseen" video
+		for i, tile in enumerate(self.tiles):
+			if tile.unseen:
+				self.current_idx = i
+				return
 
 	def forget(self):
 		self.log.info('Forgetting tiles')
@@ -90,6 +98,9 @@ class Menu:
 		self.log.info('Select next')
 		if self.current_idx < len(self.tiles) - 1:
 			self.current_idx += 1
+
+	def toggle_seen(self):
+		self.current.toggle_seen()
 
 	def enter(self, video):
 		self.log.info('Enter')
