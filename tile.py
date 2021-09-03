@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import OpenGL.GL as gl
 import enzyme
 
@@ -47,8 +48,8 @@ class Tile:
 	isdir = False
 	state_file = None
 	state_last_update = 0
-	last_pos = 0
-
+	position = 0
+	parts_watched = [False] * 10
 
 	def __init__(self, name, path, font):
 		self.log.info(f'Created Tile path={path}, name={name}')
@@ -64,32 +65,40 @@ class Tile:
 
 	def update_pos(self, position, force=False):
 		self.log.debug(f'Tile {self.name} update_pos({position}, {force})')
-		if self.last_pos == position:
+		if self.position == position:
 			return
 
+		old_pos = self.position
+		self.position = position
+		# FIXME: detect if user was watching for a while before marking part as watched
+		self.parts_watched[min(int(position * 10), 9)] = True
+
 		now = time.time()
-		if now - self.state_last_update > 5 or abs(self.last_pos - position) > 0.01 or force:
+		if now - self.state_last_update > 10 or abs(old_pos - position) > 0.01 or force:
 			self.state_last_update = now
-			self.last_pos = position
 			self.write_state()
 
 	def read_state(self):
 		self.log.info(f'Reading state for {self.name}')
 		try:
 			with open(self.state_file) as fd:
-				self.last_pos = float(fd.read())
+				data = json.load(fd)
+			self.position = data['position']
+			self.parts_watched = [pw == '#' for pw in data['parts_watched']]
+
 		except FileNotFoundError:
 			pass
 
 	def write_state(self):
 		self.log.info(f'Writing state for {self.name}')
 		os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
+		parts_watched = ''.join('#' if pw else '.' for pw in self.parts_watched)
 		with open(self.state_file, 'w') as fd:
-			fd.write(str(self.last_pos) + '\n')
+			json.dump({'position': self.position, 'parts_watched': parts_watched}, fd, indent=4)
 
 	@property
 	def watched(self):
-		return self.last_pos >= 0.99
+		return self.position >= 0.99
 
 	def find_folder_cover(self, path=None):
 		if not path:
@@ -216,7 +225,7 @@ class Tile:
 
 		# Position bar
 		x1, y1 = x, y - config.tile.thumb_height - 1 - config.tile.pos_bar_height
-		x2, y2 = x1 + config.tile.width * self.last_pos, y1 + config.tile.pos_bar_height
+		x2, y2 = x1 + config.tile.width * self.position, y1 + config.tile.pos_bar_height
 		gl.glColor4f(*config.tile.pos_bar_color)
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
@@ -250,4 +259,5 @@ class Tile:
 			gl.glDeleteTextures([self.thumb_texture])
 
 	def __str__(self):
-		return f'Tile(name={self.name}, isdir={self.isdir}, last_pos={self.last_pos}, rendered={self.rendered_title})'
+		parts_watched = ''.join('#' if pw else '.' for pw in self.parts_watched)
+		return f'Tile(name={self.name}, isdir={self.isdir}, position={self.position}, parts_watched={parts_watched}, rendered={self.rendered_title})'

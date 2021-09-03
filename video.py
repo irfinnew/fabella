@@ -108,7 +108,7 @@ class Video:
 			self.log.info('Pausing video' if pause else 'Unpausing video')
 			self.mpv.pause = pause
 
-	def start(self, filename, menu=None, tile=None):
+	def start(self, filename, position=0, menu=None, tile=None):
 		if self.current_file:
 			self.stop()
 		self.log.info(f'Starting playback for {filename}')
@@ -122,12 +122,14 @@ class Video:
 		self.position_immune_until = time.time() + 1
 		self.mpv.play(filename)
 		self.pause(False)
-		if self.tile and self.tile.last_pos > 0.001 and self.tile.last_pos < 0.999:
-			last_pos = self.tile.last_pos
-			self.log.info(f'Starting playback at position {last_pos}')
+		if position > 0:
+			self.log.info(f'Starting playback at position {position}')
+			# Updating the position only works after libmpv has had
+			# a chance to initialize the video; so we spin here until
+			# libmpv is ready.
 			while not self.context.update():
 				time.sleep(0.01)
-			self.mpv.percent_pos = last_pos * 100
+			self.mpv.percent_pos = position * 100
 
 	def stop(self):
 		self.log.info(f'Stopping playback for {self.current_file}')

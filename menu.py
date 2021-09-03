@@ -104,7 +104,7 @@ class Menu:
 		self.log.info(f'Play; (currently {video.tile})')
 		if tile is not video.tile:
 			self.log.info(f'Starting new video: {tile}')
-			video.start(tile.full_path, menu=self, tile=tile)
+			video.start(tile.full_path, position=tile.position, menu=self, tile=tile)
 		else:
 			self.log.info('Already playing this video, just maybe unpause')
 			video.pause(False)
