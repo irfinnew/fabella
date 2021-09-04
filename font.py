@@ -1,6 +1,10 @@
-import PIL.Image, PIL.ImageDraw, PIL.ImageFont
 import OpenGL.GL as gl
-from dataclasses import dataclass
+import cairo
+import gi
+gi.require_version('Pango', '1.0')
+from gi.repository import Pango
+gi.require_version('PangoCairo', '1.0')
+from gi.repository import PangoCairo
 
 from logger import Logger
 
@@ -26,16 +30,17 @@ class Text:
 	font = None
 	text = None
 	max_width = None
-	max_lines = 1
+	lines = 1
 	width = 0
 	height = 0
-	image = None
+	surface = None
+	update = False
 	_texture = None
 
-	def __init__(self, font, text, max_width=None, max_lines=1):
+	def __init__(self, font, text, max_width=None, lines=1):
 		self.font = font
 		self.max_width = max_width
-		self.max_lines = max_lines
+		self.lines = lines
 
 		self.set_text(text)
 
@@ -45,68 +50,51 @@ class Text:
 			#self.render()
 			do_renders.scheduled.append(self)
 
-	def get_size(self, text):
-		image = PIL.Image.new('RGBA', (8, 8), (0, 164, 201))
-		w, h = PIL.ImageDraw.Draw(image).textsize(text, self.font.font, stroke_width=self.font.stroke_width)
-		del image
-		return w, h
-
+	# Warning; not thread-safe!
 	def render(self):
 		self.log.info(f'Rendering text: "{self.text}"')
 
+		# Reuses font-global layout; not thread-safe
+		layout = self.font.layout
+		border = self.font.stroke_width
 
-		# short-circuit: render single line
-		#width = self.max_width or 4096
-		#height = round(self.font.size * 1.25)
-		#image = PIL.Image.new('RGBA', (width, height), (0, 164, 201, 0))
-		#PIL.ImageDraw.Draw(image).text(
-		#	(0, 0),
-		#	self.text,
-		#	font=self.font.font,
-		#	fill=(255, 255, 255),
-		#	stroke_width=self.font.stroke_width,
-		#	stroke_fill=(0, 0, 0)
-		#)
-		#self.width = width
-		#self.height = height
-		#self.image = image
-		#return
+		layout.set_text(self.text, -1)
 
+		# Wrapping
+		if self.max_width:
+			layout.set_width((self.max_width - border * 2) * Pango.SCALE)
+		layout.set_height(-self.lines)
 
-		text = self.text
-		max_width = self.max_width or 4096
-		height = 0
-		width = 0
-		lines = []
-		while len(lines) < self.max_lines and text:
-			line_width = 0
-			idx = 1
-			while line_width < max_width and idx <= len(text):
-				idx += 1
-				line_width, h = self.get_size(text[:idx])
-			idx -= 1
-			lines.append(text[:idx])
-			text = text[idx:]
-			width = max(width, line_width)
-			height += h
+		# Create actual surface
+		width, height = layout.get_size()
+		self.height = height // Pango.SCALE + border * 2
+		if self.max_width:
+			self.width = self.max_width
+		else:
+			self.width = width // Pango.SCALE + border * 2
 
-		# Draw text
-		image = PIL.Image.new('RGBA', (width, height), (0, 164, 201, 0))
-		PIL.ImageDraw.Draw(image).text(
-			(0, 0),
-			'\n'.join(lines),
-			font=self.font.font,
-			fill=(255, 255, 255),
-			stroke_width=self.font.stroke_width,
-			stroke_fill=(0, 0, 0)
-		)
+		self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, self.width, self.height)
+		context = cairo.Context(self.surface)
 
-		self.width = width
-		self.height = height
-		self.image = image
+		# Outline
+		context.set_source_rgb(0, 0, 0)
+		context.move_to(border, border)
+		PangoCairo.layout_path(context, layout)
+		context.set_line_width(self.font.stroke_width * 2)
+		context.set_line_join(cairo.LINE_JOIN_ROUND)
+		context.set_line_cap(cairo.LINE_CAP_ROUND)
+		context.stroke()
+
+		# Fill
+		context.set_source_rgb(1, 1, 1)
+		context.move_to(border, border)
+		PangoCairo.show_layout(context, layout)
+
+		self.update = True
+
 
 	def texture(self):
-		if self.image is None:
+		if not self.update:
 			return self._texture
 
 		if self._texture is None:
@@ -115,19 +103,20 @@ class Text:
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self._texture)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, self.width, self.height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, self.image.tobytes())
+		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, self.width, self.height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(self.surface.get_data()))
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# FIXME: is this valid?
-		del self.image
-		self.image = None
+		#del self.surface
+		#self.surface = None
 
+		self.update = False
 		return self._texture
 
 
 class Font:
 	log = Logger(module='Font', color=Logger.Black + Logger.Bright)
-	font = None
+	face = None
 	name = None
 	size = None
 	stroke_width = 0
@@ -136,9 +125,15 @@ class Font:
 		self.log.info(f'Creating instance for {fontname} {size}')
 		self.name = fontname
 		self.size = size
-		self.font = PIL.ImageFont.truetype(fontname, size)
 		self.stroke_width = stroke_width
+		self.face = Pango.font_description_from_string(f'{fontname} {size}')
+		self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 64, 64)
+		self.context = cairo.Context(self.surface)
+		self.layout = PangoCairo.create_layout(self.context)
+		self.layout.set_font_description(self.face)
+		self.layout.set_wrap(Pango.WrapMode.WORD)
+		self.layout.set_ellipsize(Pango.EllipsizeMode.END)
 
-	def text(self, text, max_width=None, max_lines=1):
-		t = Text(self, text, max_width, max_lines)
+	def text(self, text, max_width=None, lines=1):
+		t = Text(self, text, max_width, lines)
 		return t

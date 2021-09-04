@@ -3,6 +3,7 @@ import time
 import json
 import OpenGL.GL as gl
 import enzyme
+from PIL import Image, ImageOps
 
 import config
 from logger import Logger
@@ -59,7 +60,7 @@ class Tile:
 		self.full_path = os.path.join(path, name)
 		self.isdir = os.path.isdir(self.full_path)
 		self.font = font
-		self.title = self.font.text(None, max_width=config.tile.width, max_lines=config.tile.text_lines)
+		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines)
 
 		if not self.isdir:
 			self.state_file = os.path.join(self.path, '.fabella', 'state', name)
@@ -173,7 +174,6 @@ class Tile:
 			return None
 
 		self.log.info(f'Loading thumbnail from {thumb_file}')
-		from PIL import Image, ImageOps
 		thumb_full = Image.open(thumb_file)
 		thumb = ImageOps.fit(thumb_full, (config.tile.width * 2, config.tile.thumb_height * 2))
 		del thumb_full
