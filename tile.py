@@ -174,9 +174,8 @@ class Tile:
 			return None
 
 		self.log.info(f'Loading thumbnail from {thumb_file}')
-		thumb_full = Image.open(thumb_file)
-		thumb = ImageOps.fit(thumb_full, (config.tile.width * 2, config.tile.thumb_height * 2))
-		del thumb_full
+		thumb = Image.open(thumb_file)
+		thumb = ImageOps.fit(thumb, (config.tile.width, config.tile.thumb_height))
 
 		# FIXME: properly detect image format (RGB8 etc)
 		texture = gl.glGenTextures(1)

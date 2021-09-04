@@ -190,11 +190,14 @@ class Menu:
 			gl.glEnd()
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
-		# Render at most one tile per frame
+		# Render at most X tiles per frame
+		count = 0
 		for tile in self.tiles:
 			if not tile.rendered:
 				tile.render()
-				break
+				count += 1
+				if count > 9:
+					break
 		else:
 			# BENCHMARK
 			if self.bench:
