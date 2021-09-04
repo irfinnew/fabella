@@ -64,3 +64,4 @@ layout.set_font_description(face)
 text = 'Why on Earth Is No One Talking About the Mouthfeel?'
 surface = draw_text(face, stroke_width, text, border, layout, max_width=256, lines=2)
 surface.write_to_png(f'output.png')
+#print(bytes(surface.get_data()))
