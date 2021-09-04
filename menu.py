@@ -2,6 +2,7 @@ import os  # FIXME
 import OpenGL.GL as gl
 import datetime
 import json
+import time
 
 import config
 from logger import Logger
@@ -46,7 +47,6 @@ class Menu:
 		self.forget()
 		self.log.info(f'Loading {path}')
 		# BENCHMARK
-		import time
 		self.bench = time.time()
 
 		self.state_file = os.path.join(path, '.fabella', 'state.json')
@@ -209,17 +209,15 @@ class Menu:
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# Render at most X tiles per frame
-		count = 0
+		start = time.time()
 		for tile in self.tiles:
 			if not tile.rendered:
 				tile.render()
-				count += 1
-				if count > 9:
+				if time.time() - start > 0.05:
 					break
 		else:
 			# BENCHMARK
 			if self.bench:
-				import time
 				self.log.warning(f'Finished rendering in {time.time() - self.bench} seconds')
 				self.bench = None
 
