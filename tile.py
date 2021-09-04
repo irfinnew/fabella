@@ -53,13 +53,13 @@ class Tile:
 	parts_watched = None
 	rendered = False
 
-	def __init__(self, name, path, menu, font, state):
+	def __init__(self, name, path, isdir, menu, font, state):
 		self.log.info(f'Created Tile path={path}, name={name}')
 		self.name = name
 		self.path = path
 		self.menu = menu
 		self.full_path = os.path.join(path, name)
-		self.isdir = os.path.isdir(self.full_path)
+		self.isdir = isdir
 		self.font = font
 		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines)
 		self.parts_watched = [False] * 10

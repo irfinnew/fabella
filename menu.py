@@ -60,14 +60,14 @@ class Menu:
 
 		self.path = path
 		self.tiles = []
-		for f in sorted(os.listdir(self.path)):
-			if f.startswith('.'):
+		for isfile, name in sorted((not de.is_dir(), de.name) for de in os.scandir(self.path)):
+			if name.startswith('.'):
 				continue
-			if f in config.tile.thumb_dirs:
+			if name in config.tile.thumb_dirs:
 				continue
-			if f in config.tile.thumb_files:
+			if name in config.tile.thumb_files:
 				continue
-			self.tiles.append(Tile(f, path, self, self.tile_font, self.state.get(f)))
+			self.tiles.append(Tile(name, path, not isfile, self, self.tile_font, self.state.get(name)))
 		self.current_idx = 0
 		self.current_offset = 0
 
