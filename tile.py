@@ -40,7 +40,7 @@ class Tile:
 	log = Logger(module='Tile', color=Logger.Magenta)
 	name = ''
 	font = None
-	rendered_title = None
+	title = None
 	thumb_file = ''
 	thumb_texture = None
 	path = ''
@@ -58,6 +58,7 @@ class Tile:
 		self.full_path = os.path.join(path, name)
 		self.isdir = os.path.isdir(self.full_path)
 		self.font = font
+		self.title = self.font.text(None, max_width=config.tile.width, max_lines=config.tile.text_lines)
 
 		if not self.isdir:
 			self.state_file = os.path.join(self.path, '.fabella', 'state', name)
@@ -140,7 +141,7 @@ class Tile:
 
 	def render(self):
 		self.log.info(f'Rendering for {self.name}')
-		assert self.rendered_title is None
+		assert self.title.texture is None
 		assert self.thumb_texture is None
 
 		# Title
@@ -160,8 +161,7 @@ class Tile:
 		if self.thumb_file:
 			self.thumb_texture = self.load_thumbnail(self.thumb_file)
 
-		# FIXME: I dunno
-		self.rendered_title = self.font.multiline(name, config.tile.width, (config.tile.text_size + 8) * config.tile.text_lines - 6, None)
+		self.title.set_text(name)
 
 	def load_thumbnail(self, thumb_file):
 		if thumb_file is None:
@@ -263,15 +263,15 @@ class Tile:
 			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Title
-		if self.rendered_title is not None:
-			x1, y1 = x, y - config.tile.thumb_height - config.tile.text_vspace - self.rendered_title.height
-			x2, y2 = x1 + self.rendered_title.width, y1 + self.rendered_title.height
+		if self.title.texture is not None:
+			x1, y1 = x, y - config.tile.thumb_height - config.tile.text_vspace - self.title.height
+			x2, y2 = x1 + self.title.width, y1 + self.title.height
 			if selected: y1 -= outset_y; y2 -= outset_y
 			if selected:
 				gl.glColor4f(*config.tile.text_hl_color)
 			else:
 				gl.glColor4f(*config.tile.text_color)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.rendered_title.texture)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.title.texture)
 			gl.glBegin(gl.GL_QUADS)
 			gl.glTexCoord2f(0.0, 1.0)
 			gl.glVertex2f(x1, y1)
@@ -286,11 +286,12 @@ class Tile:
 
 	def destroy(self):
 		self.log.info(f'Destroying {self.name}')
-		if self.rendered_title is not None:
-			gl.glDeleteTextures([self.rendered_title.texture])
+		# FIXME: yuck
+		if self.title.texture is not None:
+			gl.glDeleteTextures([self.title.texture])
 		if self.thumb_texture is not None:
 			gl.glDeleteTextures([self.thumb_texture])
 
 	def __str__(self):
 		parts_watched = ''.join('#' if pw else '.' for pw in self.parts_watched)
-		return f'Tile(name={self.name}, isdir={self.isdir}, position={self.position}, parts_watched={parts_watched}, rendered={self.rendered_title})'
+		return f'Tile(name={self.name}, isdir={self.isdir}, position={self.position}, parts_watched={parts_watched})'

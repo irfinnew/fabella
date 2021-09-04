@@ -18,8 +18,8 @@ class Menu:
 	menu_font = None
 	tile_font = None
 	breadcrumbs = []
-	rendered_bread = None
-	rendered_clock = None
+	bread_text = None
+	clock_text = None
 
 	def __init__(self, path='/', enabled=False):
 		self.log.info(f'Created instance, path={path}, enabled={enabled}')
@@ -27,6 +27,9 @@ class Menu:
 		self.menu_font = Font('DejaVuSans', config.menu.text_size, stroke_width=4)
 		self.load(path)
 		self.enabled = enabled
+
+		self.bread_text = self.menu_font.text(None)
+		self.clock_text = self.menu_font.text(None)
 
 	def open(self):
 		self.log.info('Opening Menu')
@@ -145,49 +148,48 @@ class Menu:
 
 		# Breadcrumbs
 		breadcrumbs = ' › '.join(['Home'] + self.breadcrumbs)
-		if self.rendered_bread is None or self.rendered_bread.text != breadcrumbs:
-			self.rendered_bread = self.menu_font.render(breadcrumbs, self.rendered_bread.texture if self.rendered_bread else None)
+		self.bread_text.set_text(breadcrumbs)
 
-		x1, y1 = config.menu.header_hspace, height - config.menu.header_vspace - self.rendered_bread.height
-		x2, y2 = x1 + self.rendered_bread.width, y1 + self.rendered_bread.height
-		gl.glColor4f(1, 1, 1, 1)
-		gl.glBindTexture(gl.GL_TEXTURE_2D, self.rendered_bread.texture)
-		gl.glBegin(gl.GL_QUADS)
-		gl.glTexCoord2f(0.0, 1.0)
-		gl.glVertex2f(x1, y1)
-		gl.glTexCoord2f(1.0, 1.0)
-		gl.glVertex2f(x2, y1)
-		gl.glTexCoord2f(1.0, 0.0)
-		gl.glVertex2f(x2, y2)
-		gl.glTexCoord2f(0.0, 0.0)
-		gl.glVertex2f(x1, y2)
-		gl.glEnd()
-		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		if self.bread_text.texture:
+			x1, y1 = config.menu.header_hspace, height - config.menu.header_vspace - self.bread_text.height
+			x2, y2 = x1 + self.bread_text.width, y1 + self.bread_text.height
+			gl.glColor4f(1, 1, 1, 1)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.bread_text.texture)
+			gl.glBegin(gl.GL_QUADS)
+			gl.glTexCoord2f(0.0, 1.0)
+			gl.glVertex2f(x1, y1)
+			gl.glTexCoord2f(1.0, 1.0)
+			gl.glVertex2f(x2, y1)
+			gl.glTexCoord2f(1.0, 0.0)
+			gl.glVertex2f(x2, y2)
+			gl.glTexCoord2f(0.0, 0.0)
+			gl.glVertex2f(x1, y2)
+			gl.glEnd()
+			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# Clock
-		clock = datetime.datetime.now().strftime('%H:%M')
-		if self.rendered_clock is None or self.rendered_clock.text != clock:
-			self.rendered_clock = self.menu_font.render(clock, self.rendered_clock.texture if self.rendered_clock else None)
+		self.clock_text.set_text(datetime.datetime.now().strftime('%H:%M:%S'))
 
-		x1, y1 = width - config.menu.header_hspace - self.rendered_clock.width, height - config.menu.header_vspace - self.rendered_clock.height
-		x2, y2 = x1 + self.rendered_clock.width, y1 + self.rendered_clock.height
-		gl.glColor4f(1, 1, 1, 1)
-		gl.glBindTexture(gl.GL_TEXTURE_2D, self.rendered_clock.texture)
-		gl.glBegin(gl.GL_QUADS)
-		gl.glTexCoord2f(0.0, 1.0)
-		gl.glVertex2f(x1, y1)
-		gl.glTexCoord2f(1.0, 1.0)
-		gl.glVertex2f(x2, y1)
-		gl.glTexCoord2f(1.0, 0.0)
-		gl.glVertex2f(x2, y2)
-		gl.glTexCoord2f(0.0, 0.0)
-		gl.glVertex2f(x1, y2)
-		gl.glEnd()
-		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		if self.clock_text.texture:
+			x1, y1 = width - config.menu.header_hspace - self.clock_text.width, height - config.menu.header_vspace - self.clock_text.height
+			x2, y2 = x1 + self.clock_text.width, y1 + self.clock_text.height
+			gl.glColor4f(1, 1, 1, 1)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.clock_text.texture)
+			gl.glBegin(gl.GL_QUADS)
+			gl.glTexCoord2f(0.0, 1.0)
+			gl.glVertex2f(x1, y1)
+			gl.glTexCoord2f(1.0, 1.0)
+			gl.glVertex2f(x2, y1)
+			gl.glTexCoord2f(1.0, 0.0)
+			gl.glVertex2f(x2, y2)
+			gl.glTexCoord2f(0.0, 0.0)
+			gl.glVertex2f(x1, y2)
+			gl.glEnd()
+			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# Render at most one tile per frame
 		for tile in self.tiles:
-			if tile.rendered_title is None:
+			if tile.title.texture is None:
 				tile.render()
 				break
 
