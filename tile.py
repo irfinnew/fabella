@@ -132,6 +132,8 @@ class Tile:
 			if os.path.isfile(thumb_file):
 				return thumb_file
 
+		if self.name.endswith('.jpg') or self.name.endswith('.png'):
+			return self.full_path
 		if self.name.endswith('.mkv'):
 			with open(self.full_path, 'rb') as fd:
 				mkv = enzyme.MKV(fd)

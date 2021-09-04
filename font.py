@@ -54,6 +54,25 @@ class Text:
 	def render(self):
 		self.log.info(f'Rendering text: "{self.text}"')
 
+
+		# short-circuit: render single line
+		#width = self.max_width or 4096
+		#height = round(self.font.size * 1.25)
+		#image = PIL.Image.new('RGBA', (width, height), (0, 164, 201, 0))
+		#PIL.ImageDraw.Draw(image).text(
+		#	(0, 0),
+		#	self.text,
+		#	font=self.font.font,
+		#	fill=(255, 255, 255),
+		#	stroke_width=self.font.stroke_width,
+		#	stroke_fill=(0, 0, 0)
+		#)
+		#self.width = width
+		#self.height = height
+		#self.image = image
+		#return
+
+
 		text = self.text
 		max_width = self.max_width or 4096
 		height = 0
@@ -109,10 +128,14 @@ class Text:
 class Font:
 	log = Logger(module='Font', color=Logger.Black + Logger.Bright)
 	font = None
+	name = None
+	size = None
 	stroke_width = 0
 
 	def __init__(self, fontname, size, stroke_width):
 		self.log.info(f'Creating instance for {fontname} {size}')
+		self.name = fontname
+		self.size = size
 		self.font = PIL.ImageFont.truetype(fontname, size)
 		self.stroke_width = stroke_width
 
