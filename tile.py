@@ -65,6 +65,8 @@ class Tile:
 			self.state_file = os.path.join(self.path, '.fabella', 'state', name)
 			self.read_state()
 
+		if not self.isdir:
+			name = os.path.splitext(name)[0]
 		self.title.set_text(name)
 
 	def update_pos(self, position, force=False):
@@ -151,10 +153,8 @@ class Tile:
 
 		# Title
 		if self.isdir:
-			name = self.name
 			self.thumb_file = self.find_folder_cover()
 		else:
-			name = os.path.splitext(self.name)[0]
 			self.thumb_file = self.find_file_cover()
 
 		#if not self.thumb_file:
