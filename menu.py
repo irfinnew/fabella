@@ -42,6 +42,9 @@ class Menu:
 	def load(self, path):
 		self.forget()
 		self.log.info(f'Loading {path}')
+		# BENCHMARK
+		import time
+		self.bench = time.time()
 
 		self.path = path
 		self.tiles = []
@@ -55,9 +58,6 @@ class Menu:
 			self.tiles.append(Tile(f, path, self.tile_font))
 		self.current_idx = 0
 		self.current_offset = 0
-		# BENCHMARK
-		import time
-		self.bench = time.time()
 
 		# Find first "watching" video
 		for i, tile in enumerate(self.tiles):
