@@ -1,6 +1,5 @@
 import os
 import time
-import json
 import OpenGL.GL as gl
 import enzyme
 from PIL import Image, ImageOps
@@ -40,6 +39,7 @@ def get_shadow():
 class Tile:
 	log = Logger(module='Tile', color=Logger.Magenta)
 	name = ''
+	menu = None
 	font = None
 	title = None
 	thumb_file = ''
@@ -50,21 +50,26 @@ class Tile:
 	state_file = None
 	state_last_update = 0
 	position = 0
-	parts_watched = [False] * 10
+	parts_watched = None
 	rendered = False
 
-	def __init__(self, name, path, font):
+	def __init__(self, name, path, menu, font, state):
 		self.log.info(f'Created Tile path={path}, name={name}')
 		self.name = name
 		self.path = path
+		self.menu = menu
 		self.full_path = os.path.join(path, name)
 		self.isdir = os.path.isdir(self.full_path)
 		self.font = font
 		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines)
+		self.parts_watched = [False] * 10
 
-		if not self.isdir:
-			self.state_file = os.path.join(self.path, '.fabella', 'state', name)
-			self.read_state()
+		# FIXME: state
+		if state:
+			if 'position' in state:
+				self.position = state['position']
+			if 'parts_watched' in state:
+				self.parts_watched = [pw == '#' for pw in state['parts_watched']]
 
 		if not self.isdir:
 			name = os.path.splitext(name)[0]
@@ -82,23 +87,10 @@ class Tile:
 			self.state_last_update = now
 			self.write_state()
 
-	def read_state(self):
-		self.log.info(f'Reading state for {self.name}')
-		try:
-			with open(self.state_file) as fd:
-				data = json.load(fd)
-			self.position = data['position']
-			self.parts_watched = [pw == '#' for pw in data['parts_watched']]
-
-		except FileNotFoundError:
-			pass
-
 	def write_state(self):
 		self.log.info(f'Writing state for {self.name}')
-		os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
 		parts_watched = ''.join('#' if pw else '.' for pw in self.parts_watched)
-		with open(self.state_file, 'w') as fd:
-			json.dump({'position': self.position, 'parts_watched': parts_watched}, fd, indent=4)
+		self.menu.write_state(self.name, {'position': self.position, 'parts_watched': parts_watched})
 
 	@property
 	def unseen(self):

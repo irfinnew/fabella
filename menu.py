@@ -1,6 +1,7 @@
 import os  # FIXME
 import OpenGL.GL as gl
 import datetime
+import json
 
 import config
 from logger import Logger
@@ -10,6 +11,8 @@ from font import Font
 class Menu:
 	log = Logger(module='Menu', color=Logger.Cyan)
 	enabled = False
+	state_file = None
+	state = None
 	path = None
 	tiles = []
 	tiles_per_row = 1
@@ -46,6 +49,15 @@ class Menu:
 		import time
 		self.bench = time.time()
 
+		self.state_file = os.path.join(path, '.fabella', 'state.json')
+		os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
+
+		try:
+			with open(self.state_file) as fd:
+				self.state = json.load(fd)
+		except FileNotFoundError:
+			self.state = {}
+
 		self.path = path
 		self.tiles = []
 		for f in sorted(os.listdir(self.path)):
@@ -55,7 +67,7 @@ class Menu:
 				continue
 			if f in config.tile.thumb_files:
 				continue
-			self.tiles.append(Tile(f, path, self.tile_font))
+			self.tiles.append(Tile(f, path, self, self.tile_font, self.state.get(f)))
 		self.current_idx = 0
 		self.current_offset = 0
 
@@ -70,6 +82,12 @@ class Menu:
 			if tile.unseen:
 				self.current_idx = i
 				return
+
+	def write_state(self, name, new_state):
+		self.log.info(f'Writing {self.state_file}')
+		self.state[name] = new_state
+		with open(self.state_file, 'w') as fd:
+			json.dump(self.state, fd, indent=4)
 
 	def forget(self):
 		self.log.info('Forgetting tiles')
