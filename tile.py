@@ -240,13 +240,17 @@ class Tile:
 
 		# "Watching" emblem
 		if self.watching:
-			x1, y1 = x + config.tile.width - 20, y + 10
-			x2, y2 = x1 + 30, y1 - 30
+			x1, y1 = x + config.tile.width - 62, y + 10
+			x2, y2 = x1 + 72, y1 - 30
 			gl.glColor4f(0, 0, 0, 1)
 			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
-			x1 += 2; y1 -= 2; x2 -= 2; y2 += 2
+			x1 += 2; y1 -= 2; x2 = x1 + 5; y2 += 2
 			gl.glColor4f(1, 0, 0, 1)
-			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+			for i in range(10):
+				if self.parts_watched[i]:
+					gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+				x1 += 7
+				x2 += 7
 
 		# "Unseen" emblem
 		if self.unseen:
