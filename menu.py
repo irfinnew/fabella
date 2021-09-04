@@ -55,6 +55,9 @@ class Menu:
 			self.tiles.append(Tile(f, path, self.tile_font))
 		self.current_idx = 0
 		self.current_offset = 0
+		# BENCHMARK
+		import time
+		self.bench = time.time()
 
 		# Find first "watching" video
 		for i, tile in enumerate(self.tiles):
@@ -192,6 +195,12 @@ class Menu:
 			if not tile.rendered:
 				tile.render()
 				break
+		else:
+			# BENCHMARK
+			if self.bench:
+				import time
+				self.log.warning(f'Finished rendering in {time.time() - self.bench} seconds')
+				self.bench = None
 
 		tile_width = config.tile.width
 		tile_hspace = config.tile.min_hspace
