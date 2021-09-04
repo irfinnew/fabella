@@ -150,11 +150,11 @@ class Menu:
 		breadcrumbs = ' › '.join(['Home'] + self.breadcrumbs)
 		self.bread_text.set_text(breadcrumbs)
 
-		if self.bread_text.texture:
+		if self.bread_text.texture():
 			x1, y1 = config.menu.header_hspace, height - config.menu.header_vspace - self.bread_text.height
 			x2, y2 = x1 + self.bread_text.width, y1 + self.bread_text.height
 			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.bread_text.texture)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.bread_text.texture())
 			gl.glBegin(gl.GL_QUADS)
 			gl.glTexCoord2f(0.0, 1.0)
 			gl.glVertex2f(x1, y1)
@@ -170,11 +170,11 @@ class Menu:
 		# Clock
 		self.clock_text.set_text(datetime.datetime.now().strftime('%H:%M:%S'))
 
-		if self.clock_text.texture:
+		if self.clock_text.texture():
 			x1, y1 = width - config.menu.header_hspace - self.clock_text.width, height - config.menu.header_vspace - self.clock_text.height
 			x2, y2 = x1 + self.clock_text.width, y1 + self.clock_text.height
 			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.clock_text.texture)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.clock_text.texture())
 			gl.glBegin(gl.GL_QUADS)
 			gl.glTexCoord2f(0.0, 1.0)
 			gl.glVertex2f(x1, y1)
@@ -189,7 +189,7 @@ class Menu:
 
 		# Render at most one tile per frame
 		for tile in self.tiles:
-			if tile.title.texture is None:
+			if not tile.rendered:
 				tile.render()
 				break
 

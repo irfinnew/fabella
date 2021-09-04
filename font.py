@@ -4,6 +4,23 @@ from dataclasses import dataclass
 
 from logger import Logger
 
+
+
+# FIXME: WIP
+import time
+import threading
+def do_renders():
+	while True:
+		#print(f'Font render thread: {len(do_renders.scheduled)}')
+		while do_renders.scheduled:
+			text = do_renders.scheduled.pop(0)
+			text.render()
+		time.sleep(0.01)
+do_renders.scheduled = []
+threading.Thread(target=do_renders, daemon=True).start()
+
+
+
 class Text:
 	log = Logger(module='Font', color=Logger.Black + Logger.Bright)
 	font = None
@@ -13,7 +30,7 @@ class Text:
 	width = 0
 	height = 0
 	image = None
-	texture = None
+	_texture = None
 
 	def __init__(self, font, text, max_width=None, max_lines=1):
 		self.font = font
@@ -25,7 +42,8 @@ class Text:
 	def set_text(self, text):
 		if text != self.text:
 			self.text = text
-			self.render()
+			#self.render()
+			do_renders.scheduled.append(self)
 
 	def get_size(self, text):
 		image = PIL.Image.new('RGBA', (8, 8), (0, 164, 201))
@@ -64,19 +82,28 @@ class Text:
 			stroke_fill=(0, 0, 0)
 		)
 
-		if self.texture is None:
-			self.texture = gl.glGenTextures(1)
-
-		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
-		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, width, height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image.tobytes())
-		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-
 		self.width = width
 		self.height = height
+		self.image = image
 
-		del image
+	def texture(self):
+		if self.image is None:
+			return self._texture
+
+		if self._texture is None:
+			self._texture = gl.glGenTextures(1)
+
+		gl.glBindTexture(gl.GL_TEXTURE_2D, self._texture)
+		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, self.width, self.height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, self.image.tobytes())
+		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+
+		# FIXME: is this valid?
+		del self.image
+		self.image = None
+
+		return self._texture
 
 
 class Font:
