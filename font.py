@@ -1,4 +1,3 @@
-import time
 import threading
 import queue
 import OpenGL.GL as gl
@@ -19,20 +18,39 @@ class RenderThread(threading.Thread):
 
 	def run(self):
 		while True:
-			text = self.queue.get()
+			job = self.queue.get()
+			text = job.text
 			text.render()
 
 	# Call from external thread to queue an item
-	def schedule(self, text):
-		self.queue.put(text)
+	def schedule(self, job):
+		self.queue.put(job)
+
+	def clear(self):
+		try:
+			while True:
+				self.queue.get_nowait()
+		except queue.Empty:
+			pass
 
 render_thread = RenderThread(daemon=True)
 render_thread.start()
 
 
+class Job:
+	counter = 0
+
+	def __init__(self, text, priority=False):
+		self.text = text
+		self.order = (not priority, Job.counter)
+		Job.counter += 1
+
+	def __lt__(self, other):
+		return self.order < other.order
+
+
 class Text:
 	priority = False
-	order = None
 	log = Logger(module='Font', color=Logger.Black + Logger.Bright)
 	font = None
 	_text = None
@@ -46,7 +64,6 @@ class Text:
 	_texture = None
 
 	def __init__(self, font, text, max_width=None, lines=1):
-		self.order = time.time()
 		self.font = font
 		self.max_width = max_width
 		self.lines = lines
@@ -59,9 +76,6 @@ class Text:
 			gl.glDeleteTextures([self._texture])
 			self._texture = None
 
-	def __lt__(self, other):
-		return (not self.priority, self.order) < (not other.priority, other.order)
-
 	# Only call from main thread
 	@property
 	def text(self):
@@ -69,17 +83,26 @@ class Text:
 	@text.setter
 	def text(self, text):
 		if text != self._text:
+			self._text = text
 			# FIXME: perhaps lock?
 			self.rendered = False
+			self.priority = False
+			render_thread.schedule(Job(self))
+
+	# FIXME: yuck duplicate code
+	def priority_text(self, text):
+		if text != self._text:
 			self._text = text
-			self.order = time.time()
-			render_thread.schedule(self)
+			# FIXME: perhaps lock?
+			self.rendered = False
+			self.priority = True
+			render_thread.schedule(Job(self, priority=True))
 
 	# Only call from main thread
 	def prioritize(self):
 		if not self.priority:
 			self.priority = True
-			render_thread.schedule(self)
+			render_thread.schedule(Job(self, priority=True))
 
 	# Not thread-safe; only call from a single rendering thread!
 	def render(self):
@@ -175,3 +198,7 @@ class Font:
 	def text(self, text, max_width=None, lines=1):
 		t = Text(self, text, max_width, lines)
 		return t
+
+	@classmethod
+	def clear_rendering_queue(cls):
+		render_thread.clear()
