@@ -169,6 +169,7 @@ class Menu:
 
 		# Breadcrumbs
 		self.bread_text.text = ' › '.join(['Home'] + self.breadcrumbs)
+		self.bread_text.prioritize()
 
 		if self.bread_text.texture:
 			x1, y1 = config.menu.header_hspace, height - config.menu.header_vspace - self.bread_text.height
@@ -189,6 +190,7 @@ class Menu:
 
 		# Clock
 		self.clock_text.text = datetime.datetime.now().strftime('%H:%M:%S')
+		self.clock_text.prioritize()
 
 		if self.clock_text.texture:
 			x1, y1 = width - config.menu.header_hspace - self.clock_text.width, height - config.menu.header_vspace - self.clock_text.height

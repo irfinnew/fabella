@@ -1,3 +1,4 @@
+import time
 import threading
 import queue
 import OpenGL.GL as gl
@@ -14,7 +15,7 @@ from logger import Logger
 class RenderThread(threading.Thread):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		self.queue = queue.Queue()
+		self.queue = queue.PriorityQueue()
 
 	def run(self):
 		while True:
@@ -30,6 +31,8 @@ render_thread.start()
 
 
 class Text:
+	priority = False
+	order = None
 	log = Logger(module='Font', color=Logger.Black + Logger.Bright)
 	font = None
 	_text = None
@@ -43,6 +46,7 @@ class Text:
 	_texture = None
 
 	def __init__(self, font, text, max_width=None, lines=1):
+		self.order = time.time()
 		self.font = font
 		self.max_width = max_width
 		self.lines = lines
@@ -55,6 +59,9 @@ class Text:
 			gl.glDeleteTextures([self._texture])
 			self._texture = None
 
+	def __lt__(self, other):
+		return (not self.priority, self.order) < (not other.priority, other.order)
+
 	# Only call from main thread
 	@property
 	def text(self):
@@ -65,6 +72,13 @@ class Text:
 			# FIXME: perhaps lock?
 			self.rendered = False
 			self._text = text
+			self.order = time.time()
+			render_thread.schedule(self)
+
+	# Only call from main thread
+	def prioritize(self):
+		if not self.priority:
+			self.priority = True
 			render_thread.schedule(self)
 
 	# Not thread-safe; only call from a single rendering thread!
@@ -113,6 +127,7 @@ class Text:
 
 		self.rendered = True
 		self.updated = True
+		self.priority = False
 
 	# Only call from main thread
 	@property
