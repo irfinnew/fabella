@@ -1,3 +1,5 @@
+import threading
+import queue
 import OpenGL.GL as gl
 import cairo
 import gi
@@ -9,56 +11,75 @@ from gi.repository import PangoCairo
 from logger import Logger
 
 
+class RenderThread(threading.Thread):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.queue = queue.Queue()
 
-# FIXME: WIP
-import time
-import threading
-def do_renders():
-	while True:
-		#print(f'Font render thread: {len(do_renders.scheduled)}')
-		while do_renders.scheduled:
-			text = do_renders.scheduled.pop(0)
+	def run(self):
+		while True:
+			text = self.queue.get()
 			text.render()
-		time.sleep(0.01)
-do_renders.scheduled = []
-threading.Thread(target=do_renders, daemon=True).start()
 
+	# Call from external thread to queue an item
+	def schedule(self, text):
+		self.queue.put(text)
+
+render_thread = RenderThread(daemon=True)
+render_thread.start()
 
 
 class Text:
 	log = Logger(module='Font', color=Logger.Black + Logger.Bright)
 	font = None
-	text = None
+	_text = None
 	max_width = None
 	lines = 1
 	width = 0
 	height = 0
 	surface = None
-	update = False
+	rendered = False
+	updated = False
 	_texture = None
 
 	def __init__(self, font, text, max_width=None, lines=1):
 		self.font = font
 		self.max_width = max_width
 		self.lines = lines
+		self.text = text
 
-		self.set_text(text)
+	def __del__(self):
+		if self._texture:
+			# FIXME: is this called from the right GL context? Does this work?
+			#print(f'>>>> Deleting textures {[self._texture]}')
+			gl.glDeleteTextures([self._texture])
+			self._texture = None
 
-	def set_text(self, text):
-		if text != self.text:
-			self.text = text
-			#self.render()
-			do_renders.scheduled.append(self)
+	# Only call from main thread
+	@property
+	def text(self):
+		return self._text
+	@text.setter
+	def text(self, text):
+		if text != self._text:
+			# FIXME: perhaps lock?
+			self.rendered = False
+			self._text = text
+			render_thread.schedule(self)
 
-	# Warning; not thread-safe!
+	# Not thread-safe; only call from a single rendering thread!
 	def render(self):
-		self.log.info(f'Rendering text: "{self.text}"')
+		self.log.info(f'Rendering text: "{self._text}"')
+
+		if self.rendered:
+			self.log.info('Already rendered, skipping')
+			return
 
 		# Reuses font-global layout; not thread-safe
 		layout = self.font.layout
 		border = self.font.stroke_width
 
-		layout.set_text(self.text, -1)
+		layout.set_text(self._text, -1)
 
 		# Wrapping
 		if self.max_width:
@@ -90,11 +111,13 @@ class Text:
 		context.move_to(border, border)
 		PangoCairo.show_layout(context, layout)
 
-		self.update = True
+		self.rendered = True
+		self.updated = True
 
-
+	# Only call from main thread
+	@property
 	def texture(self):
-		if not self.update:
+		if not self.updated:
 			return self._texture
 
 		if self._texture is None:
@@ -110,7 +133,7 @@ class Text:
 		#del self.surface
 		#self.surface = None
 
-		self.update = False
+		self.updated = False
 		return self._texture
 
 

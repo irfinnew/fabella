@@ -73,7 +73,7 @@ class Tile:
 
 		if not self.isdir:
 			name = os.path.splitext(name)[0]
-		self.title.set_text(name)
+		self.title.text = name
 
 	def update_pos(self, position, force=False):
 		self.log.debug(f'Tile {self.name} update_pos({position}, {force})')
@@ -263,7 +263,7 @@ class Tile:
 			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Title
-		if self.title.texture() is not None:
+		if self.title.texture is not None:
 			x1, y1 = x, y - config.tile.thumb_height - config.tile.text_vspace - self.title.height
 			x2, y2 = x1 + self.title.width, y1 + self.title.height
 			if selected: y1 -= outset_y; y2 -= outset_y
@@ -271,7 +271,7 @@ class Tile:
 				gl.glColor4f(*config.tile.text_hl_color)
 			else:
 				gl.glColor4f(*config.tile.text_color)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.title.texture())
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.title.texture)
 			gl.glBegin(gl.GL_QUADS)
 			gl.glTexCoord2f(0.0, 1.0)
 			gl.glVertex2f(x1, y1)
@@ -287,8 +287,6 @@ class Tile:
 	def destroy(self):
 		self.log.info(f'Destroying {self.name}')
 		# FIXME: yuck
-		if self.title.texture() is not None:
-			gl.glDeleteTextures([self.title.texture()])
 		if self.thumb_texture is not None:
 			gl.glDeleteTextures([self.thumb_texture])
 
