@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 # ffmpeg -ss '05:00' -i 01.\ A\ Princess\ an\ Elf\ and\ a\ Demon\ Walk\ Into\ a\ Bar.mkv -vf  "thumbnail,scale=640:360" -frames:v 1 thumb.png 
+# https://superuser.com/questions/538112/meaningful-thumbnails-for-a-video-using-ffmpeg
 # https://stackoverflow.com/questions/41610167/specify-percentage-instead-of-time-to-ffmpeg
 
 COVER_WIDTH = 320
