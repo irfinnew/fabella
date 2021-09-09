@@ -7,6 +7,7 @@ COVER_WIDTH = 320
 COVER_HEIGHT = 200
 COVERS_DB_NAME = '.fabella/covers.zip'
 THUMB_SEEK = '07:00'
+VIDEO_EXTENSIONS = ['mkv', 'mp4', 'webm', 'avi', 'wmv']
 
 import sys
 import os
@@ -49,7 +50,7 @@ def find_file_cover(path):
 					return scaled_cover(a.data)
 
 	# If we got here, no embedded cover was found, generate thumbnail
-	if path.endswith(('.mkv', '.mp4')):
+	if path.endswith(('.' + e for e in VIDEO_EXTENSIONS)):
 		log.debug(f'Generating thumbnail for {path}')
 		sp = subprocess.run(['ffmpeg', '-ss', THUMB_SEEK, '-i', path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'], capture_output=True, check=True)
 		return scaled_cover(io.BytesIO(sp.stdout))
