@@ -62,7 +62,7 @@ class Menu:
 
 		try:
 			covers_zip = zipfile.ZipFile(os.path.join(path, '.fabella', 'covers.zip'))
-		except FileNotFoundError:
+		except (FileNotFoundError, zipfile.BadZipFile) as e:
 			covers_zip = None
 
 		self.path = path

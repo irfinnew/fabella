@@ -6,12 +6,14 @@
 COVER_WIDTH = 320
 COVER_HEIGHT = 200
 COVERS_DB_NAME = '.fabella/covers.zip'
+THUMB_SEEK = '07:00'
 
 import sys
 import os
 import io
 import zipfile
 import enzyme
+import subprocess
 from PIL import Image, ImageOps
 
 from logger import Logger
@@ -39,6 +41,12 @@ def find_file_cover(path):
 				if a.mimetype == 'image/jpeg':
 					log.debug(f'Found embedded cover in {path}')
 					return scaled_cover(a.data)
+
+	# If we got here, no embedded cover was found, generate thumbnail
+	if path.endswith(('.mkv', '.mp4')):
+		log.debug(f'Generating thumbnail for {path}')
+		sp = subprocess.run(['ffmpeg', '-ss', THUMB_SEEK, '-i', path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'], capture_output=True, check=True)
+		return scaled_cover(io.BytesIO(sp.stdout))
 
 	return None
 
