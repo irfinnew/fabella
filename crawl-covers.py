@@ -7,7 +7,7 @@
 COVER_WIDTH = 320
 COVER_HEIGHT = 200
 COVERS_DB_NAME = '.fabella/covers.zip'
-THUMB_SEEK = '07:00'
+THUMB_OFFSET = 0.25
 VIDEO_EXTENSIONS = ['mkv', 'mp4', 'webm', 'avi', 'wmv']
 
 import sys
@@ -37,7 +37,7 @@ def scaled_cover(fd):
 def find_file_cover(path):
 	# FIXME: maybe don't
 	if path.endswith(('.jpg', '.jpeg', '.png')):
-		log.debug(f'Thumbnailing image file {path}')
+		log.info(f'Thumbnailing image file {path}')
 		with open(path, 'rb') as fd:
 			return scaled_cover(fd)
 
@@ -47,13 +47,24 @@ def find_file_cover(path):
 			for a in mkv.attachments:
 				# FIXME: just uses first jpg attachment it sees; check filename!
 				if a.mimetype == 'image/jpeg':
-					log.debug(f'Found embedded cover in {path}')
+					log.info(f'Found embedded cover in {path}')
 					return scaled_cover(a.data)
 
 	# If we got here, no embedded cover was found, generate thumbnail
-	if path.endswith(('.' + e for e in VIDEO_EXTENSIONS)):
-		log.debug(f'Generating thumbnail for {path}')
-		sp = subprocess.run(['ffmpeg', '-ss', THUMB_SEEK, '-i', path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'], capture_output=True, check=True)
+	if path.endswith(tuple('.' + e for e in VIDEO_EXTENSIONS)):
+		log.info(f'Generating thumbnail for {path}')
+		sp = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=duration', '-of', 'default=nokey=1:noprint_wrappers=1', path], capture_output=True)
+		if sp.returncode:
+			print(sp.stderr.decode('utf-8'))
+			exit(1)
+
+		duration = float(sp.stdout)
+		duration = str(int(duration * THUMB_OFFSET))
+
+		sp = subprocess.run(['ffmpeg', '-ss', duration, '-i', path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'], capture_output=True)
+		if sp.returncode:
+			print(sp.stderr.decode('utf-8'))
+			exit(1)
 		return scaled_cover(io.BytesIO(sp.stdout))
 
 	return None
@@ -65,7 +76,7 @@ def find_folder_cover(path):
 		return None
 
 	with open(cover_file, 'rb') as fd:
-		log.debug(f'Found cover {cover_file}')
+		log.info(f'Found cover {cover_file}')
 		return scaled_cover(fd)
 
 
