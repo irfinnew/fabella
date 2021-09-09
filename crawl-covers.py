@@ -33,6 +33,12 @@ def scaled_cover(fd):
 
 
 def find_file_cover(path):
+	# FIXME: maybe don't
+	if path.endswith(('.jpg', '.jpeg', '.png')):
+		log.debug(f'Thumbnailing image file {path}')
+		with open(path, 'rb') as fd:
+			return scaled_cover(fd)
+
 	if path.endswith('.mkv'):
 		with open(path, 'rb') as fd:
 			mkv = enzyme.MKV(fd)
@@ -70,6 +76,9 @@ def scan(path):
 	dirs = []
 	for isfile, name in sorted((not de.is_dir(), de.name) for de in os.scandir(path)):
 		if name.startswith('.'):
+			continue
+		# FIXME: muh
+		if name == 'cover.jpg':
 			continue
 
 		if isfile:
