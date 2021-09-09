@@ -1,7 +1,6 @@
 import os
 import time
 import OpenGL.GL as gl
-import enzyme
 from PIL import Image, ImageOps
 
 import config
@@ -42,8 +41,7 @@ class Tile:
 	menu = None
 	font = None
 	title = None
-	thumb_file = ''
-	thumb_texture = None
+	cover_texture = None
 	path = ''
 	full_path = ''
 	isdir = False
@@ -53,7 +51,7 @@ class Tile:
 	parts_watched = None
 	rendered = False
 
-	def __init__(self, name, path, isdir, menu, font, state):
+	def __init__(self, name, path, isdir, menu, font, state, covers_zip):
 		self.log.info(f'Created Tile path={path}, name={name}')
 		self.name = name
 		self.path = path
@@ -63,6 +61,7 @@ class Tile:
 		self.font = font
 		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines)
 		self.parts_watched = [False] * 10
+		self.covers_zip = covers_zip
 
 		# FIXME: state
 		if state:
@@ -112,73 +111,34 @@ class Tile:
 		self.position = 0
 		self.write_state()
 
-	def find_folder_cover(self, path=None):
-		if not path:
-			path = self.full_path
-		for thumb_file in config.tile.thumb_files:
-			thumb_file = os.path.join(path, thumb_file)
-			if os.path.isfile(thumb_file):
-				return thumb_file
-		return None
-
-	def find_file_cover(self):
-		for thumb_dir in config.tile.thumb_dirs:
-			thumb_file = os.path.join(self.path, thumb_dir, os.path.splitext(self.name)[0] + '.jpg')
-			if os.path.isfile(thumb_file):
-				return thumb_file
-
-		if self.name.endswith('.jpg') or self.name.endswith('.png'):
-			return self.full_path
-		if self.name.endswith('.mkv'):
-			with open(self.full_path, 'rb') as fd:
-				mkv = enzyme.MKV(fd)
-			for a in mkv.attachments:
-				# FIXME: just uses first jpg attachment it sees; check filename!
-				if a.mimetype == 'image/jpeg':
-					return a.data
-
-		return None
-
 	def render(self):
 		self.log.info(f'Rendering for {self.name}')
-		#assert self.title.texture is None
-		#assert self.thumb_texture is None
-
-		# Title
-		if self.isdir:
-			self.thumb_file = self.find_folder_cover()
-		else:
-			self.thumb_file = self.find_file_cover()
-
-		#if not self.thumb_file:
-		#	path = self.full_path
-		#	while len(path) > 2 and not self.thumb_file:
-		#		path = os.path.dirname(path)
-		#		self.thumb_file = self.find_folder_cover(path)
-
-		if self.thumb_file:
-			self.thumb_texture = self.load_thumbnail(self.thumb_file)
-
+		self.cover_texture = self.load_cover()
 		self.rendered = True
 
-	def load_thumbnail(self, thumb_file):
-		if thumb_file is None:
+	def load_cover(self):
+		if self.covers_zip is None:
 			return None
 
-		self.log.info(f'Loading thumbnail from {thumb_file}')
-		thumb = Image.open(thumb_file)
-		thumb = ImageOps.fit(thumb, (config.tile.width, config.tile.thumb_height))
+		try:
+			with self.covers_zip.open(self.name) as fd:
+				self.log.info(f'Loading thumbnail for {self.name}')
+				with Image.open(fd) as cover:
+					cover = ImageOps.fit(cover, (config.tile.width, config.tile.thumb_height))
 
-		# FIXME: properly detect image format (RGB8 etc)
-		texture = gl.glGenTextures(1)
-		gl.glBindTexture(gl.GL_TEXTURE_2D, texture)
-		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, thumb.width, thumb.height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, thumb.tobytes())
-		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-		del thumb
+					# FIXME: assumes RGB8 image
+					texture = gl.glGenTextures(1)
+					gl.glBindTexture(gl.GL_TEXTURE_2D, texture)
+					gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+					gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+					gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, cover.width, cover.height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, cover.tobytes())
+					gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+					# FIXME: is this allowed?
+					del cover
 
-		return texture
+					return texture
+		except KeyError:
+			return None
 
 	def draw(self, x, y, selected=False):
 		outset_x = int(config.tile.width * config.tile.highlight_outset / 2)
@@ -213,9 +173,9 @@ class Tile:
 		# Thumbnail
 		x1, y1, x2, y2 = x, y - config.tile.thumb_height, x + config.tile.width, y
 		if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
-		if self.thumb_texture is not None:
+		if self.cover_texture is not None:
 			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.thumb_texture)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.cover_texture)
 			gl.glBegin(gl.GL_QUADS)
 			gl.glTexCoord2f(0.0, 1.0)
 			gl.glVertex2f(x1, y1)
@@ -287,8 +247,8 @@ class Tile:
 	def destroy(self):
 		self.log.info(f'Destroying {self.name}')
 		# FIXME: yuck
-		if self.thumb_texture is not None:
-			gl.glDeleteTextures([self.thumb_texture])
+		if self.cover_texture is not None:
+			gl.glDeleteTextures([self.cover_texture])
 
 	def __str__(self):
 		parts_watched = ''.join('#' if pw else '.' for pw in self.parts_watched)

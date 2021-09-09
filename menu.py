@@ -3,6 +3,7 @@ import OpenGL.GL as gl
 import datetime
 import json
 import time
+import zipfile
 
 import config
 from logger import Logger
@@ -59,6 +60,11 @@ class Menu:
 		except FileNotFoundError:
 			self.state = {}
 
+		try:
+			covers_zip = zipfile.ZipFile(os.path.join(path, '.fabella', 'covers.zip'))
+		except FileNotFoundError:
+			covers_zip = None
+
 		self.path = path
 		self.tiles = []
 		for isfile, name in sorted((not de.is_dir(), de.name) for de in os.scandir(self.path)):
@@ -68,7 +74,7 @@ class Menu:
 				continue
 			if name in config.tile.thumb_files:
 				continue
-			self.tiles.append(Tile(name, path, not isfile, self, self.tile_font, self.state.get(name)))
+			self.tiles.append(Tile(name, path, not isfile, self, self.tile_font, self.state.get(name), covers_zip))
 		self.current_idx = 0
 		self.current_offset = 0
 
