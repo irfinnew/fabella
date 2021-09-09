@@ -53,7 +53,7 @@ def find_file_cover(path):
 	# If we got here, no embedded cover was found, generate thumbnail
 	if path.endswith(tuple('.' + e for e in VIDEO_EXTENSIONS)):
 		log.info(f'Generating thumbnail for {path}')
-		sp = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=duration', '-of', 'default=nokey=1:noprint_wrappers=1', path], capture_output=True)
+		sp = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', path], capture_output=True)
 		if sp.returncode:
 			print(sp.stderr.decode('utf-8'))
 			exit(1)
