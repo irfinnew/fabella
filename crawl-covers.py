@@ -23,6 +23,16 @@ from logger import Logger
 log = Logger(module='crawl', color=Logger.Magenta)
 
 
+def run_command(command):
+	try:
+		return subprocess.run(command, capture_output=True, check=True)
+	except subprocess.CalledProcessError as e:
+		log.error(f'Command returned {e.returncode}: {command}')
+		for line in e.stderr.decode('utf-8').splitlines():
+			log.error(line)
+		raise
+
+
 # Takes file-like object, reads image from it, scales, encodes to JPEG, returns bytes
 def scaled_cover(fd):
 	with Image.open(fd) as cover:
@@ -53,19 +63,15 @@ def find_file_cover(path):
 	# If we got here, no embedded cover was found, generate thumbnail
 	if path.endswith(tuple('.' + e for e in VIDEO_EXTENSIONS)):
 		log.info(f'Generating thumbnail for {path}')
-		sp = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', path], capture_output=True)
-		if sp.returncode:
-			print(sp.stderr.decode('utf-8'))
-			exit(1)
+		try:
+			sp = run_command(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', path])
+			duration = float(sp.stdout)
+			duration = str(int(duration * THUMB_OFFSET))
 
-		duration = float(sp.stdout)
-		duration = str(int(duration * THUMB_OFFSET))
-
-		sp = subprocess.run(['ffmpeg', '-ss', duration, '-i', path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'], capture_output=True)
-		if sp.returncode:
-			print(sp.stderr.decode('utf-8'))
-			exit(1)
-		return scaled_cover(io.BytesIO(sp.stdout))
+			sp = run_command(['ffmpeg', '-ss', duration, '-i', path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
+			return scaled_cover(io.BytesIO(sp.stdout))
+		except subprocess.CalledProcessError:
+			errors.append(path)
 
 	return None
 
@@ -108,4 +114,11 @@ def scan(path):
 	for d in dirs:
 		scan(os.path.join(path, d))
 
+errors = []
 scan(sys.argv[1])
+
+if errors:
+	print()
+	print('Errors processing the following files:')
+	for e in errors:
+		print(' ', e)
