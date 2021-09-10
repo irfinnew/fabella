@@ -52,13 +52,18 @@ def find_file_cover(path):
 			return scaled_cover(fd)
 
 	if path.endswith('.mkv'):
-		with open(path, 'rb') as fd:
-			mkv = enzyme.MKV(fd)
-			for a in mkv.attachments:
-				# FIXME: just uses first jpg attachment it sees; check filename!
-				if a.mimetype == 'image/jpeg':
-					log.info(f'Found embedded cover in {path}')
-					return scaled_cover(a.data)
+		try:
+			with open(path, 'rb') as fd:
+				mkv = enzyme.MKV(fd)
+				for a in mkv.attachments:
+					# FIXME: just uses first jpg attachment it sees; check filename!
+					if a.mimetype == 'image/jpeg':
+						log.info(f'Found embedded cover in {path}')
+						return scaled_cover(a.data)
+		except enzyme.exceptions.Error as e:
+			log.error(f'Error processing {path}:')
+			log.error(str(e))
+			return None
 
 	# If we got here, no embedded cover was found, generate thumbnail
 	if path.endswith(tuple('.' + e for e in VIDEO_EXTENSIONS)):
@@ -72,6 +77,7 @@ def find_file_cover(path):
 			return scaled_cover(io.BytesIO(sp.stdout))
 		except subprocess.CalledProcessError:
 			errors.append(path)
+			return None
 
 	return None
 
