@@ -1,26 +1,31 @@
 #! /usr/bin/env python
 
-# ffmpeg -ss '05:00' -i 01.\ A\ Princess\ an\ Elf\ and\ a\ Demon\ Walk\ Into\ a\ Bar.mkv -vf  "thumbnail,scale=640:360" -frames:v 1 thumb.png 
-# https://superuser.com/questions/538112/meaningful-thumbnails-for-a-video-using-ffmpeg
-# https://stackoverflow.com/questions/41610167/specify-percentage-instead-of-time-to-ffmpeg
-
 COVER_WIDTH = 320
 COVER_HEIGHT = 200
 COVERS_DB_NAME = '.fabella/covers.zip'
-THUMB_OFFSET = 0.25
+COVERS_DB_SUFFIX = '.part'
+THUMB_VIDEO_POSITION = 0.25
 VIDEO_EXTENSIONS = ['mkv', 'mp4', 'webm', 'avi', 'wmv']
+FOLDER_COVER_FILE = 'cover.jpg'
+EXIF_MAKERNOTE_TAG = 37500
+FABELLA_EXIF_TAG = 'FABELLA_CACHE_TAGS: '
 
 import sys
 import os
 import io
+import ast
+import stat
 import zipfile
 import enzyme
 import subprocess
-from PIL import Image, ImageOps
+import PIL.Image
+import PIL.ImageOps
+import PIL.ExifTags
 
 from logger import Logger
 
 log = Logger(module='crawl', color=Logger.Magenta)
+
 
 
 def run_command(command):
@@ -33,95 +38,233 @@ def run_command(command):
 		raise
 
 
-# Takes file-like object, reads image from it, scales, encodes to JPEG, returns bytes
-def scaled_cover(fd):
-	with Image.open(fd) as cover:
-		cover = cover.convert('RGB')
-		cover = ImageOps.fit(cover, (COVER_WIDTH, COVER_HEIGHT))
 
-	buffer = io.BytesIO()
-	cover.save(buffer, format='JPEG', quality=90, optimize=True)
-	return buffer.getvalue()
+class CoverError(Exception):
+	pass
 
 
-def find_file_cover(path):
-	# FIXME: maybe don't
-	if path.endswith(('.jpg', '.jpeg', '.png')):
-		log.info(f'Thumbnailing image file {path}')
-		with open(path, 'rb') as fd:
-			return scaled_cover(fd)
 
-	if path.endswith('.mkv'):
+class Cover:
+	def __init__(self, name, parent_path, *, scaled_cover_image=None):
+		self.name = name
+		self.path = os.path.join(parent_path, name)
+		self.scaled_cover_image = scaled_cover_image
+
+		if scaled_cover_image:
+			self.isdir, self.size, self.mtime = self.parse_exiftag_from_image(self.scaled_cover_image)
+		else:
+			self.isdir, self.size, self.mtime = self.get_attrs()
+
+
+	def get_attrs(self):
+		"""Returns (isdir, size, mtime) file attrs used to determine cover staleness."""
+		stat_data = os.stat(self.path)
+
+		if stat.S_ISDIR(stat_data.st_mode):
+			# Folder, check cover file in it instead
+			try:
+				stat_data = os.stat(os.path.join(self.path, FOLDER_COVER_FILE))
+				return (True, stat_data.st_size, stat_data.st_mtime_ns)
+			except FileNotFoundError:
+				return (True, None, None)
+		else:
+			return (False, stat_data.st_size, stat_data.st_mtime_ns)
+
+
+	@property
+	def fabella_tag(self):
+		"""Return the EXIF tag *content* that will determine dirtyness."""
+		tags = {'isdir': self.isdir, 'size': self.size, 'mtime': self.mtime}
+		return FABELLA_EXIF_TAG + repr(tags)
+
+
+	@property
+	def exiftag(self):
+		"""Return the full EXIF tag that will determine dirtyness."""
+		exif = PIL.Image.Exif()
+		exif[EXIF_MAKERNOTE_TAG] = self.fabella_tag
+		return exif
+
+
+	def parse_exiftag(self, exif):
+		"""Take EXIF tag, parse it, return attrs or tuple of Nones."""
+		if exif is None:
+			return (None, None, None)
+
 		try:
-			with open(path, 'rb') as fd:
-				mkv = enzyme.MKV(fd)
-				for a in mkv.attachments:
-					# FIXME: just uses first jpg attachment it sees; check filename!
-					if a.mimetype == 'image/jpeg':
-						log.info(f'Found embedded cover in {path}')
-						return scaled_cover(a.data)
-		except enzyme.exceptions.Error as e:
-			log.error(f'Error processing {path}:')
-			log.error(str(e))
-			return None
+			tag = exif[EXIF_MAKERNOTE_TAG]
+		except KeyError:
+			log.warning(f'EXIF tag not found in cover image for {self.name}')
+			return (None, None, None)
 
-	# If we got here, no embedded cover was found, generate thumbnail
-	if path.endswith(tuple('.' + e for e in VIDEO_EXTENSIONS)):
-		log.info(f'Generating thumbnail for {path}')
+		if not tag.startswith(FABELLA_EXIF_TAG):
+			log.warning(f'EXIF tag doesn\'t start with {FABELLA_EXIF_TAG} in cover image for {self.name}')
+			return (None, None, None)
+		tag = tag[len(FABELLA_EXIF_TAG):]
+
 		try:
-			sp = run_command(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', path])
-			duration = float(sp.stdout)
-			duration = str(int(duration * THUMB_OFFSET))
-
-			sp = run_command(['ffmpeg', '-ss', duration, '-i', path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
-			return scaled_cover(io.BytesIO(sp.stdout))
-		except subprocess.CalledProcessError:
-			errors.append(path)
-			return None
-
-	return None
+			tag = ast.literal_eval(tag)
+			return (bool(tag['isdir']), int(tag['size']), int(tag['mtime']))
+		except (KeyError, ValueError) as e:
+			log.warning(f'Error parsing EXIF tag in cover image for {self.name}: {e}')
+			return (None, None, None)
 
 
-def find_folder_cover(path):
-	cover_file = os.path.join(path, 'cover.jpg')
-	if not os.path.isfile(cover_file):
-		return None
+	def parse_exiftag_from_image(self, image):
+		"""Take EXIF tag from jpeg bytestr, parse it, return attrs or tuple of Nones."""
+		try:
+			with PIL.Image.open(io.BytesIO(image)) as img:
+				return self.parse_exiftag(img.getexif())
+		except PIL.UnidentifiedImageError:
+			return (None, None, None)
 
-	with open(cover_file, 'rb') as fd:
-		log.info(f'Found cover {cover_file}')
-		return scaled_cover(fd)
+
+	def scale_encode(self, fd):
+		"""Takes file-like object, reads image from it, scales, encodes to JPEG, returns bytes."""
+		try:
+			with PIL.Image.open(fd) as cover:
+				cover = cover.convert('RGB')
+				cover = PIL.ImageOps.fit(cover, (COVER_WIDTH, COVER_HEIGHT))
+		except PIL.UnidentifiedImageError as e:
+			raise CoverError(f'Loading image for {self.path}: {str(e)}')
+
+		buffer = io.BytesIO()
+		cover.save(buffer, format='JPEG', quality=90, optimize=True, exif=self.exiftag)
+		return buffer.getvalue()
 
 
-def scan(path):
+	def get_folder_cover(self):
+		"""Find cover image for folder, scale, return bytes."""
+		cover_file = os.path.join(self.path, FOLDER_COVER_FILE)
+		if not os.path.isfile(cover_file):
+			raise CoverError(f'Cover image {cover_file} not found')
+
+		with open(cover_file, 'rb') as fd:
+			log.info(f'Found cover {cover_file}')
+			return self.scale_encode(fd)
+
+
+	def get_file_cover(self):
+		"""Find cover image for file, scale, return bytes."""
+		if self.path.endswith('.mkv'):
+			try:
+				with open(self.path, 'rb') as fd:
+					mkv = enzyme.MKV(fd)
+					for a in mkv.attachments:
+						# FIXME: just uses first jpg attachment it sees; check filename!
+						if a.mimetype == 'image/jpeg':
+							log.info(f'Found embedded cover in {self.path}')
+							return self.scale_encode(a.data)
+			except enzyme.exceptions.Error as e:
+				raise CoverError(f'Processing {self.path}: {str(e)}')
+
+		# If we got here, no embedded cover was found, generate thumbnail
+		if self.path.endswith(tuple('.' + e for e in VIDEO_EXTENSIONS)):
+			log.info(f'Generating thumbnail for {self.path}')
+			try:
+				sp = run_command(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', self.path])
+				duration = float(sp.stdout)
+				duration = str(int(duration * THUMB_VIDEO_POSITION))
+
+				sp = run_command(['ffmpeg', '-ss', duration, '-i', self.path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
+				return self.scale_encode(io.BytesIO(sp.stdout))
+			except subprocess.CalledProcessError:
+				raise CoverError(f'Processing {self.path}: Command returned error')
+
+		raise CoverError(f'Processing {self.path}: unknown filetype to generate cover image from')
+
+
+	def get_scaled_cover_image(self):
+		"""Return cached cover image bytes. If not cached, find, scale, return bytes. None if unsuccessful."""
+		if not self.scaled_cover_image:
+			if self.isdir:
+				self.scaled_cover_image = self.get_folder_cover()
+			else:
+				self.scaled_cover_image = self.get_file_cover()
+
+		return self.scaled_cover_image
+
+
+	def __eq__(self, other):
+		if other is None:
+			return False
+		# Size/mtime might be missing for both; does not mean they're equal!
+		if None in (self.isdir, self.size, self.mtime):
+			return False
+		return (self.name, self.isdir, self.size, self.mtime) == (other.name, other.isdir, other.size, other.mtime)
+
+
+	def __lt__(self, other):
+		return self.name < other.name
+
+
+	def __str__(self):
+		return f'Cover({self.name}, isdir={self.isdir}, size={self.size}, mtime={self.mtime})'
+
+
+	def __repr__(self):
+		return self.__str__()
+
+
+
+def scan(path, errors):
 	log.info(f'Processing {path}')
 	covers_db_name = (os.path.join(path, COVERS_DB_NAME))
 	os.makedirs(os.path.dirname(covers_db_name), exist_ok=True)
-	covers_db = zipfile.ZipFile(covers_db_name, 'w')
 
-	dirs = []
-	for isfile, name in sorted((not de.is_dir(), de.name) for de in os.scandir(path)):
+	try:
+		with zipfile.ZipFile(covers_db_name, 'r') as covers_db:
+			log.info(f'Found existing covers DB {covers_db_name}')
+			existing_covers = {}
+			for cover_name in covers_db.namelist():
+				existing_covers[cover_name] = Cover(cover_name, path, scaled_cover_image=covers_db.read(cover_name))
+	except FileNotFoundError:
+		existing_covers = {}
+	except zipfile.BadZipFile as e:
+		log.error(f'Existing covers DB {covers_db_name} is broken: {str(e)}')
+		existing_covers = {}
+
+	current_covers = {}
+	for name in sorted(os.listdir(path)):
 		if name.startswith('.'):
 			continue
-		# FIXME: muh
-		if name == 'cover.jpg':
+		if name == FOLDER_COVER_FILE:
 			continue
 
-		if isfile:
-			cover = find_file_cover(os.path.join(path, name))
-		else:
-			cover = find_folder_cover(os.path.join(path, name))
-			dirs.append(name)
+		current_covers[name] = Cover(name, path)
 
-		if cover:
-			covers_db.writestr(name, cover)
+	if existing_covers == current_covers:
+		log.info(f'Existing covers DB {covers_db_name} is up to date, skipping')
+		new_covers = sorted(current_covers.values())
+	else:
+		new_covers = []
+		for name, cover in current_covers.items():
+			if existing_covers.get(name) == cover:
+				log.info(f'Cover for {name} is up to date, reusing')
+				new_covers.append(existing_covers[name])
+			else:
+				new_covers.append(cover)
+		new_covers = sorted(new_covers)
 
-	covers_db.close()
+		# Write new covers file
+		covers_db = zipfile.ZipFile(covers_db_name + COVERS_DB_SUFFIX, 'w')
+		for cover in new_covers:
+			try:
+				covers_db.writestr(cover.name, cover.get_scaled_cover_image())
+			except CoverError as e:
+				log.error(str(e))
+				errors.append(cover.path)
+		covers_db.close()
+		os.rename(covers_db_name + COVERS_DB_SUFFIX, covers_db_name)
 
-	for d in dirs:
-		scan(os.path.join(path, d))
+	for cover in new_covers:
+		if cover.isdir:
+			scan(cover.path, errors)
+
+
 
 errors = []
-scan(sys.argv[1])
+scan(sys.argv[1], errors)
 
 if errors:
 	print()
