@@ -146,6 +146,12 @@ class Cover:
 
 	def get_file_cover(self):
 		"""Find cover image for file, scale, return bytes."""
+		# FIXME: Hmm. Not sure.
+		if self.path.endswith(('.jpg', '.png')):
+			log.info(f'Using image file as its own cover: {self.path}')
+			with open(self.path, 'rb') as fd:
+				return self.scale_encode(fd)
+
 		if self.path.endswith('.mkv'):
 			try:
 				with open(self.path, 'rb') as fd:
