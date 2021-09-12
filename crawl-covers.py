@@ -9,6 +9,7 @@ VIDEO_EXTENSIONS = ['mkv', 'mp4', 'webm', 'avi', 'wmv']
 FOLDER_COVER_FILE = 'cover.jpg'
 EXIF_MAKERNOTE_TAG = 37500
 FABELLA_EXIF_TAG = 'FABELLA_CACHE_TAGS: '
+TAG_VERSION = 1
 
 import sys
 import os
@@ -51,9 +52,11 @@ class Cover:
 		self.scaled_cover_image = scaled_cover_image
 
 		if scaled_cover_image:
-			self.isdir, self.size, self.mtime = self.parse_exiftag_from_image(self.scaled_cover_image)
+			self.tag_version, self.isdir, self.size, self.mtime, self.dimensions = self.parse_exiftag_from_image(self.scaled_cover_image)
 		else:
 			self.isdir, self.size, self.mtime = self.get_attrs()
+			self.tag_version = TAG_VERSION
+			self.dimensions = f'{COVER_WIDTH}x{COVER_HEIGHT}'
 
 
 	def get_attrs(self):
@@ -74,7 +77,7 @@ class Cover:
 	@property
 	def fabella_tag(self):
 		"""Return the EXIF tag *content* that will determine dirtyness."""
-		tags = {'isdir': self.isdir, 'size': self.size, 'mtime': self.mtime}
+		tags = {'version': self.tag_version, 'isdir': self.isdir, 'size': self.size, 'mtime': self.mtime, 'dimensions': self.dimensions}
 		return FABELLA_EXIF_TAG + repr(tags)
 
 
@@ -87,27 +90,29 @@ class Cover:
 
 
 	def parse_exiftag(self, exif):
+		empty_tags = (None, None, None, None, None)
 		"""Take EXIF tag, parse it, return attrs or tuple of Nones."""
 		if exif is None:
-			return (None, None, None)
+			return empty_tags
 
 		try:
 			tag = exif[EXIF_MAKERNOTE_TAG]
 		except KeyError:
 			log.warning(f'EXIF tag not found in cover image for {self.name}')
-			return (None, None, None)
+			return empty_tags
 
 		if not tag.startswith(FABELLA_EXIF_TAG):
 			log.warning(f'EXIF tag doesn\'t start with {FABELLA_EXIF_TAG} in cover image for {self.name}')
-			return (None, None, None)
+			return empty_tags
 		tag = tag[len(FABELLA_EXIF_TAG):]
 
 		try:
 			tag = ast.literal_eval(tag)
-			return (bool(tag['isdir']), int(tag['size']), int(tag['mtime']))
+			# FIXME: perhaps use .get() to allow for missing tags?
+			return (int(tag['version']), bool(tag['isdir']), int(tag['size']), int(tag['mtime']), tag['dimensions'])
 		except (KeyError, ValueError) as e:
 			log.warning(f'Error parsing EXIF tag in cover image for {self.name}: {e}')
-			return (None, None, None)
+			return empty_tags
 
 
 	def parse_exiftag_from_image(self, image):
@@ -116,7 +121,7 @@ class Cover:
 			with PIL.Image.open(io.BytesIO(image)) as img:
 				return self.parse_exiftag(img.getexif())
 		except PIL.UnidentifiedImageError:
-			return (None, None, None)
+			return self.parse_exiftag(None)
 
 
 	def scale_encode(self, fd):
@@ -195,9 +200,10 @@ class Cover:
 		if other is None:
 			return False
 		# Size/mtime might be missing for both; does not mean they're equal!
-		if None in (self.isdir, self.size, self.mtime):
+		if None in (self.tag_version, self.isdir, self.size, self.mtime, self.dimensions):
 			return False
-		return (self.name, self.isdir, self.size, self.mtime) == (other.name, other.isdir, other.size, other.mtime)
+		return (self.tag_version, self.name, self.isdir, self.size, self.mtime, self.dimensions) == \
+			(other.tag_version, other.name, other.isdir, other.size, other.mtime, other.dimensions)
 
 
 	def __lt__(self, other):
@@ -205,7 +211,7 @@ class Cover:
 
 
 	def __str__(self):
-		return f'Cover({self.name}, isdir={self.isdir}, size={self.size}, mtime={self.mtime})'
+		return f'Cover({self.name}, version={self.tag_version}, isdir={self.isdir}, size={self.size}, mtime={self.mtime}, dimensions={self.dimensions})'
 
 
 	def __repr__(self):
