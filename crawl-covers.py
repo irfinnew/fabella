@@ -62,7 +62,10 @@ class Cover:
 
 	def get_attrs(self):
 		"""Returns (isdir, size, mtime) file attrs used to determine cover staleness."""
-		stat_data = os.stat(self.path)
+		try:
+			stat_data = os.stat(self.path)
+		except FileNotFoundError:
+			return (True, None, None)
 
 		if stat.S_ISDIR(stat_data.st_mode):
 			# Folder, check cover file in it instead
