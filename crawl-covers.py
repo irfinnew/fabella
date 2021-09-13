@@ -24,6 +24,7 @@ import PIL.ImageOps
 import PIL.ExifTags
 
 from logger import Logger
+from watch import Watcher
 
 log = Logger(module='crawl', color=Logger.Magenta)
 
@@ -219,7 +220,7 @@ class Cover:
 
 
 
-def scan(path, errors):
+def scan(path):
 	log.info(f'Processing {path}')
 	covers_db_name = (os.path.join(path, COVERS_DB_NAME))
 	os.makedirs(os.path.dirname(covers_db_name), exist_ok=True)
@@ -247,39 +248,48 @@ def scan(path, errors):
 
 	if existing_covers == current_covers:
 		log.info(f'Existing covers DB {covers_db_name} is up to date, skipping')
-		new_covers = sorted(current_covers.values())
-	else:
-		new_covers = []
-		for name, cover in current_covers.items():
-			if existing_covers.get(name) == cover:
-				log.info(f'Cover for {name} is up to date, reusing')
-				new_covers.append(existing_covers[name])
-			else:
-				new_covers.append(cover)
-		new_covers = sorted(new_covers)
+		return
 
-		# Write new covers file
-		covers_db = zipfile.ZipFile(covers_db_name + COVERS_DB_SUFFIX, 'w')
-		for cover in new_covers:
+	new_covers = {}
+	for name, cover in current_covers.items():
+		if existing_covers.get(name) == cover:
+			log.info(f'Cover for {name} is up to date, reusing')
+			new_covers[name] = existing_covers[name]
+		else:
 			try:
-				covers_db.writestr(cover.name, cover.get_scaled_cover_image())
+				cover.get_scaled_cover_image()
+				new_covers[name] = cover
 			except CoverError as e:
 				log.error(str(e))
-				errors.append(cover.path)
-		covers_db.close()
-		os.rename(covers_db_name + COVERS_DB_SUFFIX, covers_db_name)
 
-	for cover in new_covers:
-		if cover.isdir:
-			scan(cover.path, errors)
+	# Recheck after maybe some new covers errored out
+	if existing_covers == new_covers:
+		log.info(f'Existing covers DB {covers_db_name} is up to date, skipping')
+		return
+
+	# Write new covers file
+	covers_db = zipfile.ZipFile(covers_db_name + COVERS_DB_SUFFIX, 'w')
+	for cover in sorted(new_covers.values()):
+		covers_db.writestr(cover.name, cover.get_scaled_cover_image())
+	covers_db.close()
+	os.rename(covers_db_name + COVERS_DB_SUFFIX, covers_db_name)
 
 
 
-errors = []
-scan(sys.argv[1], errors)
-
-if errors:
-	print()
-	print('Errors processing the following files:')
-	for e in errors:
-		print(' ', e)
+path = sys.argv[1]
+watcher = Watcher(path)
+watcher.push(path, skip_hidden=True, recursive=True)
+for event in watcher.events():
+	#print('got', event)
+	if event.isdir:
+		if not event.hidden():
+			scan(event.path)
+	else:
+		if event.path.endswith('/' + COVERS_DB_NAME):
+			# FIXME: could still be in hidden dir
+			scan(os.path.dirname(os.path.dirname(event.path)))
+		elif not event.hidden():
+			if event.path.endswith('/' + FOLDER_COVER_FILE):
+				scan(os.path.dirname(os.path.dirname(event.path)))
+			else:
+				scan(os.path.dirname(event.path))
