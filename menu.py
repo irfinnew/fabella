@@ -61,20 +61,28 @@ class Menu:
 			self.state = {}
 
 		try:
-			covers_zip = zipfile.ZipFile(os.path.join(path, '.fabella', 'covers.zip'))
-		except (FileNotFoundError, zipfile.BadZipFile) as e:
-			covers_zip = None
+			index_zip = zipfile.ZipFile(os.path.join(path, '.fabella', 'index.zip'))
+			index = json.loads(index_zip.read('.index.json'))
+			entries = [(entry['name'], entry['isdir']) for entry in index['files']]
+		except (FileNotFoundError, zipfile.BadZipFile, KeyError) as e:
+			self.log.warning(f'Index DB for {path} missing, falling back to scandir(): {repr(e)}')
+			index_zip = None
+			entries = []
+			for isfile, name in sorted((not de.is_dir(), de.name) for de in os.scandir(path)):
+				if name.startswith('.'):
+					continue
+				if name in config.tile.thumb_files:
+					continue
+				entries.append((name, not isfile))
 
 		self.path = path
 		self.tiles = []
-		for isfile, name in sorted((not de.is_dir(), de.name) for de in os.scandir(self.path)):
-			if name.startswith('.'):
-				continue
-			if name in config.tile.thumb_dirs:
-				continue
-			if name in config.tile.thumb_files:
-				continue
-			self.tiles.append(Tile(name, path, not isfile, self, self.tile_font, self.state.get(name), covers_zip))
+		try:
+			for name, isdir in entries:
+				self.tiles.append(Tile(name, path, isdir, self, self.tile_font, self.state.get(name), index_zip))
+		except KeyError:
+			pass
+
 		self.current_idx = 0
 		self.current_offset = 0
 
