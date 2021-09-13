@@ -7,7 +7,7 @@ INDEX_DB_INDEX = '.index.json'
 INDEX_META_ENTRY = '.meta'
 INDEX_DB_SUFFIX = '.part'
 THUMB_VIDEO_POSITION = 0.25
-VIDEO_EXTENSIONS = ['mkv', 'mp4', 'webm', 'avi', 'wmv', 'jpg']  # FIXME: remove jpg
+VIDEO_EXTENSIONS = ['mkv', 'mp4', 'webm', 'avi', 'wmv', 'jpg', 'png']  # FIXME: remove images
 FOLDER_COVER_FILE = '.cover.jpg'
 INDEX_META_VERSION = 1
 
@@ -33,7 +33,7 @@ import PIL.ImageOps
 from logger import Logger
 from watch import Watcher
 
-log = Logger(module='crawl', color=Logger.Magenta)
+log = Logger(module='clerk', color=Logger.Magenta)
 
 
 
