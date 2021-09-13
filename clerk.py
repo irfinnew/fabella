@@ -4,7 +4,6 @@ COVER_WIDTH = 320
 COVER_HEIGHT = 200
 INDEX_DB_NAME = '.fabella/index.zip'
 INDEX_DB_INDEX = '.index.json'
-INDEX_META_ENTRY = '.meta'
 INDEX_DB_SUFFIX = '.part'
 THUMB_VIDEO_POSITION = 0.25
 VIDEO_EXTENSIONS = ['mkv', 'mp4', 'webm', 'avi', 'wmv', 'jpg', 'png']  # FIXME: remove images
@@ -12,7 +11,6 @@ FOLDER_COVER_FILE = '.cover.jpg'
 INDEX_META_VERSION = 1
 
 INDEX_META_TAG = {
-	'name': INDEX_META_ENTRY,
 	'version': INDEX_META_VERSION,
 	'dimensions': f'{COVER_WIDTH}x{COVER_HEIGHT}',
 }
@@ -203,26 +201,18 @@ def scan(path):
 				index = json.loads(index_db.read(INDEX_DB_INDEX))
 			except KeyError:
 				log.error(f'Missing index {INDEX_DB_INDEX} in existing index DB {index_db_name}')
-				# FIXME: ewww. But we must get out of here
-				raise FileNotFoundError()
+				raise FileNotFoundError() # FIXME: ewww. But we must get out of here
 
-			meta = None
-			for i, entry in enumerate(index):
-				if entry.get('name') == INDEX_META_ENTRY:
-					meta = entry
-					del index[i]
-					break
-			if meta is None:
-				log.error(f'Missing {INDEX_META_ENTRY} in existing index DB {index_db_name}')
-				# FIXME: ewww. But we must get out of here
-				raise FileNotFoundError()
-			if meta != INDEX_META_TAG:
-				log.info(f'Outdated {INDEX_DB_INDEX} in existing tiles DB {index_db_name}; ignoring')
-				# FIXME: ewww. But we must get out of here
-				raise FileNotFoundError()
+			try:
+				if index['meta'] != INDEX_META_TAG:
+					log.info(f'Outdated {INDEX_DB_INDEX} in existing tiles DB {index_db_name}; ignoring index')
+					raise FileNotFoundError() # FIXME: ewww. But we must get out of here
+			except KeyError:
+				log.error(f'Missing metadata in existing index DB {index_db_name}')
+				raise FileNotFoundError() # FIXME: ewww. But we must get out of here
 
 			existing_tiles = {}
-			for entry in index:
+			for entry in index['files']:
 				# FIXME: check errors
 				name = entry['name']
 
@@ -277,7 +267,10 @@ def scan(path):
 	index_db = zipfile.ZipFile(index_db_name + INDEX_DB_SUFFIX, 'w')
 
 	# Write index
-	index = [INDEX_META_TAG] + [tile.to_json() for tile in new_tiles]
+	index = {
+		'meta': INDEX_META_TAG,
+		'files': [tile.to_json() for tile in new_tiles],
+	}
 	index_db.writestr(INDEX_DB_INDEX, json.dumps(index, indent=4), compresslevel=zipfile.ZIP_DEFLATED)
 
 	# Write cover images
