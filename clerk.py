@@ -6,7 +6,7 @@ INDEX_DB_NAME = '.fabella/index.zip'
 INDEX_DB_INDEX = '.index.json'
 INDEX_DB_SUFFIX = '.part'
 THUMB_VIDEO_POSITION = 0.25
-VIDEO_EXTENSIONS = ['mkv', 'mp4', 'webm', 'avi', 'wmv', 'jpg', 'png']  # FIXME: remove images
+VIDEO_EXTENSIONS = ['mkv', 'mp4', 'webm', 'avi', 'wmv']
 FOLDER_COVER_FILE = '.cover.jpg'
 INDEX_META_VERSION = 1
 
@@ -58,9 +58,11 @@ class Tile:
 		self.scaled_cover_image = scaled_cover_image
 
 		if json_data:
-			self.isdir, self.size, self.mtime = self.parse_json(json_data)
+			self.isdir, self.size, self.mtime, self.duration, self.tile_colors = self.parse_json(json_data)
 		else:
 			self.isdir, self.size, self.mtime = self.get_attrs()
+			self.duration = None
+			self.tile_colors = None
 
 
 	def get_attrs(self):
@@ -83,15 +85,28 @@ class Tile:
 
 	def to_json(self):
 		"""Return the attributes as json."""
-		return {'name': self.name, 'isdir': self.isdir, 'src_size': self.size, 'src_mtime': self.mtime}
+		return {
+			'name': self.name,
+			'isdir': self.isdir,
+			'src_size': self.size,
+			'src_mtime': self.mtime,
+			'duration': self.get_duration(),
+			'tile_colors': self.tile_colors,
+		}
 
 
 	def parse_json(self, data):
 		try:
-			return (bool(data['isdir']), int(data['src_size']), int(data['src_mtime']))
+			return (
+				bool(data['isdir']),
+				int(data['src_size']),
+				int(data['src_mtime']),
+				int(data['duration']) if data['duration'] is not None else None,
+				str(data['tile_colors']) if data['tile_colors'] is not None else None,
+			)
 		except (json.decoder.JSONDecodeError, TypeError, KeyError) as e:
-			log.warning(f'Error JSON data for {self.name}: {e}')
-			return (None, None, None)
+			log.warning(f'Error JSON data for {self.name}: {repr(e)}')
+			return (None, None, None, None)
 
 
 	def scale_encode(self, fd):
@@ -102,6 +117,20 @@ class Tile:
 				cover = PIL.ImageOps.fit(cover, (COVER_WIDTH, COVER_HEIGHT))
 		except PIL.UnidentifiedImageError as e:
 			raise TileError(f'Loading image for {self.path}: {str(e)}')
+
+		# Determine colors bla FIXME ugly
+		def pixel_avg(*args):
+			return tuple(round(sum(component) / len(component)) for component in list(zip(*args)))
+		colors = cover.resize((4,4))
+		pixels = colors.load()
+		tile_colors = [
+			pixel_avg(pixels[1, 1], pixels[1, 2], pixels[2,1], pixels[2,2]),
+			pixel_avg(pixels[0, 1], pixels[0, 0], pixels[1,0]),
+			pixel_avg(pixels[2, 0], pixels[3, 0], pixels[3,1]),
+			pixel_avg(pixels[3, 2], pixels[3, 3], pixels[2,3]),
+			pixel_avg(pixels[1, 3], pixels[0, 3], pixels[1,2]),
+		]
+		self.tile_colors = '-'.join(''.join(f'{c:02x}' for c in color) for color in tile_colors)
 
 		buffer = io.BytesIO()
 		cover.save(buffer, format='JPEG', quality=90, optimize=True)
@@ -164,6 +193,16 @@ class Tile:
 				self.scaled_cover_image = self.get_file_cover()
 
 		return self.scaled_cover_image
+
+
+	def get_duration(self):
+		"""Return cached duration. If not cached, probe and return. None if unsuccessful."""
+		if not self.duration:
+			if not self.isdir and self.path.endswith(tuple('.' + e for e in VIDEO_EXTENSIONS)):
+				sp = run_command(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', self.path])
+				self.duration = round(float(sp.stdout))
+
+		return self.duration
 
 
 	def __eq__(self, other):

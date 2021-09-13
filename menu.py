@@ -63,7 +63,8 @@ class Menu:
 		try:
 			index_zip = zipfile.ZipFile(os.path.join(path, '.fabella', 'index.zip'))
 			index = json.loads(index_zip.read('.index.json'))
-			entries = [(entry['name'], entry['isdir']) for entry in index['files']]
+			entries = [(entry['name'], entry['isdir'], entry) for entry in index['files']]
+			self.log.debug(f'Using file index from Index DB for {path}')
 		except (FileNotFoundError, zipfile.BadZipFile, KeyError) as e:
 			self.log.warning(f'Index DB for {path} missing, falling back to scandir(): {repr(e)}')
 			index_zip = None
@@ -73,13 +74,13 @@ class Menu:
 					continue
 				if name in config.tile.thumb_files:
 					continue
-				entries.append((name, not isfile))
+				entries.append((name, not isfile, {}))
 
 		self.path = path
 		self.tiles = []
 		try:
-			for name, isdir in entries:
-				self.tiles.append(Tile(name, path, isdir, self, self.tile_font, self.state.get(name), index_zip))
+			for name, isdir, extra in entries:
+				self.tiles.append(Tile(name, path, isdir, self, self.tile_font, extra, self.state.get(name), index_zip))
 		except KeyError:
 			pass
 
@@ -230,7 +231,9 @@ class Menu:
 		start = time.time()
 		for tile in self.tiles:
 			if not tile.rendered:
-				tile.render()
+				if start - int(start) < 10.02:
+					tile.render()
+				break
 				if time.time() - start > 0.05:
 					break
 		else:

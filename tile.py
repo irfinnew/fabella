@@ -51,7 +51,7 @@ class Tile:
 	parts_watched = None
 	rendered = False
 
-	def __init__(self, name, path, isdir, menu, font, state, covers_zip):
+	def __init__(self, name, path, isdir, menu, font, extra, state, covers_zip):
 		self.log.info(f'Created Tile path={path}, name={name}')
 		self.name = name
 		self.path = path
@@ -63,6 +63,13 @@ class Tile:
 		self.parts_watched = [False] * 10
 		self.covers_zip = covers_zip
 
+		self.duration = int(extra['duration']) if extra.get('duration') else None
+		self.tile_colors = str(extra['tile_colors']) if extra.get('tile_colors') else None
+
+		# FIXME: error checking
+		if self.tile_colors is not None:
+			self.tile_colors = [tuple(int(color[i:i+2], 16) / 255 for i in range(0, 6, 2)) for color in self.tile_colors.split('-')]
+
 		# FIXME: state
 		if state:
 			if 'position' in state:
@@ -72,7 +79,8 @@ class Tile:
 
 		if not self.isdir:
 			name = os.path.splitext(name)[0]
-		self.title.text = name
+		# FIXME: don't do duration like this
+		self.title.text = name + (f' ({self.duration}s)' if self.duration else '')
 
 	def update_pos(self, position, force=False):
 		self.log.debug(f'Tile {self.name} update_pos({position}, {force})')
@@ -187,10 +195,27 @@ class Tile:
 			gl.glVertex2f(x1, y2)
 			gl.glEnd()
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-		else:
-			#gl.glColor4f(color, 0, 0, 1)
-			#gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
-			pass
+		elif self.tile_colors:
+			xc, yc = (x1 + x2) // 2, (y1 + y2) // 2
+			gl.glBegin(gl.GL_TRIANGLES)
+
+			gl.glColor4f(*self.tile_colors[1], 1); gl.glVertex2f(x1, y2)
+			gl.glColor4f(*self.tile_colors[2], 1); gl.glVertex2f(x2, y2)
+			gl.glColor4f(*self.tile_colors[0], 1); gl.glVertex2f(xc, yc)
+
+			gl.glColor4f(*self.tile_colors[2], 1); gl.glVertex2f(x2, y2)
+			gl.glColor4f(*self.tile_colors[3], 1); gl.glVertex2f(x2, y1)
+			gl.glColor4f(*self.tile_colors[0], 1); gl.glVertex2f(xc, yc)
+
+			gl.glColor4f(*self.tile_colors[3], 1); gl.glVertex2f(x2, y1)
+			gl.glColor4f(*self.tile_colors[4], 1); gl.glVertex2f(x1, y1)
+			gl.glColor4f(*self.tile_colors[0], 1); gl.glVertex2f(xc, yc)
+
+			gl.glColor4f(*self.tile_colors[4], 1); gl.glVertex2f(x1, y1)
+			gl.glColor4f(*self.tile_colors[1], 1); gl.glVertex2f(x1, y2)
+			gl.glColor4f(*self.tile_colors[0], 1); gl.glVertex2f(xc, yc)
+
+			gl.glEnd()
 
 		# Position bar
 		x1, y1 = x, y - config.tile.thumb_height - 1 - config.tile.pos_bar_height
