@@ -155,7 +155,7 @@ class Tile:
 						if a.mimetype == 'image/jpeg':
 							log.info(f'Found embedded cover in {self.path}')
 							return self.scale_encode(a.data)
-			except enzyme.exceptions.Error as e:
+			except (FileNotFoundError, enzyme.exceptions.Error) as e:
 				raise TileError(f'Processing {self.path}: {str(e)}')
 
 		# If we got here, no embedded cover was found, generate thumbnail
