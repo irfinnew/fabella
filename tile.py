@@ -64,11 +64,14 @@ class Tile:
 		self.covers_zip = covers_zip
 
 		self.duration = int(extra['duration']) if extra.get('duration') else None
-		self.tile_colors = str(extra['tile_colors']) if extra.get('tile_colors') else None
+		self.tile_color = str(extra['tile_color']) if extra.get('tile_color') else None
 
 		# FIXME: error checking
-		if self.tile_colors is not None:
-			self.tile_colors = [tuple(int(color[i:i+2], 16) / 255 for i in range(0, 6, 2)) for color in self.tile_colors.split('-')]
+		if self.tile_color is not None:
+			self.tile_color = self.tile_color.strip('#')
+			self.tile_color = tuple(int(self.tile_color[i:i+2], 16) / 255 for i in range(0, 6, 2))
+		else:
+			self.tile_color = (0, 0, 0)
 
 		# FIXME: state
 		if state:
@@ -195,27 +198,9 @@ class Tile:
 			gl.glVertex2f(x1, y2)
 			gl.glEnd()
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-		elif self.tile_colors:
-			xc, yc = (x1 + x2) // 2, (y1 + y2) // 2
-			gl.glBegin(gl.GL_TRIANGLES)
-
-			gl.glColor4f(*self.tile_colors[1], 1); gl.glVertex2f(x1, y2)
-			gl.glColor4f(*self.tile_colors[2], 1); gl.glVertex2f(x2, y2)
-			gl.glColor4f(*self.tile_colors[0], 1); gl.glVertex2f(xc, yc)
-
-			gl.glColor4f(*self.tile_colors[2], 1); gl.glVertex2f(x2, y2)
-			gl.glColor4f(*self.tile_colors[3], 1); gl.glVertex2f(x2, y1)
-			gl.glColor4f(*self.tile_colors[0], 1); gl.glVertex2f(xc, yc)
-
-			gl.glColor4f(*self.tile_colors[3], 1); gl.glVertex2f(x2, y1)
-			gl.glColor4f(*self.tile_colors[4], 1); gl.glVertex2f(x1, y1)
-			gl.glColor4f(*self.tile_colors[0], 1); gl.glVertex2f(xc, yc)
-
-			gl.glColor4f(*self.tile_colors[4], 1); gl.glVertex2f(x1, y1)
-			gl.glColor4f(*self.tile_colors[1], 1); gl.glVertex2f(x1, y2)
-			gl.glColor4f(*self.tile_colors[0], 1); gl.glVertex2f(xc, yc)
-
-			gl.glEnd()
+		else:
+			gl.glColor4f(*self.tile_color, 1)
+			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Position bar
 		x1, y1 = x, y - config.tile.thumb_height - 1 - config.tile.pos_bar_height

@@ -229,9 +229,9 @@ class Menu:
 
 		# Render at most X tiles per frame
 		start = time.time()
-		for tile in self.tiles:
+		for i, tile in enumerate(self.tiles):
 			if not tile.rendered:
-				if start - int(start) < 10.02:
+				if int(time.time() * 1007) % 4 < 1:
 					tile.render()
 				break
 				if time.time() - start > 0.05:
