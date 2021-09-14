@@ -100,8 +100,8 @@ class Tile:
 		try:
 			return (
 				bool(data['isdir']),
-				int(data['src_size']),
-				int(data['src_mtime']),
+				int(data['src_size']) if data['src_size'] is not None else None,
+				int(data['src_mtime']) if data['src_mtime'] is not None else None,
 				int(data['duration']) if data['duration'] is not None else None,
 				str(data['tile_color']) if data['tile_color'] is not None else None,
 			)
@@ -199,8 +199,8 @@ class Tile:
 		if other is None:
 			return False
 		# Size/mtime might be missing for both; does not mean they're equal!
-		if None in (self.isdir, self.size, self.mtime):
-			return False
+		#if None in (self.isdir, self.size, self.mtime):
+		#	return False
 		return (self.name, self.isdir, self.size, self.mtime) == \
 			(other.name, other.isdir, other.size, other.mtime)
 
@@ -221,7 +221,6 @@ class Tile:
 def scan(path):
 	log.info(f'Processing {path}')
 	index_db_name = (os.path.join(path, INDEX_DB_NAME))
-	os.makedirs(os.path.dirname(index_db_name), exist_ok=True)
 
 	try:
 		with zipfile.ZipFile(index_db_name, 'r') as index_db:
@@ -260,7 +259,13 @@ def scan(path):
 		existing_tiles = {}
 
 	current_tiles = {}
-	for name in os.listdir(path):
+	try:
+		names = os.listdir(path)
+	except FileNotFoundError:
+		log.warning(f'Directory disappeared while we were working on it: {path}')
+		return
+
+	for name in names:
 		if name.startswith('.'):
 			continue
 		if name == FOLDER_COVER_FILE:
@@ -279,9 +284,9 @@ def scan(path):
 			log.info(f'Tile for {name} is up to date, reusing')
 			new_tiles[name] = existing_tiles[name]
 		else:
+			new_tiles[name] = tile
 			try:
 				tile.get_scaled_cover_image()
-				new_tiles[name] = tile
 			except TileError as e:
 				log.error(str(e))
 
@@ -294,6 +299,7 @@ def scan(path):
 	# Write new tiles file
 	new_tiles = sorted(new_tiles.values())
 	index_db = zipfile.ZipFile(index_db_name + INDEX_DB_SUFFIX, 'w')
+	os.makedirs(os.path.dirname(index_db_name), exist_ok=True)
 
 	# Write index
 	index = {
@@ -304,7 +310,8 @@ def scan(path):
 
 	# Write cover images
 	for tile in new_tiles:
-		index_db.writestr(tile.name, tile.get_scaled_cover_image())
+		if tile.scaled_cover_image:
+			index_db.writestr(tile.name, tile.scaled_cover_image)
 
 	index_db.close()
 	os.rename(index_db_name + INDEX_DB_SUFFIX, index_db_name)
@@ -313,18 +320,17 @@ def scan(path):
 
 path = sys.argv[1]
 watcher = Watcher(path)
-watcher.push(path, skip_hidden=True, recursive=True)
+watcher.push(path, recursive=True)
 for event in watcher.events():
 	#print('got', event)
 	if event.isdir:
 		if not event.hidden():
 			scan(event.path)
+			watcher.push(os.path.dirname(event.path))
 	else:
 		if event.path.endswith('/' + INDEX_DB_NAME):
-			# FIXME: could still be in hidden dir
-			scan(os.path.dirname(os.path.dirname(event.path)))
-		elif not event.hidden():
-			if event.path.endswith('/' + FOLDER_COVER_FILE):
-				scan(os.path.dirname(os.path.dirname(event.path)))
-			else:
-				scan(os.path.dirname(event.path))
+			watcher.push(os.path.dirname(os.path.dirname(event.path)))
+		elif event.path.endswith('/' + FOLDER_COVER_FILE):
+			watcher.push(os.path.dirname(os.path.dirname(event.path)))
+		else:
+			watcher.push(os.path.dirname(event.path))

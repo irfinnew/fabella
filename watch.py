@@ -25,11 +25,11 @@ class Handler(watchdog.events.FileSystemEventHandler):
 
 	def on_any_event(self, event):
 		#print(event, event.event_type)
-		if not event.is_directory and event.event_type in {'created', 'closed', 'deleted'}:
-			self.queue.put(Event(event.src_path, False, event.event_type))
-		if not event.is_directory and event.event_type == 'moved':
-			self.queue.put(Event(event.src_path, False, 'deleted'))
-			self.queue.put(Event(event.dest_path, False, 'created'))
+		if event.event_type in {'created', 'closed', 'deleted'}:
+			self.queue.put(Event(event.src_path, event.is_directory, event.event_type))
+		if event.event_type == 'moved':
+			self.queue.put(Event(event.src_path, event.is_directory, 'deleted'))
+			self.queue.put(Event(event.dest_path, event.is_directory, 'created'))
 
 
 class Watcher:
@@ -44,13 +44,16 @@ class Watcher:
 		while True:
 			yield self.handler.queue.get()
 
-	def push(self, path, skip_hidden=False, recursive=False):
-		if skip_hidden and os.path.basename(path).startswith('.'):
+	def push(self, path, skip_hidden=True, recursive=False):
+		# Don't stray outside of our root
+		if os.path.commonpath((path, self.path)) != self.path:
 			return
 
 		self.handler.queue.put(Event(os.path.normpath(path), True, 'modified'))
 
 		if recursive:
 			for de in os.scandir(path):
+				if skip_hidden and de.name.startswith('.'):
+					continue
 				if de.is_dir():
 					self.push(os.path.normpath(de.path), skip_hidden=skip_hidden, recursive=True)
