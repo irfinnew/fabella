@@ -22,6 +22,7 @@ import io
 import ast
 import stat
 import json
+import time
 import zipfile
 import enzyme
 import subprocess
@@ -322,19 +323,30 @@ def scan(path):
 path = sys.argv[1]
 watcher = Watcher(path)
 watcher.push(path, recursive=True)
-for event in watcher.events():
-	print('got', event)
+dirty = {}
+for event in watcher.events(timeout=1):
+	now = time.time()
 
-	if event.isdir and event.evtype in {'modified'} and not event.hidden():
-		scan(event.path)
+	if event:
+		if event.isdir and event.evtype in {'modified'} and not event.hidden():
+			dirty[event.path] = now
 
-	if event.isdir and event.evtype in {'created', 'deleted'}:
-		watcher.push(os.path.dirname(event.path))
-
-	if not event.isdir:
-		if event.path.endswith('/' + INDEX_DB_NAME):
-			watcher.push(os.path.dirname(os.path.dirname(event.path)))
-		elif event.path.endswith('/' + FOLDER_COVER_FILE):
-			watcher.push(os.path.dirname(os.path.dirname(event.path)))
-		else:
+		if event.isdir and event.evtype in {'created', 'deleted'}:
 			watcher.push(os.path.dirname(event.path))
+
+		if not event.isdir:
+			if event.path.endswith('/' + INDEX_DB_NAME):
+				watcher.push(os.path.dirname(os.path.dirname(event.path)))
+			elif event.path.endswith('/' + FOLDER_COVER_FILE):
+				watcher.push(os.path.dirname(os.path.dirname(event.path)))
+			else:
+				watcher.push(os.path.dirname(event.path))
+
+	act_now = []
+	for path, age in list(dirty.items()):
+		if now - age > 1:
+			del dirty[path]
+			act_now.append(path)
+
+	for path in act_now:
+		scan(path)

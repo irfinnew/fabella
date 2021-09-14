@@ -40,9 +40,12 @@ class Watcher:
 		self.observer.schedule(self.handler, path, recursive=True)
 		self.observer.start()
 
-	def events(self):
+	def events(self, timeout=None):
 		while True:
-			yield self.handler.queue.get()
+			try:
+				yield self.handler.queue.get(timeout=timeout)
+			except queue.Empty:
+				yield None
 
 	def push(self, path, skip_hidden=True, recursive=False):
 		# Don't stray outside of our root
