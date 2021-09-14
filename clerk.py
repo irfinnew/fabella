@@ -298,8 +298,9 @@ def scan(path):
 
 	# Write new tiles file
 	new_tiles = sorted(new_tiles.values())
-	index_db = zipfile.ZipFile(index_db_name + INDEX_DB_SUFFIX, 'w')
 	os.makedirs(os.path.dirname(index_db_name), exist_ok=True)
+	index_db = zipfile.ZipFile(index_db_name + INDEX_DB_SUFFIX, 'w')
+	log.info(f'Writing new index DB {index_db_name}')
 
 	# Write index
 	index = {
@@ -322,12 +323,15 @@ path = sys.argv[1]
 watcher = Watcher(path)
 watcher.push(path, recursive=True)
 for event in watcher.events():
-	#print('got', event)
-	if event.isdir:
-		if not event.hidden():
-			scan(event.path)
-			watcher.push(os.path.dirname(event.path))
-	else:
+	print('got', event)
+
+	if event.isdir and event.evtype in {'modified'} and not event.hidden():
+		scan(event.path)
+
+	if event.isdir and event.evtype in {'created', 'deleted'}:
+		watcher.push(os.path.dirname(event.path))
+
+	if not event.isdir:
 		if event.path.endswith('/' + INDEX_DB_NAME):
 			watcher.push(os.path.dirname(os.path.dirname(event.path)))
 		elif event.path.endswith('/' + FOLDER_COVER_FILE):
