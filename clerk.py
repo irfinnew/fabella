@@ -325,6 +325,9 @@ watcher = Watcher(path)
 watcher.push(path, recursive=True)
 dirty = {}
 for event in watcher.events(timeout=1):
+	if event:
+		log.debug(f'Got event: {event}')
+
 	now = time.time()
 
 	if event:
