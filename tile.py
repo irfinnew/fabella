@@ -5,6 +5,7 @@ import OpenGL.GL as gl
 import config
 from logger import Logger
 from image import Image
+from worker import Worker
 
 # FIXME: UGH
 blursize = 32
@@ -69,6 +70,36 @@ class Tile:
 			self.tile_color = tuple(int(self.tile_color[i:i+2], 16) / 255 for i in range(0, 6, 2))
 		else:
 			self.tile_color = (0, 0, 0)
+
+		self.title = None
+		self.cover = None
+		self.duration = None
+		self.extra = extra
+		self.covers_zip = covers_zip
+		Worker.schedule(self)
+		return
+		# Title
+		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines)
+		self.title.text = self.name if self.isdir else os.path.splitext(self.name)[0]
+
+		# Cover image
+		self.cover = Image(None, config.tile.width, config.tile.thumb_height, self.name)
+		if covers_zip:
+			try:
+				with covers_zip.open(self.name) as fd:
+					self.log.info(f'Loading thumbnail for {self.name}')
+					self.cover.source = fd.read()
+			except KeyError:
+				self.log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
+
+		# Duration
+		self.duration = self.font.text(None, max_width=None, lines=1)
+		self.duration.text = self.duration_description(extra.get('duration'))
+
+	def run(self):
+		self.log.info(f'Delayed init for {self.name}')
+		covers_zip = self.covers_zip
+		extra = self.extra
 
 		# Title
 		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines)
@@ -172,9 +203,9 @@ class Tile:
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Thumbnail
-		x1, y1, x2, y2 = x, y - config.tile.thumb_height, x + config.tile.width, y
-		if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
-		if self.cover.texture:
+		if self.cover and self.cover.texture:
+			x1, y1, x2, y2 = x, y - self.cover.height, x + self.cover.width, y
+			if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
 			gl.glColor4f(1, 1, 1, 1)
 			gl.glBindTexture(gl.GL_TEXTURE_2D, self.cover.texture)
 			gl.glBegin(gl.GL_QUADS)
@@ -193,9 +224,9 @@ class Tile:
 			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Duration
-		y1, x2 = y - config.tile.thumb_height, x + int(config.tile.width * 0.98)
-		x1, y2 = x2 - self.duration.width, y1 + self.duration.height
-		if self.duration.texture:
+		if self.duration and self.duration.texture:
+			y1, x2 = y - config.tile.thumb_height, x + int(config.tile.width * 0.98)
+			x1, y2 = x2 - self.duration.width, y1 + self.duration.height
 			if selected:
 				gl.glColor4f(*config.tile.text_hl_color)
 			else:
@@ -244,7 +275,7 @@ class Tile:
 			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Title
-		if self.title.texture is not None:
+		if self.title and self.title.texture:
 			x1, y1 = x, y - config.tile.thumb_height - config.tile.text_vspace - self.title.height
 			x2, y2 = x1 + self.title.width, y1 + self.title.height
 			if selected: y1 -= outset_y; y2 -= outset_y

@@ -225,7 +225,7 @@ class Menu:
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		if self.bench:
-			if all(tile.title.rendered for tile in self.tiles):
+			if all(tile.title and tile.title.rendered for tile in self.tiles):
 				self.log.warning(f'Finished rendering in {time.time() - self.bench} seconds')
 				self.bench = None
 
