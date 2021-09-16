@@ -18,12 +18,14 @@ class Pool:
 		"""Schedule a job for execution, FIFO-style.
 		Job must be a runnable function.
 		"""
+		log.debug(f'Scheduling job {job} on pool {self.name}')
 		self.queue.put(job)
 
 	def flush(self):
 		"""Clear the job queue, aborting any jobs that haven't been run yet.
 		Jobs that already started processing will still be completed.
 		"""
+		log.info(f'Flushing pool {self.name}')
 		try:
 			while True:
 				self.queue.get_nowait()

@@ -30,7 +30,9 @@ class Menu:
 	def __init__(self, path='/', enabled=False):
 		self.log.info(f'Created instance, path={path}, enabled={enabled}')
 
+		# FIXME: number of threads
 		self.render_pool = Pool('render', threads=3)
+		self.tile_pool = Pool('tile', threads=1)
 		self.tile_font = Font('DejaVuSans', config.tile.text_size, stroke_width=3)
 		self.menu_font = Font('DejaVuSans', config.menu.text_size, stroke_width=4)
 		self.load(path)
@@ -48,6 +50,7 @@ class Menu:
 		self.enabled = False
 
 	def load(self, path):
+		self.tile_pool.flush()
 		self.render_pool.flush()
 		self.forget()
 		self.log.info(f'Loading {path}')
@@ -80,11 +83,11 @@ class Menu:
 
 		self.path = path
 		self.tiles = []
-		try:
-			for name, isdir, extra in entries:
-				self.tiles.append(Tile(name, path, isdir, self.render_pool, self, self.tile_font, extra, self.state.get(name), index_zip))
-		except KeyError:
-			pass
+		start = time.time()
+		for name, isdir, extra in entries:
+			self.tiles.append(Tile(name, path, isdir, self.tile_pool, self.render_pool, self, self.tile_font, extra, self.state.get(name), index_zip))
+		start = int((time.time() - start) * 1000)
+		print(f'Creating tiles: {start}ms')
 
 		self.current_idx = 0
 		self.current_offset = 0

@@ -44,10 +44,10 @@ class Text:
 			self.pool.schedule(self.render)
 
 	def render(self):
-		self.log.info(f'Rendering text: "{self._text}"')
+		self.log.debug(f'Rendering text: "{self._text}"')
 
 		if self.rendered:
-			self.log.info('Already rendered, skipping')
+			self.log.warning('Already rendered, skipping')
 			return
 
 		border = self.font.stroke_width

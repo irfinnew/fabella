@@ -1,6 +1,7 @@
 import os
 import time
 import OpenGL.GL as gl
+import functools
 
 import config
 from logger import Logger
@@ -40,12 +41,13 @@ class Tile:
 	log = Logger(module='Tile', color=Logger.Magenta)
 
 
-	def __init__(self, name, path, isdir, render_pool, menu, font, extra, state, covers_zip):
-		self.log.info(f'Created Tile path={path}, name={name}')
+	def __init__(self, name, path, isdir, tile_pool, render_pool, menu, font, extra, state, covers_zip):
+		self.log.debug(f'Created Tile path={path}, name={name}')
 
 		self.name = name
 		self.path = path
 		self.isdir = isdir
+		self.tile_pool = tile_pool
 		self.render_pool = render_pool
 		self.menu = menu
 		self.font = font
@@ -71,13 +73,15 @@ class Tile:
 		else:
 			self.tile_color = (0, 0, 0)
 
-		#self.title = None
-		#self.cover = None
-		#self.duration = None
-		#self.extra = extra
-		#self.covers_zip = covers_zip
-		#Worker.schedule(self)
-		#return
+		self.title = None
+		self.cover = None
+		self.duration = None
+		self.tile_pool.schedule(functools.partial(self.init2, covers_zip, extra))
+
+
+	def init2(self, covers_zip, extra):
+		self.log.debug(f'Delayed init for {self.name}')
+
 		# Title
 		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines, pool=self.render_pool)
 		self.title.text = self.name if self.isdir else os.path.splitext(self.name)[0]
@@ -87,36 +91,12 @@ class Tile:
 		if covers_zip:
 			try:
 				with covers_zip.open(self.name) as fd:
-					self.log.info(f'Loading thumbnail for {self.name}')
 					self.cover.source = fd.read()
 			except KeyError:
 				self.log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
 
 		# Duration
 		self.duration = self.font.text(None, max_width=None, lines=1, pool=self.render_pool)
-		self.duration.text = self.duration_description(extra.get('duration'))
-
-	def run(self):
-		self.log.info(f'Delayed init for {self.name}')
-		covers_zip = self.covers_zip
-		extra = self.extra
-
-		# Title
-		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines)
-		self.title.text = self.name if self.isdir else os.path.splitext(self.name)[0]
-
-		# Cover image
-		self.cover = Image(None, config.tile.width, config.tile.thumb_height, self.name)
-		if covers_zip:
-			try:
-				with covers_zip.open(self.name) as fd:
-					self.log.info(f'Loading thumbnail for {self.name}')
-					self.cover.source = fd.read()
-			except KeyError:
-				self.log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
-
-		# Duration
-		self.duration = self.font.text(None, max_width=None, lines=1)
 		self.duration.text = self.duration_description(extra.get('duration'))
 
 

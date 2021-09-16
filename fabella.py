@@ -15,7 +15,6 @@ from video import Video
 window = Window(1920, 1080, "Fabella")
 menu = Menu(sys.argv[1], enabled=True)
 video = Video()
-# FIXME: number of threads
 log = Logger(module='Main', color=Logger.Red)
 
 #### Main loop

@@ -39,10 +39,10 @@ class Image:
 			self.pool.schedule(self.render)
 
 	def render(self):
-		self.log.info(f'Rendering image: {self.name}')
+		self.log.debug(f'Rendering image: {self.name}')
 
 		if self.rendered:
-			self.log.info('Already rendered, skipping')
+			self.log.warning('Already rendered, skipping')
 			return
 
 		with PIL.Image.open(io.BytesIO(self._source)) as image:
