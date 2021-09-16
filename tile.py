@@ -278,7 +278,7 @@ class Tile:
 
 
 	def destroy(self):
-		self.log.info(f'Destroying {self.name}')
+		self.log.debug(f'Destroying {self.name}')
 		#FIXME: empty now
 
 

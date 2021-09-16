@@ -87,7 +87,7 @@ class Menu:
 		for name, isdir, extra in entries:
 			self.tiles.append(Tile(name, path, isdir, self.tile_pool, self.render_pool, self, self.tile_font, extra, self.state.get(name), index_zip))
 		start = int((time.time() - start) * 1000)
-		print(f'Creating tiles: {start}ms')
+		self.log.warning(f'Creating tiles: {start}ms')
 
 		self.current_idx = 0
 		self.current_offset = 0
@@ -229,8 +229,9 @@ class Menu:
 			gl.glEnd()
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
-		if self.bench:
-			if all(tile.title and tile.title.rendered for tile in self.tiles):
+		if self.bench and self.tiles:
+			t = self.tiles[-1]
+			if t.title and t.title.rendered and t.cover and t.cover.rendered:
 				self.log.warning(f'Finished rendering in {time.time() - self.bench} seconds')
 				self.bench = None
 
