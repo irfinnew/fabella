@@ -320,7 +320,7 @@ def scan(path):
 
 
 
-path = sys.argv[1]
+path = os.path.abspath(sys.argv[1])
 watcher = Watcher(path)
 watcher.push(path, recursive=True)
 dirty = {}
