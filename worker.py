@@ -4,46 +4,54 @@ import queue
 from logger import Logger
 
 
-class Worker(threading.Thread):
-	log = Logger(module='Worker', color=Logger.Magenta + Logger.Bright)
-	queue = None
-	threads = []
+log = Logger(module='Worker', color=Logger.Magenta + Logger.Bright)
 
-	@classmethod
-	def initialize(cls, *, threads=1):
-		"""Start {threads} worker threads."""
-		if cls.threads:
-			cls.log.error('Worker.start(): workers have already been started!')
-			return
 
-		cls.queue = queue.Queue()
+class Pool:
+	def __init__(self, name, *, threads=1):
+		log.info(f'Creating pool {name} of {threads} worker threads')
+		self.name = name
+		self.queue = queue.Queue()
+		self.workers = [Worker(self) for i in range(threads)]
 
-		cls.log.info(f'Starting {threads} worker threads')
-		for i in range(threads):
-			thread = cls(daemon=True)
-			thread.start()
-			cls.threads.append(thread)
-
-	@classmethod
-	def schedule(cls, job):
+	def schedule(self, job):
 		"""Schedule a job for execution, FIFO-style.
-		Job must implement a run() method.
+		Job must be a runnable function.
 		"""
-		cls.queue.put(job)
+		self.queue.put(job)
 
-	@classmethod
-	def flush(cls):
+	def flush(self):
 		"""Clear the job queue, aborting any jobs that haven't been run yet.
 		Jobs that already started processing will still be completed.
 		"""
 		try:
 			while True:
-				cls.queue.get_nowait()
+				self.queue.get_nowait()
 		except queue.Empty:
 			pass
 
+	def __str__(self):
+		return f'Pool({self.name}, workers={len(self.workers)})'
+
+	def __repr__(self):
+		return self.__str__()
+
+
+class Worker:
+	def __init__(self, pool):
+		self.pool = pool
+		self.queue = pool.queue
+		self.thread = threading.Thread(target=self.run, daemon=True)
+		self.thread.start()
+
 	def run(self):
-		self.log.info(f'Thread {self.name} running')
+		log.info(f'Thread {self.thread.name} running for pool {self.pool.name}')
 		while True:
-			job = Worker.queue.get()
-			job.run()
+			job = self.queue.get()
+			job()
+
+	def __str__(self):
+		return f'Worker({self.thread.name} for {self.pool.name})'
+
+	def __repr__(self):
+		return self.__str__()

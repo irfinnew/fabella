@@ -9,7 +9,7 @@ import config
 from logger import Logger
 from tile import Tile
 from font import Font
-from worker import Worker
+from worker import Pool
 
 class Menu:
 	log = Logger(module='Menu', color=Logger.Cyan)
@@ -29,13 +29,15 @@ class Menu:
 
 	def __init__(self, path='/', enabled=False):
 		self.log.info(f'Created instance, path={path}, enabled={enabled}')
+
+		self.render_pool = Pool('render', threads=3)
 		self.tile_font = Font('DejaVuSans', config.tile.text_size, stroke_width=3)
 		self.menu_font = Font('DejaVuSans', config.menu.text_size, stroke_width=4)
 		self.load(path)
 		self.enabled = enabled
 
-		self.bread_text = self.menu_font.text(None)
-		self.clock_text = self.menu_font.text(None)
+		self.bread_text = self.menu_font.text(None, pool=self.render_pool)
+		self.clock_text = self.menu_font.text(None, pool=self.render_pool)
 
 	def open(self):
 		self.log.info('Opening Menu')
@@ -46,7 +48,7 @@ class Menu:
 		self.enabled = False
 
 	def load(self, path):
-		Worker.flush()
+		self.render_pool.flush()
 		self.forget()
 		self.log.info(f'Loading {path}')
 		# BENCHMARK
@@ -80,7 +82,7 @@ class Menu:
 		self.tiles = []
 		try:
 			for name, isdir, extra in entries:
-				self.tiles.append(Tile(name, path, isdir, self, self.tile_font, extra, self.state.get(name), index_zip))
+				self.tiles.append(Tile(name, path, isdir, self.render_pool, self, self.tile_font, extra, self.state.get(name), index_zip))
 		except KeyError:
 			pass
 

@@ -3,13 +3,12 @@ import OpenGL.GL as gl
 import PIL.Image, PIL.ImageOps
 
 from logger import Logger
-from worker import Worker
 
 
 class Image:
 	log = Logger(module='Image', color=Logger.Black + Logger.Bright)
 
-	def __init__(self, source, width, height, name='None'):
+	def __init__(self, source, width, height, name='None', pool=None):
 		self._source = None
 		self.pixels = None
 		self.rendered = False
@@ -18,6 +17,7 @@ class Image:
 		self.width = width
 		self.height = height
 		self.name = name
+		self.pool = pool
 		self.source = source
 
 	def __del__(self):
@@ -36,9 +36,9 @@ class Image:
 			self._source = source
 			self.rendered = False
 			self.update_texture = False
-			Worker.schedule(self)
+			self.pool.schedule(self.render)
 
-	def run(self):
+	def render(self):
 		self.log.info(f'Rendering image: {self.name}')
 
 		if self.rendered:

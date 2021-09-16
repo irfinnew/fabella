@@ -7,13 +7,12 @@ gi.require_version('PangoCairo', '1.0')
 from gi.repository import PangoCairo
 
 from logger import Logger
-from worker import Worker
 
 
 class Text:
 	log = Logger(module='Font', color=Logger.Black + Logger.Bright)
 
-	def __init__(self, font, text, max_width=None, lines=1):
+	def __init__(self, font, text, max_width=None, lines=1, pool=None):
 		self._text = None
 		self.width = 0
 		self.height = 0
@@ -24,6 +23,7 @@ class Text:
 		self.font = font
 		self.max_width = max_width
 		self.lines = lines
+		self.pool = pool
 		self.text = text
 
 	def __del__(self):
@@ -41,9 +41,9 @@ class Text:
 		if text != self._text:
 			self._text = text
 			self.rendered = False
-			Worker.schedule(self)
+			self.pool.schedule(self.render)
 
-	def run(self):
+	def render(self):
 		self.log.info(f'Rendering text: "{self._text}"')
 
 		if self.rendered:
@@ -128,5 +128,5 @@ class Font:
 		self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 64, 64)
 		self.context = cairo.Context(self.surface)
 
-	def text(self, text, max_width=None, lines=1):
-		return Text(self, text, max_width, lines)
+	def text(self, text, max_width=None, lines=1, pool=None):
+		return Text(self, text, max_width, lines, pool=pool)

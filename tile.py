@@ -5,7 +5,6 @@ import OpenGL.GL as gl
 import config
 from logger import Logger
 from image import Image
-from worker import Worker
 
 # FIXME: UGH
 blursize = 32
@@ -41,12 +40,13 @@ class Tile:
 	log = Logger(module='Tile', color=Logger.Magenta)
 
 
-	def __init__(self, name, path, isdir, menu, font, extra, state, covers_zip):
+	def __init__(self, name, path, isdir, render_pool, menu, font, extra, state, covers_zip):
 		self.log.info(f'Created Tile path={path}, name={name}')
 
 		self.name = name
 		self.path = path
 		self.isdir = isdir
+		self.render_pool = render_pool
 		self.menu = menu
 		self.font = font
 
@@ -71,19 +71,19 @@ class Tile:
 		else:
 			self.tile_color = (0, 0, 0)
 
-		self.title = None
-		self.cover = None
-		self.duration = None
-		self.extra = extra
-		self.covers_zip = covers_zip
-		Worker.schedule(self)
-		return
+		#self.title = None
+		#self.cover = None
+		#self.duration = None
+		#self.extra = extra
+		#self.covers_zip = covers_zip
+		#Worker.schedule(self)
+		#return
 		# Title
-		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines)
+		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines, pool=self.render_pool)
 		self.title.text = self.name if self.isdir else os.path.splitext(self.name)[0]
 
 		# Cover image
-		self.cover = Image(None, config.tile.width, config.tile.thumb_height, self.name)
+		self.cover = Image(None, config.tile.width, config.tile.thumb_height, self.name, pool=self.render_pool)
 		if covers_zip:
 			try:
 				with covers_zip.open(self.name) as fd:
@@ -93,7 +93,7 @@ class Tile:
 				self.log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
 
 		# Duration
-		self.duration = self.font.text(None, max_width=None, lines=1)
+		self.duration = self.font.text(None, max_width=None, lines=1, pool=self.render_pool)
 		self.duration.text = self.duration_description(extra.get('duration'))
 
 	def run(self):
