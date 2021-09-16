@@ -1,10 +1,10 @@
 import os
 import time
 import OpenGL.GL as gl
-from PIL import Image, ImageOps
 
 import config
 from logger import Logger
+from image import Image
 
 # FIXME: UGH
 blursize = 32
@@ -41,7 +41,6 @@ class Tile:
 	menu = None
 	font = None
 	title = None
-	cover_texture = None
 	path = ''
 	full_path = ''
 	isdir = False
@@ -62,6 +61,8 @@ class Tile:
 		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines)
 		self.parts_watched = [False] * 10
 		self.covers_zip = covers_zip
+
+		self.cover = Image(None, config.tile.width, config.tile.thumb_height, self.name)
 
 		self.duration = int(extra['duration']) if extra.get('duration') else None
 		self.tile_color = str(extra['tile_color']) if extra.get('tile_color') else None
@@ -84,6 +85,7 @@ class Tile:
 			name = os.path.splitext(name)[0]
 		# FIXME: don't do duration like this
 		self.title.text = name + (f' ({self.duration}s)' if self.duration else '')
+		self.render()
 
 	def update_pos(self, position, force=False):
 		self.log.debug(f'Tile {self.name} update_pos({position}, {force})')
@@ -124,32 +126,21 @@ class Tile:
 
 	def render(self):
 		self.log.info(f'Rendering for {self.name}')
-		self.cover_texture = self.load_cover()
+		self.load_cover()
 		self.rendered = True
 
 	def load_cover(self):
 		if self.covers_zip is None:
+			self.log.error(f'Loading thumbnail for {self.name}: No zip')
 			return None
 
 		try:
 			with self.covers_zip.open(self.name) as fd:
 				self.log.info(f'Loading thumbnail for {self.name}')
-				with Image.open(fd) as cover:
-					cover = ImageOps.fit(cover, (config.tile.width, config.tile.thumb_height))
-
-					# FIXME: assumes RGB8 image
-					texture = gl.glGenTextures(1)
-					gl.glBindTexture(gl.GL_TEXTURE_2D, texture)
-					gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-					gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-					gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, cover.width, cover.height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, cover.tobytes())
-					gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-					# FIXME: is this allowed?
-					del cover
-
-					return texture
+				self.cover.source = fd.read()
 		except KeyError:
-			return None
+			self.log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
+			pass
 
 	def draw(self, x, y, selected=False):
 		outset_x = int(config.tile.width * config.tile.highlight_outset / 2)
@@ -184,9 +175,9 @@ class Tile:
 		# Thumbnail
 		x1, y1, x2, y2 = x, y - config.tile.thumb_height, x + config.tile.width, y
 		if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
-		if self.cover_texture is not None:
+		if self.cover.texture:
 			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.cover_texture)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.cover.texture)
 			gl.glBegin(gl.GL_QUADS)
 			gl.glTexCoord2f(0.0, 1.0)
 			gl.glVertex2f(x1, y1)
@@ -256,9 +247,7 @@ class Tile:
 
 	def destroy(self):
 		self.log.info(f'Destroying {self.name}')
-		# FIXME: yuck
-		if self.cover_texture is not None:
-			gl.glDeleteTextures([self.cover_texture])
+		#FIXME: empty now
 
 	def __str__(self):
 		parts_watched = ''.join('#' if pw else '.' for pw in self.parts_watched)

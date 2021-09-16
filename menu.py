@@ -9,6 +9,7 @@ import config
 from logger import Logger
 from tile import Tile
 from font import Font
+from worker import Worker
 
 class Menu:
 	log = Logger(module='Menu', color=Logger.Cyan)
@@ -45,7 +46,7 @@ class Menu:
 		self.enabled = False
 
 	def load(self, path):
-		Font.clear_rendering_queue()
+		Worker.flush()
 		self.forget()
 		self.log.info(f'Loading {path}')
 		# BENCHMARK
@@ -184,9 +185,7 @@ class Menu:
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Breadcrumbs
-		#self.bread_text.text = ' › '.join(['Home'] + self.breadcrumbs)
-		#self.bread_text.prioritize()
-		self.bread_text.priority_text(' › '.join(['Home'] + self.breadcrumbs))
+		self.bread_text.text = ' › '.join(['Home'] + self.breadcrumbs)
 
 		if self.bread_text.texture:
 			x1, y1 = config.menu.header_hspace, height - config.menu.header_vspace - self.bread_text.height
@@ -206,9 +205,7 @@ class Menu:
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# Clock
-		#self.clock_text.text = datetime.datetime.now().strftime('%H:%M:%S')
-		#self.clock_text.prioritize()
-		self.clock_text.priority_text(datetime.datetime.now().strftime('%H:%M:%S'))
+		self.clock_text.text = datetime.datetime.now().strftime('%H:%M:%S')
 
 		if self.clock_text.texture:
 			x1, y1 = width - config.menu.header_hspace - self.clock_text.width, height - config.menu.header_vspace - self.clock_text.height
@@ -227,18 +224,8 @@ class Menu:
 			gl.glEnd()
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
-		# Render at most X tiles per frame
-		start = time.time()
-		for i, tile in enumerate(self.tiles):
-			if not tile.rendered:
-				if int(time.time() * 1007) % 4 < 1:
-					tile.render()
-				break
-				if time.time() - start > 0.05:
-					break
-		else:
-			# BENCHMARK
-			if self.bench:
+		if self.bench:
+			if all(tile.title.rendered for tile in self.tiles):
 				self.log.warning(f'Finished rendering in {time.time() - self.bench} seconds')
 				self.bench = None
 

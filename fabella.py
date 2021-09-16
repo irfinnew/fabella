@@ -6,14 +6,18 @@ import sys
 import glfw
 import time
 import OpenGL.GL as gl
+
 from logger import Logger
 from window import Window
 from menu import Menu
 from video import Video
+from worker import Worker
 
 window = Window(1920, 1080, "Fabella")
+Worker.initialize(threads=3)
 menu = Menu(sys.argv[1], enabled=True)
 video = Video()
+# FIXME: number of threads
 log = Logger(module='Main', color=Logger.Red)
 
 #### Main loop
