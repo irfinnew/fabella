@@ -231,7 +231,7 @@ class Menu:
 
 		if self.bench and self.tiles:
 			t = self.tiles[-1]
-			if t.title and t.title.rendered and t.cover and t.cover.rendered:
+			if t.title and t.title.rendered:
 				self.log.warning(f'Finished rendering in {time.time() - self.bench} seconds')
 				self.bench = None
 

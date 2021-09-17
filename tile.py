@@ -183,8 +183,8 @@ class Tile:
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Thumbnail
+		x1, y1, x2, y2 = x, y - config.tile.thumb_height, x + config.tile.width, y
 		if self.cover and self.cover.texture:
-			x1, y1, x2, y2 = x, y - self.cover.height, x + self.cover.width, y
 			if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
 			gl.glColor4f(1, 1, 1, 1)
 			gl.glBindTexture(gl.GL_TEXTURE_2D, self.cover.texture)
