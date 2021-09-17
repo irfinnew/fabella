@@ -28,8 +28,8 @@ class Text:
 
 	def __del__(self):
 		if self._texture:
+			self.log.error(f'{self}.__del__(): lingering texture!')
 			# FIXME: is this called from the right GL context? Does this work?
-			#print(f'>>>> Deleting textures {[self._texture]}')
 			gl.glDeleteTextures([self._texture])
 			self._texture = None
 
@@ -55,7 +55,6 @@ class Text:
 		layout.set_font_description(self.font.face)
 		layout.set_wrap(Pango.WrapMode.WORD)
 		layout.set_ellipsize(Pango.EllipsizeMode.END)
-
 		layout.set_text(self._text, -1)
 
 		# Wrapping
@@ -108,6 +107,12 @@ class Text:
 		self.surface = None
 		return self._texture
 
+	def __str__(self):
+		return f'Text({self.font.name} {self.font.size}, {repr(self._text)})'
+
+	def __repr__(self):
+		return self.__str__()
+
 
 class Font:
 	log = Logger(module='Font', color=Logger.Black + Logger.Bright)
@@ -130,3 +135,9 @@ class Font:
 
 	def text(self, text, max_width=None, lines=1, pool=None):
 		return Text(self, text, max_width, lines, pool=pool)
+
+	def __str__(self):
+		return f'Font({self.name} {self.size}, {self.stroke_width})'
+
+	def __repr__(self):
+		return self.__str__()

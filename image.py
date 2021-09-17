@@ -22,8 +22,8 @@ class Image:
 
 	def __del__(self):
 		if self._texture:
+			self.log.error(f'{self}.__del__(): lingering texture!')
 			# FIXME: is this called from the right GL context? Does this work?
-			#print(f'>>>> Deleting textures {[self._texture]}')
 			gl.glDeleteTextures([self._texture])
 			self._texture = None
 
@@ -71,3 +71,9 @@ class Image:
 
 		self.pixels = None
 		return self._texture
+
+	def __str__(self):
+		return f'Image({self.name}, {self.width}, {self.height})'
+
+	def __repr__(self):
+		return self.__str__()

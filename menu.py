@@ -113,8 +113,7 @@ class Menu:
 
 	def forget(self):
 		self.log.info('Forgetting tiles')
-		for tile in self.tiles:
-			tile.destroy()
+		Tile.release_all_textures(self.tiles)
 		self.tiles = []
 		self.current_idx = None
 

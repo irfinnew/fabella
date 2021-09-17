@@ -100,6 +100,19 @@ class Tile:
 		self.duration.text = self.duration_description(extra.get('duration'))
 
 
+	@classmethod
+	def release_all_textures(cls, tiles):
+		tobjs = [t.title for t in tiles] + [t.cover for t in tiles] + [t.duration for t in tiles]
+		tobjs = [o for o in tobjs if o]
+
+		textures = [o._texture for o in tobjs if o._texture]
+		cls.log.info(f'Deleting {len(textures)} textures')
+		gl.glDeleteTextures(textures)
+
+		for o in tobjs:
+			o._texture = None
+
+
 	def duration_description(self, duration):
 		if duration is None:
 			return None
@@ -277,11 +290,10 @@ class Tile:
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 
-	def destroy(self):
-		self.log.debug(f'Destroying {self.name}')
-		#FIXME: empty now
-
-
 	def __str__(self):
 		parts_watched = ''.join('#' if pw else '.' for pw in self.parts_watched)
 		return f'Tile(name={self.name}, isdir={self.isdir}, position={self.position}, parts_watched={parts_watched})'
+
+
+	def __repr__(self):
+		return self.__str__()
