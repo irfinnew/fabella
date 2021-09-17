@@ -1,0 +1,17 @@
+name: "foo.mkv"
+isdir: False
+position: 0.6
+parts_watched: "######...."
+length: 1836
+tile_color: #76a92f
+src_mtime: 2348723842
+src_size: 21374678213
+
+unwatched: False
+watching: True
+
+
+
+# Maybe later
+first_seen: 2348723842
+position_ts: 2348723842
