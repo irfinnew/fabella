@@ -32,6 +32,10 @@ class Pool:
 		except queue.Empty:
 			pass
 
+	def join(self):
+		"""Blocks until all jobs have finished processing."""
+		self.queue.join()
+
 	def __str__(self):
 		return f'Pool({self.name}, workers={len(self.workers)})'
 
@@ -51,6 +55,7 @@ class Worker:
 		while True:
 			job = self.queue.get()
 			job()
+			self.queue.task_done()
 
 	def __str__(self):
 		return f'Worker({self.thread.name} for {self.pool.name})'

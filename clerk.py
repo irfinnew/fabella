@@ -13,6 +13,7 @@ THUMB_VIDEO_POSITION = 0.25
 VIDEO_FILETYPES = ['mkv', 'mp4', 'webm', 'avi', 'wmv']
 VIDEO_EXTENSIONS = tuple('.' + ext for ext in VIDEO_FILETYPES)
 FOLDER_COVER_FILE = '.cover.jpg'
+MKV_COVER_FILE = 'cover.jpg'
 
 
 
@@ -34,6 +35,7 @@ import PIL.ImageOps
 import colorpicker
 from logger import Logger
 from watch import Watcher
+from worker import Pool
 
 log = Logger(module='clerk', color=Logger.Magenta)
 
@@ -127,8 +129,7 @@ class BaseTile:
 				with open(self.full_path, 'rb') as fd:
 					mkv = enzyme.MKV(fd)
 					for a in mkv.attachments:
-						# FIXME: just uses first jpg attachment it sees; check filename!
-						if a.mimetype == 'image/jpeg':
+						if a.mimetype == 'image/jpeg' and a.filename == MKV_COVER_FILE:
 							log.info(f'Found embedded cover in {self.full_path}')
 							return self.scale_encode(a.data)
 			except (FileNotFoundError, enzyme.exceptions.Error) as e:
@@ -143,7 +144,7 @@ class BaseTile:
 				self.duration = round(duration)
 				duration = str(int(duration * THUMB_VIDEO_POSITION))
 
-				sp = run_command(['ffmpeg', '-ss', duration, '-i', self.full_path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
+				sp = run_command(['ffmpeg', '-ss', duration, '-threads', '1', '-i', self.full_path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
 				return self.scale_encode(io.BytesIO(sp.stdout))
 			except subprocess.CalledProcessError:
 				raise TileError(f'Processing {self.full_path}: Command returned error')
@@ -156,8 +157,7 @@ class BaseTile:
 		return float(sp.stdout)
 
 
-	# FIXME: poor name
-	def update_stuff(self):
+	def analyze(self):
 		if self.cover_needs_update:
 			try:
 				if self.isdir:
@@ -330,7 +330,7 @@ class Meta:
 
 
 
-def scan(path):
+def scan(path, pool):
 	log.debug(f'Processing {path}')
 	index_db_name = os.path.join(path, INDEX_DB_NAME)
 
@@ -442,9 +442,9 @@ def scan(path):
 			log.debug(f'Tile for {name} is stale, re-inspecting')
 
 	#### Update covers/tile_color/duration etc; this is the expensive part
-	log.warning('STARTING UPDATES')
 	for tile in real_tiles:
-		tile.update_stuff()
+		pool.schedule(tile.analyze)
+	pool.join()
 
 	#### Write index
 	if index_needs_update:
@@ -481,109 +481,8 @@ def scan(path):
 			log.debug(f'No files here, not writing {cover_db_name}')
 
 
-	return
-	exit()
 
-	try:
-		with zipfile.ZipFile(index_db_name, 'r') as index_db:
-			log.info(f'Found existing index DB {index_db_name}')
-			try:
-				index = json.loads(index_db.read(INDEX_DB_INDEX))
-			except KeyError:
-				log.error(f'Missing index {INDEX_DB_INDEX} in existing index DB {index_db_name}')
-				raise FileNotFoundError() # FIXME: ewww. But we must get out of here
-
-			try:
-				if index['meta'] != INDEX_META_TAG:
-					log.info(f'Outdated {INDEX_DB_INDEX} in existing index DB {index_db_name}; ignoring index')
-					raise FileNotFoundError() # FIXME: ewww. But we must get out of here
-			except KeyError:
-				log.error(f'Missing metadata in existing index DB {index_db_name}')
-				raise FileNotFoundError() # FIXME: ewww. But we must get out of here
-
-			existing_tiles = {}
-			for entry in index['files']:
-				# FIXME: check errors
-				name = entry['name']
-
-				# It's semi-valid for a file to exist in the index but not have a cover image
-				try:
-					scaled_cover_image = index_db.read(name)
-				except KeyError:
-					scaled_cover_image = None
-
-				existing_tiles[name] = Tile(name, path, json_data=entry, scaled_cover_image=scaled_cover_image)
-
-	except FileNotFoundError:
-		existing_tiles = {}
-	except zipfile.BadZipFile as e:
-		log.error(f'Existing index DB {index_db_name} is broken: {str(e)}')
-		existing_tiles = {}
-
-	current_tiles = {}
-	try:
-		names = os.listdir(path)
-	except FileNotFoundError:
-		log.warning(f'Directory disappeared while we were working on it: {path}')
-		return
-
-	for name in names:
-		if name.startswith('.'):
-			continue
-		if name == FOLDER_COVER_FILE:
-			continue
-		# FIXME: check for valid filetype
-
-		current_tiles[name] = Tile(name, path)
-
-	if existing_tiles == current_tiles:
-		log.info(f'Existing index DB {index_db_name} is up to date, skipping')
-		return
-
-	new_tiles = {}
-	for name, tile in current_tiles.items():
-		if existing_tiles.get(name) == tile:
-			log.debug(f'Tile for {name} is up to date, reusing')
-			new_tiles[name] = existing_tiles[name]
-		else:
-			new_tiles[name] = tile
-			try:
-				tile.get_scaled_cover_image()
-			except TileError as e:
-				log.error(str(e))
-
-	# FIXME: I don't think this can be reached anymore
-	# Recheck after maybe some new tiles errored out
-	if existing_tiles == new_tiles:
-		log.info(f'Existing index DB {index_db_name} is up to date, skipping')
-		log.error('No, we shouldn\'t get here anymore.')
-		exit(1)
-		return
-
-
-	# Write new tiles file
-	new_tiles = sorted(new_tiles.values())
-	os.makedirs(os.path.dirname(index_db_name), exist_ok=True)
-	index_db = zipfile.ZipFile(index_db_name + INDEX_DB_SUFFIX, 'w')
-	log.info(f'Writing new index DB {index_db_name}')
-
-	# Write index
-	index = {
-		'meta': INDEX_META_TAG,
-		'files': [tile.to_json() for tile in new_tiles],
-	}
-	index_db.writestr(INDEX_DB_INDEX, json.dumps(index, indent=4), compresslevel=zipfile.ZIP_DEFLATED)
-
-	# Write cover images
-	for tile in new_tiles:
-		if tile.scaled_cover_image:
-			index_db.writestr(tile.name, tile.scaled_cover_image)
-
-	index_db.close()
-	os.rename(index_db_name + INDEX_DB_SUFFIX, index_db_name)
-
-
-
+analyze_pool = Pool('analyze', threads=4)
 path = os.path.abspath(sys.argv[1])
 watcher = Watcher(path)
 watcher.push(path, recursive=True)
@@ -628,4 +527,4 @@ for event in watcher.events(timeout=1):
 			act_now.append(path)
 
 	for path in act_now:
-		scan(path)
+		scan(path, pool=analyze_pool)
