@@ -132,7 +132,7 @@ class BaseTile:
 						if a.mimetype == 'image/jpeg' and a.filename == MKV_COVER_FILE:
 							log.info(f'Found embedded cover in {self.full_path}')
 							return self.scale_encode(a.data)
-			except (FileNotFoundError, enzyme.exceptions.Error) as e:
+			except (OSError, enzyme.exceptions.Error) as e:
 				raise TileError(f'Processing {self.full_path}: {str(e)}')
 
 		# If we got here, no embedded cover was found, generate thumbnail
@@ -142,7 +142,7 @@ class BaseTile:
 				duration = self.get_video_duration()
 				# Bit dirty, but we need it later anyway.
 				self.duration = round(duration)
-				duration = str(int(duration * THUMB_VIDEO_POSITION))
+				duration = str(duration * THUMB_VIDEO_POSITION)
 
 				sp = run_command(['ffmpeg', '-ss', duration, '-threads', '1', '-i', self.full_path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
 				return self.scale_encode(io.BytesIO(sp.stdout))
