@@ -365,7 +365,9 @@ def scan(path):
 			continue
 		if name == FOLDER_COVER_FILE:
 			continue
-		if not name.endswith(VIDEO_EXTENSIONS):
+		# FIXME Ugh, need a way to allow dirs, but not files with unknown extension
+		# FIXME: jpg hack
+		if '.' in name and not name.endswith(VIDEO_EXTENSIONS + ('.jpg',)):
 			continue
 
 		try:
