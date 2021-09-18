@@ -101,6 +101,17 @@ class Menu:
 			tile.update_meta(meta)
 		start = int((time.time() - start) * 1000); self.log.warning(f'Updating meta: {start}ms')
 
+		# FIXME: more error checking, make asynchronous
+		start = time.time()
+		cover_db_name = os.path.join(path, '.fabella', 'covers.zip')
+		try:
+			with zipfile.ZipFile(cover_db_name, 'r') as fd:
+				for tile in self.tiles:
+					tile.update_cover(fd)
+		except OSError as e:
+			self.log.error(f'Parsing cover DB {cover_db_name}: {e}')
+		start = int((time.time() - start) * 1000); self.log.warning(f'Updating covers: {start}ms')
+
 		self.current_idx = 0
 		self.current_offset = 0
 

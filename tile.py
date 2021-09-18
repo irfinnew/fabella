@@ -116,15 +116,14 @@ class Tile:
 			self.parts_watched = [pw == '#' for pw in json_get(meta, 'parts_watched', str)]
 
 
-	def update_cover(self, something):
-		raise 5
-		self.cover = Image(None, config.tile.width, config.tile.thumb_height, self.name, pool=self.render_pool)
-		if covers_zip:
-			try:
-				with covers_zip.open(self.name) as fd:
-					self.cover.source = fd.read()
-			except KeyError:
-				self.log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
+	def update_cover(self, covers_zip):
+		if not self.cover:
+			self.cover = Image(None, config.tile.width, config.tile.thumb_height, self.name, pool=self.render_pool)
+		try:
+			with covers_zip.open(self.name) as fd:
+				self.cover.source = fd.read()
+		except KeyError:
+			self.log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
 
 
 	@classmethod
