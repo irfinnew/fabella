@@ -10,7 +10,8 @@ COVER_WIDTH = 320
 COVER_HEIGHT = 200
 
 THUMB_VIDEO_POSITION = 0.25
-VIDEO_EXTENSIONS = ['mkv', 'mp4', 'webm', 'avi', 'wmv']
+VIDEO_FILETYPES = ['mkv', 'mp4', 'webm', 'avi', 'wmv']
+VIDEO_EXTENSIONS = tuple('.' + ext for ext in VIDEO_FILETYPES)
 FOLDER_COVER_FILE = '.cover.jpg'
 
 
@@ -232,7 +233,7 @@ class RealTile(BaseTile):
 				raise TileError(f'Processing {self.path}: {str(e)}')
 
 		# If we got here, no embedded cover was found, generate thumbnail
-		if self.path.endswith(tuple('.' + e for e in VIDEO_EXTENSIONS)):
+		if self.path.endswith(VIDEO_EXTENSIONS):
 			log.info(f'Generating thumbnail for {self.path}')
 			try:
 				sp = run_command(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', self.path])
@@ -256,7 +257,7 @@ class RealTile(BaseTile):
 			self._cover_image = self.get_file_cover()
 
 		# Maybe duration was set from getting the cover, maybe not.
-		if self.duration is None and not self.isdir and self.path.endswith(tuple('.' + e for e in VIDEO_EXTENSIONS)):
+		if self.duration is None and not self.isdir and self.path.endswith(VIDEO_EXTENSIONS):
 			try:
 				sp = run_command(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', self.path])
 				self.duration = round(float(sp.stdout))
@@ -364,8 +365,8 @@ def scan(path):
 			continue
 		if name == FOLDER_COVER_FILE:
 			continue
-		# FIXME: check for valid filetype
-		# if self.path.endswith(tuple('.' + e for e in VIDEO_EXTENSIONS)):
+		if not name.endswith(VIDEO_EXTENSIONS):
+			continue
 
 		try:
 			tile = RealTile(path, name)
