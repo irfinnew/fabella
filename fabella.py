@@ -30,6 +30,7 @@ while not window.closed():
 				log.info(f'Parsing key {key} in video mode')
 				if key == glfw.KEY_Q:
 					log.info('Quitting.')
+					menu.forget()
 					video.stop()
 					window.terminate()
 					exit()
@@ -85,6 +86,7 @@ while not window.closed():
 				log.info(f'Parsing key {key} in menu mode')
 				if key == glfw.KEY_Q:
 					log.info('Quitting.')
+					menu.forget()
 					video.stop()
 					window.terminate()
 					exit()

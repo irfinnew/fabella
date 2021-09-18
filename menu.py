@@ -67,6 +67,7 @@ class Menu:
 		except FileNotFoundError:
 			self.state = {}
 
+		start = time.time()
 		index_db_name = os.path.join(path, '.fabella', 'index.json.gz')
 		try:
 			with gzip.open(index_db_name) as fd:
@@ -83,6 +84,7 @@ class Menu:
 					continue
 				# FIXME: check for valid file extensions
 				index.append({'name': name, 'isdir': not isfile})
+		start = int((time.time() - start) * 1000); self.log.warning(f'Reading index: {start}ms')
 
 		self.path = path
 		self.tiles = []
@@ -90,9 +92,14 @@ class Menu:
 		for entry in index:
 			name = entry['name']
 			isdir = entry['isdir']
-			self.tiles.append(Tile(name, path, isdir, self.tile_pool, self.render_pool, self, self.tile_font, entry, self.state.get(name), covers_zip=None))
-		start = int((time.time() - start) * 1000)
-		self.log.warning(f'Creating tiles: {start}ms')
+			self.tiles.append(Tile(path, name, isdir, self, self.tile_font, self.render_pool))
+		start = int((time.time() - start) * 1000); self.log.warning(f'Creating tiles: {start}ms')
+
+		start = time.time()
+		for tile, entry in zip(self.tiles, index):
+			meta = {**entry, **self.state.get(tile.name, {})}
+			tile.update_meta(meta)
+		start = int((time.time() - start) * 1000); self.log.warning(f'Updating meta: {start}ms')
 
 		self.current_idx = 0
 		self.current_offset = 0
@@ -236,7 +243,7 @@ class Menu:
 		if self.bench and self.tiles:
 			t = self.tiles[-1]
 			if t.title and t.title.rendered:
-				self.log.warning(f'Finished rendering in {time.time() - self.bench} seconds')
+				self.log.warning(f'Rendering: {int((time.time() - self.bench) * 1000)}ms')
 				self.bench = None
 
 		tile_width = config.tile.width

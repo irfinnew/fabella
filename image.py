@@ -23,9 +23,6 @@ class Image:
 	def __del__(self):
 		if self._texture:
 			self.log.error(f'{self}.__del__(): lingering texture!')
-			# FIXME: is this called from the right GL context? Does this work?
-			gl.glDeleteTextures([self._texture])
-			self._texture = None
 
 	@property
 	def source(self):

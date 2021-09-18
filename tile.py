@@ -36,57 +36,88 @@ def get_shadow():
 	return shadow_texture
 
 
+def json_get(data, key, typ, none=False):
+	value = data[key]
+
+	if none and value is None:
+		return None
+
+	if not isinstance(value, typ):
+		raise TypeError(f'Expected {key} to be {typ}: {value}')
+	return value
+
+
 
 class Tile:
 	log = Logger(module='Tile', color=Logger.Magenta)
 
 
-	def __init__(self, name, path, isdir, tile_pool, render_pool, menu, font, extra, state, covers_zip):
-		self.log.debug(f'Created Tile path={path}, name={name}')
-
+	def __init__(self, path, name, isdir, menu, font, render_pool):
 		self.name = name
 		self.path = path
-		self.isdir = isdir
-		self.tile_pool = tile_pool
-		self.render_pool = render_pool
-		self.menu = menu
-		self.font = font
-
 		self.full_path = os.path.join(path, name)
-		self.state_last_update = 0
+		self.isdir = isdir
+		self.menu = menu
+		self.render_pool = render_pool
+		self.font = font
+		self.state_last_update = 0  # FIXME: is this still needed?
 
-		# FIXME: state
+		self.log.debug(f'Created {self}')
+
+		# Metadata, will be populated later
+		self.tile_color = None
+		self.count = None
+		self.duration = None
 		self.position = 0
 		self.parts_watched = [False] * 10
-		if state:
-			if 'position' in state:
-				self.position = state['position']
-			if 'parts_watched' in state:
-				self.parts_watched = [pw == '#' for pw in state['parts_watched']]
 
-		# Tile color
-		self.tile_color = str(extra['tile_color']) if extra.get('tile_color') else None
-		if self.tile_color is not None:
-			# FIXME: error checking
-			self.tile_color = self.tile_color.strip('#')
-			self.tile_color = tuple(int(self.tile_color[i:i+2], 16) / 255 for i in range(0, 6, 2))
-		else:
-			self.tile_color = (0, 0, 0)
-
-		self.title = None
-		self.cover = None
-		self.duration = None
-		self.tile_pool.schedule(functools.partial(self.init2, covers_zip, extra))
-
-
-	def init2(self, covers_zip, extra):
-		self.log.debug(f'Delayed init for {self.name}')
-
-		# Title
+		# Renderables
 		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines, pool=self.render_pool)
 		self.title.text = self.name if self.isdir else os.path.splitext(self.name)[0]
+		self.cover = None
+		self.info = None
 
-		# Cover image
+	def update_meta(self, meta):
+		self.log.debug(f'Update metadata for {self}')
+
+		if json_get(meta, 'name', str) != self.name:
+			raise ValueError('{self}.update_meta({meta})')
+		if json_get(meta, 'isdir', bool) != self.isdir:
+			raise ValueError('{self}.update_meta({meta})')
+
+		# Tile color
+		if 'tile_color' in meta:
+			self.tile_color = json_get(meta, 'tile_color', str, none=True)
+			if self.tile_color is not None:
+				self.tile_color = self.tile_color.strip('#')
+				# FIXME: error checking
+				self.tile_color = tuple(int(self.tile_color[i:i+2], 16) / 255 for i in range(0, 6, 2))
+			else:
+				self.tile_color = (0.3, 0.3, 0.3)
+
+		# Count, duration
+		if self.isdir:
+			if 'count' in meta:
+				self.count = json_get(meta, 'count', int, none=True)
+			self.duration = None
+		else:
+			self.count = 1
+			if 'duration' in meta:
+				self.duration = json_get(meta, 'duration', int, none=True)
+		self.info = self.font.text(None, max_width=None, lines=1, pool=self.render_pool)
+		self.info.text = self.info_text(meta)
+
+		# Position
+		if 'position' in meta:
+			self.position = json_get(meta, 'position', (float, int))
+
+		# Parts_watched
+		if 'parts_watched' in meta:
+			self.parts_watched = [pw == '#' for pw in json_get(meta, 'parts_watched', str)]
+
+
+	def update_cover(self, something):
+		raise 5
 		self.cover = Image(None, config.tile.width, config.tile.thumb_height, self.name, pool=self.render_pool)
 		if covers_zip:
 			try:
@@ -95,14 +126,10 @@ class Tile:
 			except KeyError:
 				self.log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
 
-		# Duration
-		self.duration = self.font.text(None, max_width=None, lines=1, pool=self.render_pool)
-		self.duration.text = self.duration_description(extra)
-
 
 	@classmethod
 	def release_all_textures(cls, tiles):
-		tobjs = [t.title for t in tiles] + [t.cover for t in tiles] + [t.duration for t in tiles]
+		tobjs = [t.title for t in tiles] + [t.cover for t in tiles] + [t.info for t in tiles]
 		tobjs = [o for o in tobjs if o]
 
 		textures = [o._texture for o in tobjs if o._texture]
@@ -113,18 +140,18 @@ class Tile:
 			o._texture = None
 
 
-	def duration_description(self, extra):
-		if extra is None:
+	def info_text(self, meta):
+		if meta is None:
 			return None
 
 		if self.isdir:
-			count = extra.get('count')
+			count = meta.get('count')
 			if count is None:
 				return '(?)'
 			else:
 				return f'({count})'
 
-		duration = extra.get('duration')
+		duration = meta.get('duration')
 		if duration is None:
 			return '?:??'
 		else:
@@ -135,7 +162,7 @@ class Tile:
 
 
 	def update_pos(self, position, force=False):
-		self.log.debug(f'Tile {self.name} update_pos({position}, {force})')
+		self.log.debug(f'{self} update_pos({position}, {force})')
 		old_pos = self.position
 		self.position = position
 		# FIXME: detect if user was watching for a while before marking part as watched
@@ -227,15 +254,15 @@ class Tile:
 			gl.glColor4f(*self.tile_color, 1)
 			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
-		# Duration
-		if self.duration and self.duration.texture:
+		# Info
+		if self.info and self.info.texture:
 			y1, x2 = y - config.tile.thumb_height, x + int(config.tile.width * 0.98)
-			x1, y2 = x2 - self.duration.width, y1 + self.duration.height
+			x1, y2 = x2 - self.info.width, y1 + self.info.height
 			if selected:
 				gl.glColor4f(*config.tile.text_hl_color)
 			else:
 				gl.glColor4f(*config.tile.text_color)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.duration.texture)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.info.texture)
 			gl.glBegin(gl.GL_QUADS)
 			gl.glTexCoord2f(0.0, 1.0)
 			gl.glVertex2f(x1, y1)
@@ -302,8 +329,7 @@ class Tile:
 
 
 	def __str__(self):
-		parts_watched = ''.join('#' if pw else '.' for pw in self.parts_watched)
-		return f'Tile(name={self.name}, isdir={self.isdir}, position={self.position}, parts_watched={parts_watched})'
+		return f'Tile(path={self.path}, name={self.name}, isdir={self.isdir})'
 
 
 	def __repr__(self):
