@@ -65,7 +65,7 @@ class Tile:
 		self.log.debug(f'Created {self}')
 
 		# Metadata, will be populated later
-		self.tile_color = None
+		self.tile_color = (0, 0, 0)
 		self.count = None
 		self.duration = None
 		self.position = 0
@@ -87,11 +87,11 @@ class Tile:
 
 		# Tile color
 		if 'tile_color' in meta:
-			self.tile_color = json_get(meta, 'tile_color', str, none=True)
-			if self.tile_color is not None:
-				self.tile_color = self.tile_color.strip('#')
+			tile_color = json_get(meta, 'tile_color', str, none=True)
+			if tile_color is not None:
+				tile_color = tile_color.strip('#')
 				# FIXME: error checking
-				self.tile_color = tuple(int(self.tile_color[i:i+2], 16) / 255 for i in range(0, 6, 2))
+				self.tile_color = tuple(int(tile_color[i:i+2], 16) / 255 for i in range(0, 6, 2))
 			else:
 				self.tile_color = (0.3, 0.3, 0.3)
 
