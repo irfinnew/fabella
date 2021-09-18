@@ -5,7 +5,7 @@ PARTIAL_SUFFIX = '.part'
 INDEX_META_VERSION = 1
 
 COVER_DB_NAME = '.fabella/covers.zip'
-COVER_TAG_NAME = 'FIXME'
+COVER_META_TAG = '.meta'
 COVER_WIDTH = 320
 COVER_HEIGHT = 200
 
@@ -85,6 +85,98 @@ class BaseTile:
 		return data
 
 
+	def scale_encode(self, fd):
+		"""Takes file-like object, reads image from it, scales, encodes to JPEG, returns bytes."""
+		try:
+			with PIL.Image.open(fd) as cover:
+				cover = cover.convert('RGB')
+				cover = PIL.ImageOps.fit(cover, (COVER_WIDTH, COVER_HEIGHT))
+		except PIL.UnidentifiedImageError as e:
+			raise TileError(f'Loading image for {self.path}: {str(e)}')
+
+		# Choose a representative color from the cover image
+		# Don't like setting this from here, but we need it later anyway.
+		self.tile_color = '#' + ''.join(f'{c:02x}' for c in colorpicker.pick(cover))
+
+		buffer = io.BytesIO()
+		cover.save(buffer, format='JPEG', quality=90, optimize=True)
+		return buffer.getvalue()
+
+
+	def get_folder_cover(self):
+		"""Find cover image for folder, scale, return bytes."""
+		cover_file = os.path.join(self.full_path, FOLDER_COVER_FILE)
+		if not os.path.isfile(cover_file):
+			raise TileError(f'Cover image {cover_file} not found')
+
+		with open(cover_file, 'rb') as fd:
+			log.info(f'Found cover {cover_file}')
+			return self.scale_encode(fd)
+
+
+	def get_file_cover(self):
+		"""Find cover image for file, scale, return bytes."""
+		# FIXME: Hmm. Not sure.
+		if self.name.endswith(('.jpg', '.png')):
+			log.info(f'Using image file as its own cover: {self.full_path}')
+			with open(self.full_path, 'rb') as fd:
+				return self.scale_encode(fd)
+
+		if self.name.endswith('.mkv'):
+			try:
+				with open(self.full_path, 'rb') as fd:
+					mkv = enzyme.MKV(fd)
+					for a in mkv.attachments:
+						# FIXME: just uses first jpg attachment it sees; check filename!
+						if a.mimetype == 'image/jpeg':
+							log.info(f'Found embedded cover in {self.full_path}')
+							return self.scale_encode(a.data)
+			except (FileNotFoundError, enzyme.exceptions.Error) as e:
+				raise TileError(f'Processing {self.full_path}: {str(e)}')
+
+		# If we got here, no embedded cover was found, generate thumbnail
+		if self.name.endswith(VIDEO_EXTENSIONS):
+			log.info(f'Generating thumbnail for {self.full_path}')
+			try:
+				duration = self.get_video_duration()
+				# Bit dirty, but we need it later anyway.
+				self.duration = round(duration)
+				duration = str(int(duration * THUMB_VIDEO_POSITION))
+
+				sp = run_command(['ffmpeg', '-ss', duration, '-i', self.full_path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
+				return self.scale_encode(io.BytesIO(sp.stdout))
+			except subprocess.CalledProcessError:
+				raise TileError(f'Processing {self.full_path}: Command returned error')
+
+		raise TileError(f'Processing {self.full_path}: unknown filetype to generate cover image from')
+
+
+	def get_video_duration(self):
+		sp = run_command(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', self.full_path])
+		return float(sp.stdout)
+
+
+	# FIXME: poor name
+	def update_stuff(self):
+		if self.cover_needs_update:
+			try:
+				if self.isdir:
+					self.cover_image = self.get_folder_cover()
+				else:
+					self.cover_image = self.get_file_cover()
+			except TileError as e:
+				log.error(str(e))
+				self.cover_image = None
+			self.cover_needs_update = False
+
+		# Maybe duration was set from getting the cover, maybe not.
+		if self.duration is None and not self.isdir and self.name.endswith(VIDEO_EXTENSIONS):
+			try:
+				self.duration = round(self.get_video_duration())
+			except subprocess.CalledProcessError as e:
+				log.errror(f'Couldn\'t determine video duration: {e}')
+
+
 	def __eq__(self, other):
 		if other is None:
 			return False
@@ -131,6 +223,7 @@ class IndexedTile(BaseTile):
 		self.path = path
 		self.full_path = os.path.join(path, self.name)
 		self.cover_image = None
+		self.cover_needs_update = True
 
 
 
@@ -144,6 +237,7 @@ class RealTile(BaseTile):
 		self.duration = None
 		self.tile_color = None
 		self.cover_image = None
+		self.cover_needs_update = True
 
 		# Get file attrs
 		try:
@@ -183,88 +277,6 @@ class RealTile(BaseTile):
 			return None
 
 
-	def scale_encode(self, fd):
-		"""Takes file-like object, reads image from it, scales, encodes to JPEG, returns bytes."""
-		try:
-			with PIL.Image.open(fd) as cover:
-				cover = cover.convert('RGB')
-				cover = PIL.ImageOps.fit(cover, (COVER_WIDTH, COVER_HEIGHT))
-		except PIL.UnidentifiedImageError as e:
-			raise TileError(f'Loading image for {self.path}: {str(e)}')
-
-		# Choose a representative color from the cover image
-		# Don't like setting this from here, but we need it later anyway.
-		self.tile_color = '#' + ''.join(f'{c:02x}' for c in colorpicker.pick(cover))
-
-		buffer = io.BytesIO()
-		cover.save(buffer, format='JPEG', quality=90, optimize=True)
-		return buffer.getvalue()
-
-
-	def get_folder_cover(self):
-		"""Find cover image for folder, scale, return bytes."""
-		cover_file = os.path.join(self.path, FOLDER_COVER_FILE)
-		if not os.path.isfile(cover_file):
-			raise TileError(f'Cover image {cover_file} not found')
-
-		with open(cover_file, 'rb') as fd:
-			log.info(f'Found cover {cover_file}')
-			return self.scale_encode(fd)
-
-
-	def get_file_cover(self):
-		"""Find cover image for file, scale, return bytes."""
-		# FIXME: Hmm. Not sure.
-		if self.path.endswith(('.jpg', '.png')):
-			log.info(f'Using image file as its own cover: {self.path}')
-			with open(self.path, 'rb') as fd:
-				return self.scale_encode(fd)
-
-		if self.path.endswith('.mkv'):
-			try:
-				with open(self.path, 'rb') as fd:
-					mkv = enzyme.MKV(fd)
-					for a in mkv.attachments:
-						# FIXME: just uses first jpg attachment it sees; check filename!
-						if a.mimetype == 'image/jpeg':
-							log.info(f'Found embedded cover in {self.path}')
-							return self.scale_encode(a.data)
-			except (FileNotFoundError, enzyme.exceptions.Error) as e:
-				raise TileError(f'Processing {self.path}: {str(e)}')
-
-		# If we got here, no embedded cover was found, generate thumbnail
-		if self.path.endswith(VIDEO_EXTENSIONS):
-			log.info(f'Generating thumbnail for {self.path}')
-			try:
-				sp = run_command(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', self.path])
-				duration = float(sp.stdout)
-				# Bit dirty, but we need it later anyway.
-				self.duration = round(duration)
-				duration = str(int(duration * THUMB_VIDEO_POSITION))
-
-				sp = run_command(['ffmpeg', '-ss', duration, '-i', self.path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
-				return self.scale_encode(io.BytesIO(sp.stdout))
-			except subprocess.CalledProcessError:
-				raise TileError(f'Processing {self.path}: Command returned error')
-
-		raise TileError(f'Processing {self.path}: unknown filetype to generate cover image from')
-
-
-	def update_cover(self):
-		if self.isdir:
-			self._cover_image = self.get_folder_cover()
-		else:
-			self._cover_image = self.get_file_cover()
-
-		# Maybe duration was set from getting the cover, maybe not.
-		if self.duration is None and not self.isdir and self.path.endswith(VIDEO_EXTENSIONS):
-			try:
-				sp = run_command(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', self.path])
-				self.duration = round(float(sp.stdout))
-			except subprocess.CalledProcessError:
-				pass
-
-
 
 class Meta:
 	def __init__(self, *, version=INDEX_META_VERSION, count=0):
@@ -300,6 +312,11 @@ class Meta:
 			'files': [tile.to_json() for tile in sorted(tiles)],
 		}
 
+	@classmethod
+	def fingerprint(cls, tiles):
+		# FIXME: make proper fingerprint
+		return '-'.join(f'{t.src_size}:{t.src_mtime}' for t in tiles)
+
 	def __eq__(self, other):
 		if other is None:
 			return False
@@ -317,7 +334,7 @@ def scan(path):
 	log.debug(f'Processing {path}')
 	index_db_name = os.path.join(path, INDEX_DB_NAME)
 
-	# Read index file
+	#### Read index file
 	orig_index = {}
 	try:
 		with gzip.open(index_db_name) as fd:
@@ -328,7 +345,8 @@ def scan(path):
 	except (OSError, EOFError, zlib.error, json.JSONDecodeError) as e:
 		log.error(f'Parsing {index_db_name}: {str(e)}')
 
-	# Check meta version, extract file info index
+
+	#### Check meta version, extract file info index
 	indexes = []
 	indexed_meta = None
 	if orig_index:
@@ -341,25 +359,52 @@ def scan(path):
 		except (KeyError, TypeError) as e:
 			log.error(f'Error parsing index DB version {index_db_name}: {str(e)}')
 
-	# Covert index to tiles
-	indexed_tiles = {}
+
+	#### Covert index to tiles
+	indexed_tiles = []
 	for data in indexes:
 		try:
 			tile = IndexedTile(path, data)
-			indexed_tiles[tile.name] = tile
+			indexed_tiles.append(tile)
 		except ValueError as e:
 			log.error(f'Error parsing json for tile in {index_db_name}: {e}')
 	del indexes
-	#for tile in indexed_tiles.values(): print('   idx:', tile) # FIXME: remove
 
-	real_tiles = {}
+
+	#### Covers DB
+	cover_db_name = os.path.join(path, COVER_DB_NAME)
+	cover_db_fingerprint = None
+	try:
+		with zipfile.ZipFile(cover_db_name, 'r') as fd:
+			log.debug(f'Found existing covers DB {cover_db_name}')
+			cover_meta = json.loads(fd.read(COVER_META_TAG))
+			if cover_meta['version'] != INDEX_META_VERSION:
+				log.info(f'Existing {covers.db_name} outdated version, discarding')
+			elif cover_meta['dimensions'] != f'{COVER_WIDTH}x{COVER_HEIGHT}':
+				log.info(f'Existing {covers.db_name} has wrong cover dimensions, discarding')
+			elif cover_meta['fingerprint'] != Meta.fingerprint(indexed_tiles):
+				log.warning(f'Existing {cover_db_name} fingerprint doesn\'t match {index_db_name}, discarding')
+			else:
+				for tile in indexed_tiles:
+					tile.cover_image = fd.read(tile.name)
+					if tile.cover_image == b'':
+						tile.cover_image = None
+					tile.cover_needs_update = False
+				cover_db_fingerprint = cover_meta['fingerprint']
+	except FileNotFoundError:
+		log.info(f'Cover DB {cover_db_name} missing')
+	except (OSError, zipfile.BadZipFile, json.JSONDecodeError, KeyError, TypeError) as e:
+		log.error(f'Parsing {cover_db_name}: {e}')
+
+
+	#### List actual files, convert into tiles
+	real_tiles = []
 	try:
 		names = os.listdir(path)
 	except FileNotFoundError:
 		log.warning(f'Directory disappeared while we were working on it: {path}')
 		return
 
-	# List actual files, convert into tiles
 	for name in names:
 		if name.startswith('.'):
 			continue
@@ -372,29 +417,69 @@ def scan(path):
 
 		try:
 			tile = RealTile(path, name)
-			real_tiles[tile.name] = tile
+			real_tiles.append(tile)
 		except ValueError as e:
 			log.error(f'Error inspecting {path} {name}: {repr(e)}')
-	#for tile in real_tiles.values(): print('  real:', tile) # FIXME: remove
+	real_tiles = sorted(real_tiles)
 
-	# If the index matches reality, we're done.
-	if indexed_tiles == real_tiles and indexed_meta == Meta.from_tiles(real_tiles.values()):
-		log.info(f'Existing tiles DB {index_db_name} is up to date, skipping')
-		return
 
-	# Apparently something changed, let's see what we can reuse.
-	for name in list(real_tiles.keys()):
-		if real_tiles[name] == indexed_tiles.get(name):
+	#### If the index matches reality, we're done.
+	index_needs_update = True
+	if indexed_tiles == real_tiles and indexed_meta == Meta.from_tiles(real_tiles):
+		log.info(f'Existing index DB {index_db_name} is up to date, skipping')
+		index_needs_update = False
+
+
+	#### Determine what we can reuse
+	# Abuses real_tiles as the end-result
+	indexed_tiles = {t.name: t for t in indexed_tiles}
+	for i in range(len(real_tiles)):
+		name = real_tiles[i].name
+		if real_tiles[i] == indexed_tiles.get(name):
 			log.debug(f'Tile for {name} is up to date, reusing')
-			real_tiles[name] = indexed_tiles[name]
+			real_tiles[i] = indexed_tiles[name]
+		else:
+			log.debug(f'Tile for {name} is stale, re-inspecting')
 
-	# Write index
-	log.info(f'Writing new index DB {index_db_name}')
-	os.makedirs(os.path.dirname(index_db_name), exist_ok=True)
-	with gzip.open(index_db_name + PARTIAL_SUFFIX, 'wt') as fd:
-		json.dump(Meta.full_json(real_tiles.values()), fd, indent=4)
-		os.fdatasync(fd)
-	os.rename(index_db_name + PARTIAL_SUFFIX, index_db_name)
+	#### Update covers/tile_color/duration etc; this is the expensive part
+	log.warning('STARTING UPDATES')
+	for tile in real_tiles:
+		tile.update_stuff()
+
+	#### Write index
+	if index_needs_update:
+		log.info(f'Writing new index DB {index_db_name}')
+		os.makedirs(os.path.dirname(index_db_name), exist_ok=True)
+		with gzip.open(index_db_name + PARTIAL_SUFFIX, 'wt') as fd:
+			json.dump(Meta.full_json(real_tiles), fd, indent=4)
+			os.fdatasync(fd)
+		os.rename(index_db_name + PARTIAL_SUFFIX, index_db_name)
+
+	#### Write cover
+	# FIXME: error checking
+	real_fingerprint = Meta.fingerprint(real_tiles)
+	if cover_db_fingerprint == real_fingerprint:
+		log.info(f'Existing cover DB {cover_db_name} is up to date, skipping')
+	else:
+		if real_tiles:
+			log.info(f'Writing new cover DB {cover_db_name}')
+			with zipfile.ZipFile(cover_db_name + PARTIAL_SUFFIX, 'w') as fd:
+				meta = {
+					'version': INDEX_META_VERSION,
+					'dimensions': f'{COVER_WIDTH}x{COVER_HEIGHT}',
+					'fingerprint': real_fingerprint,
+				}
+				fd.writestr(COVER_META_TAG, json.dumps(meta, indent=4))
+
+				# Write cover images
+				for tile in real_tiles:
+					fd.writestr(tile.name, tile.cover_image or b'')
+			with open(cover_db_name + PARTIAL_SUFFIX) as fd:
+				os.fdatasync(fd)
+			os.rename(cover_db_name + PARTIAL_SUFFIX, cover_db_name)
+		else:
+			log.debug(f'No files here, not writing {cover_db_name}')
+
 
 	return
 	exit()
@@ -410,7 +495,7 @@ def scan(path):
 
 			try:
 				if index['meta'] != INDEX_META_TAG:
-					log.info(f'Outdated {INDEX_DB_INDEX} in existing tiles DB {index_db_name}; ignoring index')
+					log.info(f'Outdated {INDEX_DB_INDEX} in existing index DB {index_db_name}; ignoring index')
 					raise FileNotFoundError() # FIXME: ewww. But we must get out of here
 			except KeyError:
 				log.error(f'Missing metadata in existing index DB {index_db_name}')
@@ -432,7 +517,7 @@ def scan(path):
 	except FileNotFoundError:
 		existing_tiles = {}
 	except zipfile.BadZipFile as e:
-		log.error(f'Existing tiles DB {index_db_name} is broken: {str(e)}')
+		log.error(f'Existing index DB {index_db_name} is broken: {str(e)}')
 		existing_tiles = {}
 
 	current_tiles = {}
@@ -452,7 +537,7 @@ def scan(path):
 		current_tiles[name] = Tile(name, path)
 
 	if existing_tiles == current_tiles:
-		log.info(f'Existing tiles DB {index_db_name} is up to date, skipping')
+		log.info(f'Existing index DB {index_db_name} is up to date, skipping')
 		return
 
 	new_tiles = {}
@@ -525,6 +610,9 @@ for event in watcher.events(timeout=1):
 				watcher.push(os.path.dirname(os.path.dirname(event.path)))
 				# And parent also; it might need to be updated
 				watcher.push(os.path.dirname(os.path.dirname(os.path.dirname(event.path))))
+			# Case: path/.fabella/index.json.gz
+			if not event.isdir and event.path.endswith('/' + COVER_DB_NAME):
+				watcher.push(os.path.dirname(os.path.dirname(event.path)))
 			# Case: path/.cover.jpg
 			elif event.path.endswith('/' + FOLDER_COVER_FILE):
 				watcher.push(os.path.dirname(os.path.dirname(event.path)))
