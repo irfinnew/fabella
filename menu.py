@@ -4,6 +4,8 @@ import datetime
 import json
 import time
 import zipfile
+import gzip
+import zlib
 
 import config
 from logger import Logger
@@ -65,27 +67,30 @@ class Menu:
 		except FileNotFoundError:
 			self.state = {}
 
+		index_db_name = os.path.join(path, '.fabella', 'index.json.gz')
 		try:
-			index_zip = zipfile.ZipFile(os.path.join(path, '.fabella', 'index.zip'))
-			index = json.loads(index_zip.read('.index.json'))
-			entries = [(entry['name'], entry['isdir'], entry) for entry in index['files']]
-			self.log.debug(f'Using file index from Index DB for {path}')
-		except (FileNotFoundError, zipfile.BadZipFile, KeyError) as e:
-			self.log.warning(f'Index DB for {path} missing, falling back to scandir(): {repr(e)}')
-			index_zip = None
-			entries = []
+			with gzip.open(index_db_name) as fd:
+				index = json.load(fd)['files']
+			self.log.debug(f'Loaded {index_db_name}')
+		except (OSError, EOFError, zlib.error, json.JSONDecodeError, KeyError) as e:
+			self.log.warning(f'Opening {index_db_name}: {repr(e)}')
+			self.log.warning(f'falling back to scandir()')
+			index = []
 			for isfile, name in sorted((not de.is_dir(), de.name) for de in os.scandir(path)):
 				if name.startswith('.'):
 					continue
 				if name in config.tile.thumb_files:
 					continue
-				entries.append((name, not isfile, {}))
+				# FIXME: check for valid file extensions
+				index.append({'name': name, 'isdir': not isfile})
 
 		self.path = path
 		self.tiles = []
 		start = time.time()
-		for name, isdir, extra in entries:
-			self.tiles.append(Tile(name, path, isdir, self.tile_pool, self.render_pool, self, self.tile_font, extra, self.state.get(name), index_zip))
+		for entry in index:
+			name = entry['name']
+			isdir = entry['isdir']
+			self.tiles.append(Tile(name, path, isdir, self.tile_pool, self.render_pool, self, self.tile_font, entry, self.state.get(name), covers_zip=None))
 		start = int((time.time() - start) * 1000)
 		self.log.warning(f'Creating tiles: {start}ms')
 

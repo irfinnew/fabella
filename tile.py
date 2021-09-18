@@ -97,7 +97,7 @@ class Tile:
 
 		# Duration
 		self.duration = self.font.text(None, max_width=None, lines=1, pool=self.render_pool)
-		self.duration.text = self.duration_description(extra.get('duration'))
+		self.duration.text = self.duration_description(extra)
 
 
 	@classmethod
@@ -113,14 +113,25 @@ class Tile:
 			o._texture = None
 
 
-	def duration_description(self, duration):
-		if duration is None:
+	def duration_description(self, extra):
+		if extra is None:
 			return None
 
-		duration = int(duration)
-		hours = duration // 3600
-		minutes = round((duration % 3600) / 60)
-		return f'{hours}:{minutes:>02}'
+		if self.isdir:
+			count = extra.get('count')
+			if count is None:
+				return '(?)'
+			else:
+				return f'({count})'
+
+		duration = extra.get('duration')
+		if duration is None:
+			return '?:??'
+		else:
+			duration = int(duration)
+			hours = duration // 3600
+			minutes = round((duration % 3600) / 60)
+			return f'{hours}:{minutes:>02}'
 
 
 	def update_pos(self, position, force=False):
