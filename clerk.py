@@ -190,8 +190,21 @@ class BaseTile:
 
 
 	def __lt__(self, other):
-		# FIXME: better sorting
-		return self.name < other.name
+		return self.sortkey < other.sortkey
+
+
+	@property
+	def sortkey(self):
+		casename = self.name.strip().casefold()
+		simplename = casename
+		for a in ['a ', 'an ', 'the ']:
+			if simplename.startswith(a):
+				simplename = simplename[len(a):].strip()
+				break
+		# Sort folders first, then files.
+		# Next, sort on case-insensitive simplified name.
+		# Finally, just the raw name for deterministic ordering.
+		return (not self.isdir, simplename, self.name)
 
 
 	def __str__(self):
