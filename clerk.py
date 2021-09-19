@@ -116,7 +116,7 @@ class BaseTile:
 
 	def get_file_cover(self):
 		"""Find cover image for file, scale, return bytes."""
-		# FIXME: Hmm. Not sure.
+		# FIXME: Hmm. Not sure; image files are ignored earlier in the process anyway.
 		if self.name.endswith(('.jpg', '.png')):
 			log.info(f'Using image file as its own cover: {self.full_path}')
 			with open(self.full_path, 'rb') as fd:
@@ -254,6 +254,17 @@ class RealTile(BaseTile):
 			self.isdir = False
 			self.src_size, self.src_mtime = stat_data.st_size, stat_data.st_mtime_ns
 
+	def valid(self):
+		"""True if the tile is "valid". Meaning the name/filetype/etc checks out."""
+		if self.name.startswith('.'):
+			return False
+
+		if self.isdir:
+			return True
+
+		# File
+		return name.endswith(VIDEO_EXTENSIONS)
+
 
 
 class Meta:
@@ -380,20 +391,14 @@ def scan(path, pool):
 		return
 
 	for name in names:
-		if name.startswith('.'):
-			continue
-		if name == FOLDER_COVER_FILE:
-			continue
-		# FIXME Ugh, need a way to allow dirs, but not files with unknown extension
-		# FIXME: jpg hack
-		if '.' in name and not name.endswith(VIDEO_EXTENSIONS + ('.jpg',)):
-			continue
-
 		try:
 			tile = RealTile(path, name)
 			real_tiles.append(tile)
 		except ValueError as e:
 			log.error(f'Error inspecting {path} {name}: {repr(e)}')
+
+	# Filter and sort
+	real_tiles = [tile for tile in real_tiles if tile.valid()]
 	real_tiles = sorted(real_tiles)
 
 
@@ -489,8 +494,9 @@ for event in watcher.events(timeout=1):
 				watcher.push(os.path.dirname(os.path.dirname(event.path)))
 			# Case: path/foo.bar
 			else:
-				# FIXME: check for valid filetype
-				watcher.push(os.path.dirname(event.path))
+				# Only do something for file extensions we care about
+				if event.path.endswith(VIDEO_EXTENSIONS):
+					watcher.push(os.path.dirname(event.path))
 
 	act_now = []
 	for path, age in list(dirty.items()):
