@@ -79,9 +79,7 @@ class BaseTile:
 			'src_mtime': self.src_mtime,
 			'tile_color': self.tile_color,
 		}
-		if self.isdir:
-			data['count'] = self.count
-		else:
+		if not self.isdir:
 			data['duration'] = self.duration
 
 		return data
@@ -133,7 +131,7 @@ class BaseTile:
 							log.info(f'Found embedded cover in {self.full_path}')
 							return self.scale_encode(a.data)
 			except (OSError, enzyme.exceptions.Error) as e:
-				raise TileError(f'Processing {self.full_path}: {str(e)}')
+				raise TileError(f'Processing {self.full_path}: {e}')
 
 		# If we got here, no embedded cover was found, generate thumbnail
 		if self.name.endswith(VIDEO_EXTENSIONS):
@@ -174,7 +172,7 @@ class BaseTile:
 			try:
 				self.duration = round(self.get_video_duration())
 			except subprocess.CalledProcessError as e:
-				log.errror(f'Couldn\'t determine video duration: {e}')
+				log.error(f'Couldn\'t determine video duration: {e}')
 
 
 	def __eq__(self, other):
@@ -184,8 +182,8 @@ class BaseTile:
 		# Actually, it does; missing in archive and missing in real = equal.
 		#if None in (self.isdir, self.size, self.mtime):
 		#	return False
-		return (self.name, self.isdir, self.src_size, self.src_mtime, self.count) == \
-			(other.name, other.isdir, other.src_size, other.src_mtime, other.count)
+		return (self.name, self.isdir, self.src_size, self.src_mtime) == \
+			(other.name, other.isdir, other.src_size, other.src_mtime)
 
 
 	def __lt__(self, other):
@@ -194,7 +192,7 @@ class BaseTile:
 
 
 	def __str__(self):
-		return f'{self.__class__.__name__}({self.name}, isdir={self.isdir}, src_size={self.src_size}, mtime={self.src_mtime}, count={self.count})'
+		return f'{self.__class__.__name__}({self.name}, isdir={self.isdir}, src_size={self.src_size}, mtime={self.src_mtime})'
 
 
 	def __repr__(self):
@@ -210,12 +208,7 @@ class IndexedTile(BaseTile):
 			self.src_size = json_get(data, 'src_size', int, none=True)
 			self.src_mtime = json_get(data, 'src_mtime', int, none=True)
 			self.tile_color = json_get(data, 'tile_color', str, none=True)
-			if self.isdir:
-				self.count = json_get(data, 'count', int, none=True)
-				self.duration = None
-			else:
-				self.count = 1
-				self.duration = json_get(data, 'duration', int, none=True)
+			self.duration = None if self.isdir else json_get(data, 'duration', int, none=True)
 		except (KeyError, TypeError, ValueError) as e:
 			# Give caller a single exception to worry about
 			raise ValueError(repr(e))
@@ -259,50 +252,25 @@ class RealTile(BaseTile):
 			self.isdir = False
 			self.src_size, self.src_mtime = stat_data.st_size, stat_data.st_mtime_ns
 
-		# Get children counts
-		self.count = self.get_count()
-
-
-	def get_count(self):
-		if not self.isdir:
-			return 1
-
-		# FIXME: this should use the same code as the "official" parsing
-		try:
-			with gzip.open(os.path.join(self.full_path, INDEX_DB_NAME)) as fd:
-				return int(json.load(fd)['meta']['count'])
-		except Exception as e:
-			# FIXME
-			#log.error(f'MEH: {e}')
-			return None
-
 
 
 class Meta:
-	def __init__(self, *, version=INDEX_META_VERSION, count=0):
+	def __init__(self, *, version):
 		self.version = version
-		self.count = count
 
 	@classmethod
 	def from_json(cls, data):
 		meta = json_get(data, 'meta', dict)
 		version = json_get(meta, 'version', int)
-		count = json_get(meta, 'count', int, none=True)
-		return cls(version=version, count=count)
+		return cls(version=version)
 
 	@classmethod
 	def from_tiles(cls, tiles):
-		counts = [tile.count for tile in tiles]
-		if None in counts:
-			count = None
-		else:
-			count = sum(counts)
-		return cls(count=count)
+		return cls(version=INDEX_META_VERSION)
 
 	def to_json(self):
 		return {
 			'version': self.version,
-			'count': self.count,
 		}
 
 	@classmethod
@@ -320,10 +288,10 @@ class Meta:
 	def __eq__(self, other):
 		if other is None:
 			return False
-		return (self.version, self.count) == (other.version, other.count)
+		return self.version == other.version
 
 	def __str__(self):
-		return f'Meta(version={self.version}, count={self.count})'
+		return f'Meta(version={self.version})'
 
 	def __repr__(self):
 		return self.__str__()
@@ -507,8 +475,6 @@ for event in watcher.events(timeout=1):
 			if not event.isdir and event.path.endswith('/' + INDEX_DB_NAME):
 				# Recheck containing dir
 				watcher.push(os.path.dirname(os.path.dirname(event.path)))
-				# And parent also; it might need to be updated
-				watcher.push(os.path.dirname(os.path.dirname(os.path.dirname(event.path))))
 			# Case: path/.fabella/index.json.gz
 			if not event.isdir and event.path.endswith('/' + COVER_DB_NAME):
 				watcher.push(os.path.dirname(os.path.dirname(event.path)))

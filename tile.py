@@ -66,7 +66,6 @@ class Tile:
 
 		# Metadata, will be populated later
 		self.tile_color = (0, 0, 0)
-		self.count = None
 		self.duration = None
 		self.position = 0
 		self.parts_watched = [False] * 10
@@ -95,17 +94,18 @@ class Tile:
 			else:
 				self.tile_color = (0.3, 0.3, 0.3)
 
-		# Count, duration
-		if self.isdir:
-			if 'count' in meta:
-				self.count = json_get(meta, 'count', int, none=True)
-			self.duration = None
-		else:
-			self.count = 1
-			if 'duration' in meta:
-				self.duration = json_get(meta, 'duration', int, none=True)
-		self.info = self.font.text(None, max_width=None, lines=1, pool=self.render_pool)
-		self.info.text = self.info_text(meta)
+		# Duration
+		if 'duration' in meta:
+			self.duration = json_get(meta, 'duration', int, none=True)
+			if not self.info:
+				self.info = self.font.text(None, max_width=None, lines=1, pool=self.render_pool)
+			if self.duration is None:
+				self.info.text = '?:??'
+			else:
+				duration = int(self.duration)
+				hours = duration // 3600
+				minutes = round((duration % 3600) / 60)
+				self.info.text = f'{hours}:{minutes:>02}'
 
 		# Position
 		if 'position' in meta:
@@ -137,27 +137,6 @@ class Tile:
 
 		for o in tobjs:
 			o._texture = None
-
-
-	def info_text(self, meta):
-		if meta is None:
-			return None
-
-		if self.isdir:
-			count = meta.get('count')
-			if count is None:
-				return '(?)'
-			else:
-				return f'({count})'
-
-		duration = meta.get('duration')
-		if duration is None:
-			return '?:??'
-		else:
-			duration = int(duration)
-			hours = duration // 3600
-			minutes = round((duration % 3600) / 60)
-			return f'{hours}:{minutes:>02}'
 
 
 	def update_pos(self, position, force=False):
