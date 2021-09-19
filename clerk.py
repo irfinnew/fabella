@@ -28,6 +28,7 @@ import json
 import time
 import zipfile
 import enzyme
+import hashlib
 import subprocess
 import PIL.Image
 import PIL.ImageOps
@@ -263,7 +264,7 @@ class RealTile(BaseTile):
 			return True
 
 		# File
-		return name.endswith(VIDEO_EXTENSIONS)
+		return self.name.endswith(VIDEO_EXTENSIONS)
 
 
 
@@ -295,8 +296,8 @@ class Meta:
 
 	@classmethod
 	def fingerprint(cls, tiles):
-		# FIXME: make proper fingerprint
-		return '-'.join(f'{t.src_size}:{t.src_mtime}' for t in tiles)
+		tiles = [[t.name, t.isdir, t.src_size, t.src_mtime] for t in tiles]
+		return hashlib.sha256(json.dumps(tiles).encode('utf8')).hexdigest()
 
 	def __eq__(self, other):
 		if other is None:
