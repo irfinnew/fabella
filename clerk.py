@@ -151,8 +151,10 @@ class BaseTile:
 
 
 	def get_video_duration(self):
-		sp = run_command(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', self.full_path])
-		return float(sp.stdout)
+		with open(self.full_path, 'rb') as fd:
+			mkv = enzyme.MKV(fd)
+			duration = mkv.info.duration
+		return duration.seconds + duration.microseconds / 1000000
 
 
 	def analyze(self):
@@ -300,6 +302,10 @@ class Meta:
 
 def scan(path, pool):
 	log.debug(f'Processing {path}')
+	if not os.path.isdir(path):
+		log.info(f'{path} is gone, nothing to do')
+		return
+
 	index_db_name = os.path.join(path, INDEX_DB_NAME)
 
 	#### Read index file
@@ -494,3 +500,6 @@ for event in watcher.events(timeout=1):
 
 	for path in act_now:
 		scan(path, pool=analyze_pool)
+
+	#if not dirty:
+	#	break
