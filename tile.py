@@ -121,7 +121,10 @@ class Tile:
 			self.cover = Image(None, config.tile.width, config.tile.thumb_height, self.name, pool=self.render_pool)
 		try:
 			with covers_zip.open(self.name) as fd:
-				self.cover.source = fd.read()
+				image = fd.read()
+				# The cover image can be empty (if no cover is known)
+				if image:
+					self.cover.source = image
 		except KeyError:
 			self.log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
 
