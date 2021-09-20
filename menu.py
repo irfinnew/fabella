@@ -104,16 +104,7 @@ class Menu:
 			tile.update_meta(meta)
 		start = int((time.time() - start) * 1000); self.log.warning(f'Updating meta: {start}ms')
 
-		# FIXME: more error checking, make asynchronous
-		start = time.time()
-		cover_db_name = os.path.join(path, '.fabella', 'covers.zip')
-		try:
-			with zipfile.ZipFile(cover_db_name, 'r') as fd:
-				for tile in self.tiles:
-					tile.update_cover(fd)
-		except OSError as e:
-			self.log.error(f'Parsing cover DB {cover_db_name}: {e}')
-		start = int((time.time() - start) * 1000); self.log.warning(f'Updating covers: {start}ms')
+		self.tile_pool.schedule(self.load_covers)
 
 		self.current_idx = 0
 		self.current_offset = 0
@@ -129,6 +120,17 @@ class Menu:
 			if tile.unseen:
 				self.current_idx = i
 				return
+
+	def load_covers(self):
+		start = time.time()
+		cover_db_name = os.path.join(self.path, '.fabella', 'covers.zip')
+		try:
+			with zipfile.ZipFile(cover_db_name, 'r') as fd:
+				for tile in self.tiles:
+					tile.update_cover(fd)
+		except OSError as e:
+			self.log.error(f'Parsing cover DB {cover_db_name}: {e}')
+		start = int((time.time() - start) * 1000); self.log.warning(f'Updating covers: {start}ms')
 
 	def write_state(self, name, new_state):
 		self.log.info(f'Writing {self.state_file}')
@@ -208,6 +210,10 @@ class Menu:
 				break
 
 	def draw(self, width, height, transparent=False):
+		# FIXME: really not the place for this
+		if int(time.time() * 1000) % 97 == 0:
+			self.tile_pool.schedule(self.load_covers)
+
 		# Background
 		x1, y1, x2, y2 = 0, 0, width, height
 		if transparent:
