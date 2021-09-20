@@ -8,8 +8,8 @@ from logger import Logger
 from image import Image
 
 # FIXME: UGH
-blursize = 32
-expand = 10
+shadow_blursize = 32
+shadow_expand = 14
 shadow_img = None
 shadow_texture = None
 
@@ -19,13 +19,13 @@ def get_shadow():
 		return shadow_texture
 
 	import PIL.Image, PIL.ImageFilter
-	w, h = config.tile.width + blursize * 2, config.tile.thumb_height + blursize * 2
+	w, h = config.tile.width + shadow_blursize * 2, config.tile.thumb_height + shadow_blursize * 2
 
 	shadow_img = PIL.Image.new('RGBA', (w, h), (255, 255, 255, 0))
-	shadow_img.paste((255, 255, 255, 255), (blursize - expand, blursize - expand, w - blursize + expand, h - blursize + expand))
-	shadow_img = shadow_img.filter(PIL.ImageFilter.GaussianBlur((blursize - expand) // 2))
-	#shadow_img.paste((255, 255, 255, 255), (blursize, blursize, w - blursize, h - blursize))
-	#shadow_img = shadow_img.filter(PIL.ImageFilter.GaussianBlur(blursize // 3))
+	shadow_img.paste((255, 255, 255, 255), (shadow_blursize - shadow_expand, shadow_blursize - shadow_expand, w - shadow_blursize + shadow_expand, h - shadow_blursize + shadow_expand))
+	shadow_img = shadow_img.filter(PIL.ImageFilter.GaussianBlur((shadow_blursize - shadow_expand) // 2))
+	#shadow_img.paste((255, 255, 255, 255), (shadow_blursize, shadow_blursize, w - shadow_blursize, h - shadow_blursize))
+	#shadow_img = shadow_img.filter(PIL.ImageFilter.GaussianBlur(shadow_blursize // 3))
 
 	shadow_texture = gl.glGenTextures(1)
 	gl.glBindTexture(gl.GL_TEXTURE_2D, shadow_texture)
@@ -34,6 +34,34 @@ def get_shadow():
 	gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, w, h, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, shadow_img.tobytes())
 	gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 	return shadow_texture
+
+# FIXME: UGH
+hl_blursize = 19
+hl_expand = 10
+hl_img = None
+hl_texture = None
+
+def get_hl():
+	global hl_img, hl_texture
+	if hl_texture is not None:
+		return hl_texture
+
+	import PIL.Image, PIL.ImageFilter
+	w, h = config.tile.width + hl_blursize * 2, config.tile.thumb_height + hl_blursize * 2
+
+	hl_img = PIL.Image.new('RGBA', (w, h), (255, 255, 255, 0))
+	hl_img.paste((255, 255, 255, 255), (hl_blursize - hl_expand, hl_blursize - hl_expand, w - hl_blursize + hl_expand, h - hl_blursize + hl_expand))
+	hl_img = hl_img.filter(PIL.ImageFilter.GaussianBlur((hl_blursize - hl_expand) // 2))
+	#hl_img.paste((255, 255, 255, 255), (hl_blursize, hl_blursize, w - hl_blursize, h - hl_blursize))
+	#hl_img = hl_img.filter(PIL.ImageFilter.GaussianBlur(hl_blursize // 3))
+
+	hl_texture = gl.glGenTextures(1)
+	gl.glBindTexture(gl.GL_TEXTURE_2D, hl_texture)
+	gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+	gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+	gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, w, h, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, hl_img.tobytes())
+	gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+	return hl_texture
 
 
 def json_get(data, key, typ, none=False):
@@ -189,9 +217,11 @@ class Tile:
 		outset_y = int(config.tile.thumb_height * config.tile.highlight_outset / 2)
 
 		# Drop shadow
-		x1, y1, x2, y2 = x - blursize, y - config.tile.thumb_height - blursize, x + config.tile.width + blursize, y + blursize
-		if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
-		if selected:
+		x1, y1, x2, y2 = x - shadow_blursize, y - config.tile.thumb_height - shadow_blursize, x + config.tile.width + shadow_blursize, y + shadow_blursize
+		x1 += 8; x2 += 8; y1 -= 8; y2 -= 8
+		#if selected: x1 += 4; x2 += 4; y1 -= 4; y2 -= 4
+		#if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
+		if selected and False:
 			gl.glColor4f(*config.tile.highlight_color)
 		else:
 			gl.glColor4f(*config.tile.shadow_color)
@@ -208,14 +238,32 @@ class Tile:
 		gl.glEnd()
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
+		# Select
+		if selected:
+			x1, y1, x2, y2 = x - hl_blursize, y - config.tile.thumb_height - hl_blursize, x + config.tile.width + hl_blursize, y + hl_blursize
+			gl.glBindTexture(gl.GL_TEXTURE_2D, get_hl())
+			gl.glColor4f(*config.tile.highlight_color)
+			gl.glBegin(gl.GL_QUADS)
+			gl.glTexCoord2f(0.0, 1.0)
+			gl.glVertex2f(x1, y1)
+			gl.glTexCoord2f(1.0, 1.0)
+			gl.glVertex2f(x2, y1)
+			gl.glTexCoord2f(1.0, 0.0)
+			gl.glVertex2f(x2, y2)
+			gl.glTexCoord2f(0.0, 0.0)
+			gl.glVertex2f(x1, y2)
+			gl.glEnd()
+			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+
 		# Outline
 		x1, y1, x2, y2 = x - 2, y - config.tile.thumb_height - 2, x + config.tile.width + 2, y + 2
-		if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
+		#if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
 		gl.glColor4f(*config.tile.shadow_color)
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Thumbnail
 		x1, y1, x2, y2 = x, y - config.tile.thumb_height, x + config.tile.width, y
+		#if selected: x1 -= 4; x2 -= 4; y1 += 4; y2 += 4
 		if self.cover and self.cover.texture:
 			if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
 			gl.glColor4f(1, 1, 1, 1)

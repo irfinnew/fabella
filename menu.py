@@ -223,7 +223,7 @@ class Menu:
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Breadcrumbs
-		self.bread_text.text = ' › '.join(['Home'] + self.breadcrumbs)
+		self.bread_text.text = ' › '.join(self.breadcrumbs)
 
 		if self.bread_text.texture:
 			x1, y1 = config.menu.header_hspace, height - config.menu.header_vspace - self.bread_text.height

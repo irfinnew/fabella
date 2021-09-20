@@ -23,6 +23,6 @@ class tile:
 
 class menu:
 	background_color = (0.16, 0.16, 0.2, 1)
-	text_size = 40
+	text_size = 36
 	header_hspace = 64
 	header_vspace = 64
