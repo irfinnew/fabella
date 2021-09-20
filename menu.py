@@ -52,8 +52,6 @@ class Menu:
 		self.enabled = False
 
 	def load(self, path):
-		self.tile_pool.flush()
-		self.render_pool.flush()
 		self.forget()
 		self.log.info(f'Loading {path}')
 		# BENCHMARK
@@ -64,7 +62,12 @@ class Menu:
 		try:
 			with open(self.state_file) as fd:
 				self.state = json.load(fd)
+			self.log.info(f'Loaded state file {self.state_file}')
 		except FileNotFoundError:
+			self.log.info(f'State file {self.state_file} doesn\'t exist')
+			self.state = {}
+		except json.decoder.JSONDecodeError as e:
+			self.log.error(f'Loading state file {self.state_file}: {e}')
 			self.state = {}
 
 		start = time.time()
@@ -136,6 +139,8 @@ class Menu:
 
 	def forget(self):
 		self.log.info('Forgetting tiles')
+		self.tile_pool.flush()
+		self.render_pool.flush()
 		Tile.release_all_textures(self.tiles)
 		self.tiles = []
 		self.current_idx = None

@@ -155,7 +155,10 @@ class BaseTile:
 		with open(self.full_path, 'rb') as fd:
 			mkv = enzyme.MKV(fd)
 			duration = mkv.info.duration
-		return duration.seconds + duration.microseconds / 1000000
+		if duration is None:
+			return None
+		else:
+			return duration.seconds + duration.microseconds / 1000000
 
 
 	def analyze(self):
@@ -173,7 +176,8 @@ class BaseTile:
 		# Maybe duration was set from getting the cover, maybe not.
 		if self.duration is None and not self.isdir and self.name.endswith(VIDEO_EXTENSIONS):
 			try:
-				self.duration = round(self.get_video_duration())
+				self.duration = self.get_video_duration()
+				self.duration = round(self.duration) if self.duration is not None else None
 			except subprocess.CalledProcessError as e:
 				log.error(f'Couldn\'t determine video duration: {e}')
 
