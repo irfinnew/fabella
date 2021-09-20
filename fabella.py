@@ -111,7 +111,7 @@ while not window.closed():
 					menu.previous()
 
 	width, height = window.size()
-	log.debug(f'Window size {width}x{height}')
+	#log.debug(f'Window size {width}x{height}')
 
 	video.render()
 

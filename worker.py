@@ -1,5 +1,6 @@
-import threading
 import queue
+import threading
+import traceback
 
 from logger import Logger
 
@@ -54,7 +55,14 @@ class Worker:
 		log.info(f'Thread {self.thread.name} running for pool {self.pool.name}')
 		while True:
 			job = self.queue.get()
-			job()
+
+			try:
+				job()
+			except Exception:
+				log.error(f'Unhandled exception on thread {self.pool.name} while executing job {job}')
+				for line in traceback.format_exc().splitlines():
+					log.error(line)
+
 			self.queue.task_done()
 
 	def __str__(self):

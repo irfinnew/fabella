@@ -54,11 +54,11 @@ class Window:
 		return glfw.get_window_size(self.window)
 
 	def wait(self):
-		self.log.debug('glfw.wait_events()')
+		#self.log.debug('glfw.wait_events()')
 		glfw.wait_events()
 
 	def swap_buffers(self):
-		self.log.debug('glfw.swap_buffers()')
+		#self.log.debug('glfw.swap_buffers()')
 		glfw.swap_buffers(self.window)
 
 	def get_events(self):
