@@ -37,6 +37,10 @@ class Video:
 		self.mpv['af'] = 'lavfi=[dynaudnorm=p=1]'
 		self.mpv['replaygain'] = 'track'
 		self.mpv['replaygain-clip'] = 'yes'
+		self.mpv['osd-font'] = 'Ubuntu Medium'
+		self.mpv['osd-font-size'] = 45
+		self.mpv['sub-font'] = 'Ubuntu Medium'
+		self.mpv['sub-font-size'] = 45
 
 		self.context = mpv.MpvRenderContext(
 			self.mpv,

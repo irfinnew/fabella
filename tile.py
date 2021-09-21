@@ -9,7 +9,7 @@ from image import Image
 
 # FIXME: UGH
 shadow_blursize = 32
-shadow_expand = 14
+shadow_expand = 4
 shadow_img = None
 shadow_texture = None
 
