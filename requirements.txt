@@ -1,0 +1,8 @@
+# libgirepository1.0-dev libcairo2-dev libmpv1
+
+glfw
+pyopengl
+pillow
+pycairo
+PyGObject
+python-mpv
