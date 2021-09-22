@@ -152,9 +152,14 @@ class BaseTile:
 
 
 	def get_video_duration(self):
-		with open(self.full_path, 'rb') as fd:
-			mkv = enzyme.MKV(fd)
-			duration = mkv.info.duration
+		try:
+			with open(self.full_path, 'rb') as fd:
+				mkv = enzyme.MKV(fd)
+				duration = mkv.info.duration
+		except (OSError, enzyme.exceptions.Error) as e:
+			log.error(f'Processing {self.full_path}: {e}')
+			duration = None
+
 		if duration is None:
 			return None
 		else:

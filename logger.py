@@ -25,8 +25,8 @@ class Logger:
 		self.color = color
 
 	def log(self, level, msg, *, module=None, color=None):
-		#if level == 'debug':
-		#	return
+		if level == 'debug':
+			return
 
 		level_color = self.LevelColors[level]
 		module = module or self.module
