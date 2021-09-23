@@ -16,7 +16,7 @@ class Text:
 		self._text = None
 		self.width = 0
 		self.height = 0
-		self.surface = None
+		self.update = None
 		self.rendered = False
 		self._texture = None
 
@@ -61,13 +61,13 @@ class Text:
 
 		# Create actual surface
 		width, height = layout.get_size()
-		self.height = height // Pango.SCALE + border * 2
+		height = height // Pango.SCALE + border * 2
 		if self.max_width:
-			self.width = self.max_width
+			width = self.max_width
 		else:
-			self.width = width // Pango.SCALE + border * 2
+			width = width // Pango.SCALE + border * 2
 
-		surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, self.width, self.height)
+		surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
 		context = cairo.Context(surface)
 
 		# Outline
@@ -84,13 +84,16 @@ class Text:
 		context.move_to(border, border)
 		PangoCairo.show_layout(context, layout)
 
-		self.surface = surface
+		self.update = (surface.get_data(), width, height)
 		self.rendered = True
 
 	@property
 	def texture(self):
-		if not self.surface:
+		if not self.update:
 			return self._texture
+
+		data, self.width, self.height = self.update
+		self.update = None
 
 		if self._texture is None:
 			self._texture = gl.glGenTextures(1)
@@ -98,10 +101,9 @@ class Text:
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self._texture)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, self.width, self.height, 0, gl.GL_BGRA, gl.GL_UNSIGNED_BYTE, self.surface.get_data())
+		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, self.width, self.height, 0, gl.GL_BGRA, gl.GL_UNSIGNED_BYTE, data)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
-		self.surface = None
 		return self._texture
 
 	def __str__(self):
