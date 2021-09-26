@@ -136,8 +136,11 @@ class Menu:
 		self.log.info(f'Writing {self.state_file}')
 		self.state[name] = new_state
 		os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
-		with open(self.state_file, 'w') as fd:
-			json.dump(self.state, fd, indent=4)
+		try:
+			with open(self.state_file, 'w') as fd:
+				json.dump(self.state, fd, indent=4)
+		except OSError as e:
+			self.log.error(f'Writing {self.state_file}: {e}')
 
 	def forget(self):
 		self.log.info('Forgetting tiles')
