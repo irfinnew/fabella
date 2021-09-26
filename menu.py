@@ -135,8 +135,8 @@ class Menu:
 	def write_state(self, name, new_state):
 		self.log.info(f'Writing {self.state_file}')
 		self.state[name] = new_state
-		os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
 		try:
+			os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
 			with open(self.state_file, 'w') as fd:
 				json.dump(self.state, fd, indent=4)
 		except OSError as e:
