@@ -12,3 +12,4 @@
  - make a library watch daemon
  - Videos with non-square pixels are poorly supported; video playback is letterboxed; thumbnails get squashed (IT crowd)
  - Perhaps display multiple seasons in one menu? Separated by a text header?
+ - copy better thumbnail generation from mkv-gencover
