@@ -461,7 +461,7 @@ def scan(path, pool):
 			os.fdatasync(fd)
 		os.rename(index_db_name + PARTIAL_SUFFIX, index_db_name)
 
-	#### Write cover
+	#### Write covers
 	# FIXME: error checking
 	real_fingerprint = Meta.fingerprint(real_tiles)
 	if cover_db_fingerprint == real_fingerprint:
@@ -484,7 +484,11 @@ def scan(path, pool):
 				os.fdatasync(fd)
 			os.rename(cover_db_name + PARTIAL_SUFFIX, cover_db_name)
 		else:
-			log.debug(f'No files here, not writing {cover_db_name}')
+			if os.path.isfile(cover_db_name):
+				log.info(f'No files here, removing {cover_db_name}')
+				os.remove(cover_db_name)
+			else:
+				log.debug(f'No files here, not writing {cover_db_name}')
 
 
 
