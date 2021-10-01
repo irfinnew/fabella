@@ -33,11 +33,12 @@ class Handler(watchdog.events.FileSystemEventHandler):
 
 
 class Watcher:
-	def __init__(self, path):
-		self.path = path
+	def __init__(self, roots):
+		self.roots = roots
 		self.handler = Handler()
 		self.observer = watchdog.observers.Observer()
-		self.observer.schedule(self.handler, path, recursive=True)
+		for root in roots:
+			self.observer.schedule(self.handler, root, recursive=True)
 		self.observer.start()
 
 	def events(self, timeout=None):
@@ -48,8 +49,8 @@ class Watcher:
 				yield None
 
 	def push(self, path, skip_hidden=True, recursive=False):
-		# Don't stray outside of our root
-		if os.path.commonpath((path, self.path)) != self.path:
+		# Don't stray outside of our roots
+		if not any(os.path.commonpath((path, root)) == root for root in self.roots):
 			return
 
 		self.handler.queue.put(Event(os.path.normpath(path), True, 'modified'))

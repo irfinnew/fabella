@@ -492,10 +492,15 @@ def scan(path, pool):
 
 
 
+roots = [os.path.abspath(root) for root in sys.argv[1:]]
+if not roots:
+	print('Must specify at least one root')
+	exit(1)
+watcher = Watcher(roots)
+for root in roots:
+	watcher.push(root, recursive=True)
+
 analyze_pool = Pool('analyze', threads=4)
-path = os.path.abspath(sys.argv[1])
-watcher = Watcher(path)
-watcher.push(path, recursive=True)
 dirty = {}
 for event in watcher.events(timeout=1):
 	if event:
