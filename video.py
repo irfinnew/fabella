@@ -28,6 +28,8 @@ class Video:
 			loglevel = {'fatal': 'critical', 'warn': 'warning', 'v': 'info', 'trace': 'debug'}.get(loglevel, loglevel)
 			self.log.log(loglevel, component + ': ' + message, module='libmpv', color=Logger.Green)
 
+		self.should_render = False
+		self.menu = None
 		self.mpv = mpv.MPV(log_handler=mpv_log, loglevel='debug')
 		self.log.warning('FIXME: setting MPV options')
 		self.mpv['hwdec'] = 'auto'
@@ -119,6 +121,7 @@ class Video:
 		self.log.info(f'Starting playback for {filename}')
 
 		self.current_file = filename
+		self.should_render = True
 		self.rendered = False
 		self.position = position
 		self.tile = tile
@@ -129,6 +132,7 @@ class Video:
 		self.pause(False)
 		if position > 0:
 			self.log.info(f'Starting playback at position {position}')
+			# FIXME
 			# Updating the position only works after libmpv has had
 			# a chance to initialize the video; so we spin here until
 			# libmpv is ready.
@@ -147,6 +151,7 @@ class Video:
 
 		self.current_file = None
 		# Hmm, maybe not do this? Is the memory valid after stop though?
+		self.should_render = False
 		self.rendered = False
 		self.tile = None
 
@@ -169,8 +174,10 @@ class Video:
 			self.video_size_old = self.video_size
 			self.rendered = False
 
-		if not self.mpv.playback_abort and self.context.update():
+		if self.should_render and self.context.update():
 			self.log.debug('Rendering frame')
+			# FIXME: apparently, we shouldn't call other mpv functions from the same
+			# thread as render(). Find a way to fix that.
 			ret = self.context.render(flip_y=True, opengl_fbo={'w': width, 'h': height, 'fbo': self.fbo})
 			self.rendered = True
 
