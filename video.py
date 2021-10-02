@@ -156,7 +156,7 @@ class Video:
 			self.mpv.seek(amount, whence)
 		except SystemError as e:
 			# FIXME
-			self.log.warning('SEEK ERROR')
+			self.log.warning('Seek error')
 			print(e)
 
 	def render(self):
@@ -169,7 +169,7 @@ class Video:
 			self.video_size_old = self.video_size
 			self.rendered = False
 
-		if self.context.update():
+		if not self.mpv.playback_abort and self.context.update():
 			self.log.debug('Rendering frame')
 			ret = self.context.render(flip_y=True, opengl_fbo={'w': width, 'h': height, 'fbo': self.fbo})
 			self.rendered = True
