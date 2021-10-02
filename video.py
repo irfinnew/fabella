@@ -51,7 +51,7 @@ class Video:
 		self.mpv.observe_property('width', self.size_changed)
 		self.mpv.observe_property('height', self.size_changed)
 		self.mpv.observe_property('percent-pos', self.position_changed)
-		self.mpv.register_event_callback(self.mpv_event)
+		self.mpv.observe_property('eof-reached', self.eof_reached)
 
 		# FIXME
 		self.fbo = gl.glGenFramebuffers(1)
@@ -68,12 +68,11 @@ class Video:
 		gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
-	def mpv_event(self, event):
-		if event['event'] == {'prefix': 'cplayer', 'level': 'v', 'text': 'video EOF reached'}:
-			self.eof_reached()
+	def eof_reached(self, prop, value):
+		if value is False:
+			return
 
-	def eof_reached(self):
-		self.log.info('Reached video EOF')
+		self.log.info('Reached EOF')
 		self.position = 0.0
 		self.stop()
 		# FIXME: tight coupling
