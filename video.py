@@ -79,6 +79,9 @@ class Video:
 		self.stop()
 		# FIXME: tight coupling
 		if self.menu:
+			# FIXME: this is really ugly; this method is called from another thread, so
+			# this will call menu.open() asynchronously, which may interfere with what
+			# the user is doing at this point.
 			time.sleep(0.5)
 			self.menu.open()
 
@@ -166,12 +169,13 @@ class Video:
 
 	def render(self):
 		width, height = self.video_size
-		if self.video_size != self.video_size_old:
-			self.log.info(f'Resizing video texture from {self.video_size_old} to {self.video_size}')
+		# self.video_size may be modified from another thread, so be careful to use (widht, height)
+		if (width, height) != self.video_size_old:
+			self.log.info(f'Resizing video texture from {self.video_size_old} to {(width, height)}')
 			gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
 			gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, width, height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, None)
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-			self.video_size_old = self.video_size
+			self.video_size_old = (width, height)
 			self.rendered = False
 
 		if self.should_render and self.context.update():
