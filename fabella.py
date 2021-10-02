@@ -97,7 +97,11 @@ while not window.closed():
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
 				if key == glfw.KEY_ESCAPE:
-					menu.close()
+					# FIXME Hmm; the idea is right, but the variable definitely needs a better name.
+					if video.should_render:
+						menu.close()
+					else:
+						video.info('No video open; refusing to close menu.')
 					#video.pause(False)
 				if key == glfw.KEY_TAB:
 					menu.toggle_seen()
