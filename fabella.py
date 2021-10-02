@@ -56,6 +56,10 @@ while not window.closed():
 					video.seek(60)
 				if key == glfw.KEY_DOWN:
 					video.seek(-60)
+				if key == glfw.KEY_PAGE_UP:
+					video.seek(600)
+				if key == glfw.KEY_PAGE_DOWN:
+					video.seek(-600)
 
 				if key in [glfw.KEY_J, glfw.KEY_K]:
 					log.warning('Cycling Subtitles (FIXME: move code)')
