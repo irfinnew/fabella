@@ -16,7 +16,6 @@ class Video:
 	fbo = None
 	texture = None
 	video_size = (640, 360)
-	video_size_old = (None, None)
 	position = 0
 	position_immune_until = 0
 	rendered = False
@@ -86,15 +85,7 @@ class Video:
 			self.menu.open()
 
 	def size_changed(self, prop, value):
-		self.log.info(f'Video {prop} changed to {value}')
-		assert prop in ['width', 'height']
-
-		if value is None:
-			return
-		if prop == 'width':
-			self.video_size = (value, self.video_size[1])
-		elif prop == 'height':
-			self.video_size = (self.video_size[0], value)
+		self.log.info(f'Video {prop} is {value}')
 
 	def position_changed(self, prop, value):
 		self.log.debug(f'Video percent-pos changed to {value}')
@@ -167,18 +158,18 @@ class Video:
 			self.log.warning('Seek error')
 			print(e)
 
-	def render(self):
-		width, height = self.video_size
-		# self.video_size may be modified from another thread, so be careful to use (widht, height)
-		if (width, height) != self.video_size_old:
-			self.log.info(f'Resizing video texture from {self.video_size_old} to {(width, height)}')
+	def render(self, width, height):
+		force_render = False
+		if self.video_size != (width, height):
+			self.log.info(f'Resizing video texture from {self.video_size} to {(width, height)}')
 			gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
 			gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, width, height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, None)
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-			self.video_size_old = (width, height)
+			self.video_size = (width, height)
 			self.rendered = False
+			force_render = True
 
-		if self.should_render and self.context.update():
+		if self.should_render and (self.context.update() or force_render):
 			self.log.debug('Rendering frame')
 			# FIXME: apparently, we shouldn't call other mpv functions from the same
 			# thread as render(). Find a way to fix that.
@@ -193,26 +184,18 @@ class Video:
 		#self.log.debug('Drawing frame')
 		video_width, video_height = self.video_size
 
-		# Fit video to screen, preserving aspect
-		x1 = max((window_width - video_width / video_height * window_height) / 2, 0)
-		y1 = max((window_height - video_height / video_width * window_width) / 2, 0)
-
-		x2 = window_width - x1
-		y2 = window_height - y1
-
-		x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-
+		# Draw video
 		gl.glColor4f(1, 1, 1, 1)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
 		gl.glBegin(gl.GL_QUADS)
 		gl.glTexCoord2f(0.0, 0.0)
-		gl.glVertex2i(x1, y1)
+		gl.glVertex2i(0, 0)
 		gl.glTexCoord2f(1.0, 0.0)
-		gl.glVertex2i(x2, y1)
+		gl.glVertex2i(window_width, 0)
 		gl.glTexCoord2f(1.0, 1.0)
-		gl.glVertex2i(x2, y2)
+		gl.glVertex2i(window_width, window_height)
 		gl.glTexCoord2f(0.0, 1.0)
-		gl.glVertex2i(x1, y2)
+		gl.glVertex2i(0, window_height)
 		gl.glEnd()
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 

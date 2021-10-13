@@ -121,7 +121,7 @@ while not window.closed():
 	width, height = window.size()
 	#log.debug(f'Window size {width}x{height}')
 
-	video.render()
+	video.render(width, height)
 
 	# MPV seems to reset some of this stuff, so re-init
 	gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
