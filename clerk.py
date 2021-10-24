@@ -520,14 +520,16 @@ for event in watcher.events(timeout=1):
 		if not event.isdir:
 			# Case: path/.fabella/index.json.gz
 			if not event.isdir and event.path.endswith('/' + INDEX_DB_NAME):
-				# Recheck containing dir
 				watcher.push(os.path.dirname(os.path.dirname(event.path)))
-			# Case: path/.fabella/index.json.gz
+
+			# Case: path/.fabella/covers.zip
 			if not event.isdir and event.path.endswith('/' + COVER_DB_NAME):
 				watcher.push(os.path.dirname(os.path.dirname(event.path)))
+
 			# Case: path/.cover.jpg
 			elif event.path.endswith('/' + FOLDER_COVER_FILE):
 				watcher.push(os.path.dirname(os.path.dirname(event.path)))
+
 			# Case: path/foo.bar
 			else:
 				# Only do something for file extensions we care about

@@ -25,7 +25,7 @@ class Handler(watchdog.events.FileSystemEventHandler):
 
 	def on_any_event(self, event):
 		#print(event, event.event_type)
-		if event.event_type in {'created', 'closed', 'deleted'}:
+		if event.event_type in {'created', 'closed', 'deleted', 'modified'}:
 			self.queue.put(Event(event.src_path, event.is_directory, event.event_type))
 		if event.event_type == 'moved':
 			self.queue.put(Event(event.src_path, event.is_directory, 'deleted'))
