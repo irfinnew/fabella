@@ -268,7 +268,7 @@ class RealTile(BaseTile):
 		# Get file attrs
 		try:
 			stat_data = os.stat(self.full_path)
-		except FileNotFoundError as e:
+		except OSError as e:
 			# Can't stat the file we were just created for? Fatal.
 			raise ValueError(repr(e))
 
