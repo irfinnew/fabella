@@ -9,11 +9,15 @@ COVER_META_TAG = '.meta'
 COVER_WIDTH = 320
 COVER_HEIGHT = 200
 
+STATE_DB_NAME = '.fabella/state.json'
+QUEUE_DIR_NAME = '.fabella/queue'
+
 THUMB_VIDEO_POSITION = 0.25
 VIDEO_FILETYPES = ['mkv', 'mp4', 'webm', 'avi', 'wmv']
 VIDEO_EXTENSIONS = tuple('.' + ext for ext in VIDEO_FILETYPES)
 FOLDER_COVER_FILE = '.cover.jpg'
 MKV_COVER_FILE = 'cover.jpg'
+EVENT_COOLDOWN_SECONDS = 1
 
 
 
@@ -344,6 +348,9 @@ def scan(path, pool):
 		log.info(f'{path} is gone, nothing to do')
 		return
 
+	# Queue dir should exist, so enforce that here.
+	os.makedirs(os.path.join(path, QUEUE_DIR_NAME), exist_ok=True)
+
 	index_db_name = os.path.join(path, INDEX_DB_NAME)
 
 	#### Read index file
@@ -492,6 +499,13 @@ def scan(path, pool):
 
 
 
+def process_state_queue(path):
+	#STATE_DB_NAME = '.fabella/state.json'
+	#QUEUE_DIR_NAME = '/fabella/queue'
+	pass
+
+
+
 roots = [os.path.abspath(root) for root in sys.argv[1:]]
 if not roots:
 	print('Must specify at least one root')
@@ -538,7 +552,7 @@ for event in watcher.events(timeout=1):
 
 	act_now = []
 	for path, age in list(dirty.items()):
-		if now - age > 1:
+		if now - age > EVENT_COOLDOWN_SECONDS:
 			del dirty[path]
 			act_now.append(path)
 
