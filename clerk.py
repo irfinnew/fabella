@@ -9,7 +9,7 @@ COVER_META_TAG = '.meta'
 COVER_WIDTH = 320
 COVER_HEIGHT = 200
 
-STATE_DB_NAME = '.fabella/state.json'
+STATE_DB_NAME = '.fabella/state.json.gz'
 QUEUE_DIR_NAME = '.fabella/queue'
 
 THUMB_VIDEO_POSITION = 0.25
@@ -19,10 +19,25 @@ FOLDER_COVER_FILE = '.cover.jpg'
 MKV_COVER_FILE = 'cover.jpg'
 EVENT_COOLDOWN_SECONDS = 1
 
+WATCHED_STEPS = 10
+WATCHED_MAX = (2 ** WATCHED_STEPS - 1)
 STATE_UPDATE_SCHEMA = {
 	'name': str,
-	'position?': float,
-	'watched?': bool,
+	'position?': (int, float),
+	'state?': int,
+}
+INDEX_DB_SCHEMA = {
+	'meta': { 'version': int },
+	'files': [
+		{
+			'name': str,
+			'isdir': bool,
+			'src_size': int,
+			'src_mtime': int,
+			'tile_color': str,
+			'duration': int,
+		}
+	],
 }
 
 import sys
@@ -34,6 +49,7 @@ import gzip
 import zlib
 import json
 import time
+import uuid
 import zipfile
 import enzyme
 import hashlib
@@ -67,11 +83,9 @@ def validate_json(data, schema, keyname=None):
 				validate_json(v, optional[k], keyname=k)
 		if mandatory:
 			raise JsonValidateError(f'Missing keys {list(mandatory.keys())} in {data}')
-	elif schema in {str, bool, int, float}:
+	else:
 		if not isinstance(data, schema):
 			raise JsonValidateError(f'Key {keyname}={data} should be type {schema}')
-	else:
-		raise ValueError(f'Unsupported schema type: {schema}')
 
 
 
@@ -538,28 +552,50 @@ def process_state_queue(path):
 	os.makedirs(queue_dir_name, exist_ok=True)
 	os.chmod(queue_dir_name, 0o775)
 
+	#### Load original state
 	try:
-		with open(state_db_name) as fd:
-			state = json.load(fd)
+		with gzip.open(state_db_name) as fd:
+			orig_state = json.load(fd)
 	except FileNotFoundError:
 		log.debug(f'No state DB {state_db_name}; using empty state')
-		state = {}
+		orig_state = {}
 	except (OSError, EOFError, zlib.error, json.JSONDecodeError) as e:
 		log.error(f'Parsing {state_db_name}: {str(e)}')
+	# FIXME: validate state
+
+	# FIXME: duplicate code
+	# BLABLAH
+	index_db_name = os.path.join(path, INDEX_DB_NAME)
+	try:
+		with gzip.open(index_db_name) as fd:
+			log.debug(f'Adding names from {index_db_name}')
+			# FIXME: validate
+			index = [idx['name'] for idx in json.load(fd)['files']]
+	except FileNotFoundError:
+		log.debug(f'Index DB {index_db_name} missing')
+		index = []
+	except (OSError, EOFError, zlib.error, json.JSONDecodeError) as e:
+		log.error(f'Parsing {index_db_name}: {str(e)}')
+		index = []
+
+	# Make deep copy of actual present files
+	state = {name: dict(orig_state.get(name, {})) for name in index}
 
 	state_queue = [f for f in os.scandir(queue_dir_name) if f.is_file()]
 	state_queue = sorted(state_queue, key=lambda f: f.stat().st_mtime)
 	state_queue = [f.path for f in state_queue]
 
-	print(state)
+	print('before', state)
 
 	for update_name in state_queue:
+		log.debug(f'Processing {update_name}')
 		try:
 			with open(update_name) as fd:
 				update = json.load(fd)
 		except (OSError, EOFError, zlib.error, json.JSONDecodeError) as e:
 			log.error(f'Parsing {update_name}: {str(e)}')
 			continue
+
 		print(update)
 		try:
 			validate_json(update, STATE_UPDATE_SCHEMA)
@@ -567,41 +603,70 @@ def process_state_queue(path):
 			log.error(f'Parsing {update_name}: {str(e)}')
 			continue
 
-	name = update['name']
-	if name not in state:
-		state[name] = {}
-	this_state = state[name]
+		name = update['name']
+		if name not in state:
+			state[name] = {}
+		this_state = state[name]
 
-	if 'position' in update:
-		if update['position'] > 0:
-			this_state['position'] = update['position']
-			this_state['position_date'] = time.time()
+		if 'position' in update:
+			if update['position'] > 0:
+				this_state['position'] = update['position']
+				this_state['position_date'] = time.time()
+			else:
+				this_state.pop('position', None)
+				this_state.pop('position_date', None)
+
+		if 'state' in update:
+			if update['state'] == 0:
+				this_state.pop('state', None)
+				this_state.pop('position', None)
+				this_state.pop('position_date', None)
+			elif update['state'] == WATCHED_MAX:
+				this_state['state'] = WATCHED_MAX
+				this_state.pop('position', None)
+				this_state.pop('position_date', None)
+			else:
+				this_state['state'] = update['state']
+
+		if 'trashed' in update:
+			this_state['trashed'] = update['trashed']
+
+	# Filter out empty states
+	#state = {k: v for k, v in state.items() if v}
+	print('after', state)
+
+	#### Write new state
+	if state != orig_state:
+		# FIXME: error checking
+		if state:
+			log.info(f'Writing new state DB {state_db_name}')
+			os.makedirs(os.path.dirname(state_db_name), exist_ok=True)
+			with gzip.open(state_db_name + PARTIAL_SUFFIX, 'wt') as fd:
+				json.dump(state, fd, indent=4)
+				os.fdatasync(fd)
+			os.rename(state_db_name + PARTIAL_SUFFIX, state_db_name)
 		else:
-			this_state.pop('position')
-			this_state.pop('position_date')
+			log.info(f'Empty state; removing {state_db_name}')
+			os.unlink(state_db_name)
 
-		if update['position'] > 0 and not this_state['watched']:
-			if not 'parts_watched' in this_state:
-				this_state['parts_watched'] = 0
-			this_state['parts_watched'] |= 2 ** int(position * 10)
+		def flatten_state(state):
+			# Flatten multiple states to one folder state
+			if any(0 < s.get('state', 0) < WATCHED_MAX for s in state.values()):
+				return 2 ** (WATCHED_STEPS // 2) - 1
+			if any(s.get('state', 0) == 0 for s in state.values()):
+				return 0
+			return WATCHED_MAX
 
-			if this_state['position'] > 0:
-				this_state['watching'] = True
-			if this_state['parts_watched'] >= 1023:
-				this_state['watching'] = False
-				this_state['watched'] = False
-
-	if 'watched' in update:
-		this_state.pop('position', None)
-		this_state.pop('position_date', None)
-		this_state.pop('parts_watched', None)
-		this_state.pop('watching', None)
-		this_state['watched'] = update['watched']
-
-	if 'trashed' in update:
-		this_state['trashed'] = update['trashed']
-
-	# FIXME: write new state file
+		# Propagate state upwards
+		flat = flatten_state(state)
+		if flat != flatten_state(orig_state):
+			up_state_name = os.path.join(os.path.dirname(path), QUEUE_DIR_NAME, str(uuid.uuid4()))
+			log.debug(f'Propagating new state upwards as {up_state_name}')
+			os.makedirs(os.path.dirname(up_state_name), exist_ok=True)
+			# FIXME: Error checking
+			with open(up_state_name, 'w') as fd:
+				json.dump({"name": os.path.basename(path), "state": flat}, fd, indent=4)
+				os.fdatasync(fd)
 
 	for update_name in state_queue:
 		try:
@@ -643,6 +708,10 @@ for event in watcher.events(timeout=1):
 			if os.path.dirname(event.path).endswith('/' + QUEUE_DIR_NAME):
 				if event.evtype in {'closed'}:
 					do_state_queue.append(os.path.dirname(os.path.dirname(os.path.dirname(event.path))))
+
+			# Case: path/.fabella/state.json.gz
+			elif event.path.endswith('/' + STATE_DB_NAME):
+				do_state_queue.append(os.path.dirname(os.path.dirname(event.path)))
 
 			# Case: path/.fabella/index.json.gz
 			elif event.path.endswith('/' + INDEX_DB_NAME):
