@@ -1,62 +1,21 @@
 #! /usr/bin/env python3
 
-INDEX_DB_NAME = '.fabella/index.json.gz'
-PARTIAL_SUFFIX = '.part'
-INDEX_META_VERSION = 1
-
-COVER_DB_NAME = '.fabella/covers.zip'
 COVER_META_TAG = '.meta'
 COVER_WIDTH = 320
 COVER_HEIGHT = 200
 
-STATE_DB_NAME = '.fabella/state.json.gz'
-QUEUE_DIR_NAME = '.fabella/queue'
-
 THUMB_VIDEO_POSITION = 0.25
-VIDEO_FILETYPES = ['mkv', 'mp4', 'webm', 'avi', 'wmv']
-VIDEO_EXTENSIONS = tuple('.' + ext for ext in VIDEO_FILETYPES)
 FOLDER_COVER_FILE = '.cover.jpg'
 MKV_COVER_FILE = 'cover.jpg'
 EVENT_COOLDOWN_SECONDS = 1
 
-WATCHED_STEPS = 10
-WATCHED_MAX = (2 ** WATCHED_STEPS - 1)
-STATE_UPDATE_SCHEMA = {
-	'*': {
-		'position?': float,
-		'watched?': int,
-		'trash?': int,
-	}
-}
-STATE_DB_SCHEMA = {
-	'*': {
-		'position?': float,
-		'position_date?': float,
-		'watched?': int,
-		'trash?': int,
-	}
-}
-INDEX_DB_SCHEMA = {
-	'meta': { 'version': int },
-	'files': [
-		{
-			'name': str,
-			'isdir': bool,
-			'src_size': int,
-			'src_mtime': int,
-			'tile_color?': str,
-			'duration?': int,
-		}
-	],
-}
+
 
 import sys
 import os
 import io
 import ast
 import stat
-import gzip
-import zlib
 import json
 import time
 import uuid
@@ -71,58 +30,9 @@ import colorpicker
 from logger import Logger
 from watch import Watcher
 from worker import Pool
+import dbs
 
 log = Logger(module='clerk', color=Logger.Magenta)
-
-
-
-class JsonValidationError(Exception):
-	pass
-
-def validate_json(data, schema, keyname=None):
-	if isinstance(schema, dict):
-		if not isinstance(data, dict):
-			raise JsonValidationError(f'Expected object for {keyname}, not {data}')
-		mandatory, optional, wildcard = {}, {}, None
-		for k, v in schema.items():
-			if k == '*':
-				wildcard = v
-			elif k.endswith('?'):
-				optional[k[:-1]] = v
-			else:
-				mandatory[k] = v
-
-		unknown = []
-		for k, v in data.items():
-			if k in mandatory:
-				validate_json(v, mandatory[k], keyname=k)
-				del mandatory[k]
-			elif k in optional:
-				validate_json(v, optional[k], keyname=k)
-			elif wildcard is not None:
-				validate_json(v, wildcard, keyname=k)
-			else:
-				unknown.append(k)
-
-		if unknown:
-			raise JsonValidationError(f'Extra keys {unknown} in {data}')
-		if mandatory:
-			raise JsonValidationError(f'Missing keys {list(mandatory.keys())} in {data}')
-
-	elif isinstance(schema, list):
-		if len(schema) != 1:
-			raise ValueError(f'Schema list must have length one: {schema}')
-		schema = schema[0]
-		for idx, item in enumerate(data):
-			validate_json(item, schema, keyname=str(idx))
-
-	elif schema in {str, bool, int, float}:
-		if schema is float:
-			schema = (int, float)
-		if not isinstance(data, schema):
-			raise JsonValidationError(f'Key {keyname}={data} should be type {schema}')
-	else:
-		raise KeyError(f'Unsupported schema type: {schema}')
 
 
 
@@ -134,18 +44,6 @@ def run_command(command):
 		for line in e.stderr.decode('utf-8').splitlines():
 			log.error(line)
 		raise
-
-
-
-def json_get(data, key, typ, none=False):
-	value = data[key]
-
-	if none and value is None:
-		return None
-
-	if not isinstance(value, typ):
-		raise TypeError(f'Expected {key} to be {typ}: {value}')
-	return value
 
 
 
@@ -219,7 +117,7 @@ class BaseTile:
 				raise TileError(f'Processing {self.full_path}: {e}')
 
 		# If we got here, no embedded cover was found, generate thumbnail
-		if self.name.endswith(VIDEO_EXTENSIONS):
+		if self.name.endswith(dbs.VIDEO_EXTENSIONS):
 			log.info(f'Generating thumbnail for {self.full_path}')
 			try:
 				duration = self.get_video_duration()
@@ -267,7 +165,7 @@ class BaseTile:
 			self.cover_needs_update = False
 
 		# Maybe duration was set from getting the cover, maybe not.
-		if self.duration is None and not self.isdir and self.name.endswith(VIDEO_EXTENSIONS):
+		if self.duration is None and not self.isdir and self.name.endswith(dbs.VIDEO_EXTENSIONS):
 			try:
 				self.duration = self.get_video_duration()
 				self.duration = round(self.duration) if self.duration is not None else None
@@ -315,16 +213,12 @@ class BaseTile:
 
 class IndexedTile(BaseTile):
 	def __init__(self, path, data):
-		try:
-			self.name = json_get(data, 'name', str)
-			self.isdir = json_get(data, 'isdir', bool)
-			self.src_size = json_get(data, 'src_size', int, none=True)
-			self.src_mtime = json_get(data, 'src_mtime', int, none=True)
-			self.tile_color = json_get(data, 'tile_color', str, none=True)
-			self.duration = None if self.isdir else json_get(data, 'duration', int, none=True)
-		except (KeyError, TypeError, ValueError) as e:
-			# Give caller a single exception to worry about
-			raise ValueError(repr(e))
+		self.name = data['name']
+		self.isdir = data['isdir']
+		self.src_size = data['src_size']
+		self.src_mtime = data['src_mtime']
+		self.tile_color = data['tile_color']
+		self.duration = None if self.isdir else data['duration']
 
 		self.path = path
 		self.full_path = os.path.join(path, self.name)
@@ -374,7 +268,7 @@ class RealTile(BaseTile):
 			return True
 
 		# File
-		return self.name.endswith(VIDEO_EXTENSIONS)
+		return self.name.endswith(dbs.VIDEO_EXTENSIONS)
 
 
 
@@ -384,13 +278,11 @@ class Meta:
 
 	@classmethod
 	def from_json(cls, data):
-		meta = json_get(data, 'meta', dict)
-		version = json_get(meta, 'version', int)
-		return cls(version=version)
+		return cls(version=data['meta']['version'])
 
 	@classmethod
 	def from_tiles(cls, tiles):
-		return cls(version=INDEX_META_VERSION)
+		return cls(version=dbs.INDEX_META_VERSION)
 
 	def to_json(self):
 		return {
@@ -428,21 +320,8 @@ def scan(path, pool):
 		log.info(f'{path} is gone, nothing to do')
 		return
 
-	index_db_name = os.path.join(path, INDEX_DB_NAME)
-
-	#### Read index file
-	try:
-		with gzip.open(index_db_name) as fd:
-			log.debug(f'Found existing index DB {index_db_name}')
-			orig_index = json.load(fd)
-			validate_json(orig_index, INDEX_DB_SCHEMA)
-	except FileNotFoundError:
-		log.info(f'Index DB {index_db_name} missing')
-		orig_index = {}
-	except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidationError) as e:
-		log.error(f'Parsing {index_db_name}: {str(e)}')
-		orig_index = {}
-
+	index_db_name = os.path.join(path, dbs.INDEX_DB_NAME)
+	orig_index = dbs.json_read(index_db_name, dbs.INDEX_DB_SCHEMA)
 
 	#### Check meta version, extract file info index
 	indexes = []
@@ -450,7 +329,7 @@ def scan(path, pool):
 	if orig_index:
 		try:
 			indexed_meta = Meta.from_json(orig_index)
-			if indexed_meta.version == INDEX_META_VERSION:
+			if indexed_meta.version == dbs.INDEX_META_VERSION:
 				indexes = list(orig_index['files'])
 			else:
 				log.warning(f'Skipping outdated index DB version: {index_db_name}')
@@ -470,13 +349,13 @@ def scan(path, pool):
 
 
 	#### Covers DB
-	cover_db_name = os.path.join(path, COVER_DB_NAME)
+	cover_db_name = os.path.join(path, dbs.COVER_DB_NAME)
 	cover_db_fingerprint = None
 	try:
 		with zipfile.ZipFile(cover_db_name, 'r') as fd:
 			log.debug(f'Found existing covers DB {cover_db_name}')
 			cover_meta = json.loads(fd.read(COVER_META_TAG))
-			if cover_meta['version'] != INDEX_META_VERSION:
+			if cover_meta['version'] != dbs.INDEX_META_VERSION:
 				log.info(f'Existing {covers.db_name} outdated version, discarding')
 			elif cover_meta['dimensions'] != f'{COVER_WIDTH}x{COVER_HEIGHT}':
 				log.info(f'Existing {covers.db_name} has wrong cover dimensions, discarding')
@@ -540,12 +419,7 @@ def scan(path, pool):
 
 	#### Write index
 	if index_needs_update:
-		log.info(f'Writing new index DB {index_db_name}')
-		os.makedirs(os.path.dirname(index_db_name), exist_ok=True)
-		with gzip.open(index_db_name + PARTIAL_SUFFIX, 'wt') as fd:
-			json.dump(Meta.full_json(real_tiles), fd, indent=4)
-			os.fdatasync(fd)
-		os.rename(index_db_name + PARTIAL_SUFFIX, index_db_name)
+		dbs.json_write(index_db_name, Meta.full_json(real_tiles))
 
 	#### Write covers
 	# FIXME: error checking
@@ -555,9 +429,9 @@ def scan(path, pool):
 	else:
 		if real_tiles:
 			log.info(f'Writing new cover DB {cover_db_name}')
-			with zipfile.ZipFile(cover_db_name + PARTIAL_SUFFIX, 'w') as fd:
+			with zipfile.ZipFile(cover_db_name + dbs.NEW_SUFFIX, 'w') as fd:
 				meta = {
-					'version': INDEX_META_VERSION,
+					'version': dbs.INDEX_META_VERSION,
 					'dimensions': f'{COVER_WIDTH}x{COVER_HEIGHT}',
 					'fingerprint': real_fingerprint,
 				}
@@ -566,9 +440,9 @@ def scan(path, pool):
 				# Write cover images
 				for tile in real_tiles:
 					fd.writestr(tile.name, tile.cover_image or b'')
-			with open(cover_db_name + PARTIAL_SUFFIX) as fd:
+			with open(cover_db_name + dbs.NEW_SUFFIX) as fd:
 				os.fdatasync(fd)
-			os.rename(cover_db_name + PARTIAL_SUFFIX, cover_db_name)
+			os.rename(cover_db_name + dbs.NEW_SUFFIX, cover_db_name)
 		else:
 			if os.path.isfile(cover_db_name):
 				log.info(f'No files here, removing {cover_db_name}')
@@ -581,41 +455,20 @@ def scan(path, pool):
 def process_state_queue(path):
 	log.info(f'Processing state events for {path}')
 
-	queue_dir_name = os.path.join(path, QUEUE_DIR_NAME)
-	state_db_name = os.path.join(path, STATE_DB_NAME)
+	queue_dir_name = os.path.join(path, dbs.QUEUE_DIR_NAME)
+	state_db_name = os.path.join(path, dbs.STATE_DB_NAME)
 
 	# Ensure queue dir exists
 	os.makedirs(queue_dir_name, exist_ok=True)
 	os.chmod(queue_dir_name, 0o775)
 
 	#### Load original state
-	try:
-		with gzip.open(state_db_name) as fd:
-			orig_state = json.load(fd)
-			validate_json(orig_state, STATE_DB_SCHEMA)
-	except FileNotFoundError:
-		log.info(f'No state DB {state_db_name}; using empty state')
-		orig_state = {}
-	except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidationError) as e:
-		log.error(f'Parsing {state_db_name}: {str(e)}')
-		orig_state = {}
+	orig_state = dbs.json_read(state_db_name, dbs.STATE_DB_SCHEMA)
 	log.debug(f'Original state: {orig_state}')
 
-	# FIXME: duplicate code
 	# Load filenames from index
-	index_db_name = os.path.join(path, INDEX_DB_NAME)
-	try:
-		with gzip.open(index_db_name) as fd:
-			log.debug(f'Adding names from {index_db_name}')
-			index = json.load(fd)
-			validate_json(index, INDEX_DB_SCHEMA)
-			index = [idx['name'] for idx in index['files']]
-	except FileNotFoundError:
-		log.warning(f'Index DB {index_db_name} missing')
-		index = []
-	except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidationError) as e:
-		log.error(f'Parsing {index_db_name}: {str(e)}')
-		index = []
+	index = dbs.json_read(os.path.join(path, dbs.INDEX_DB_NAME), dbs.INDEX_DB_SCHEMA, default={'files': []})
+	index = [idx['name'] for idx in index['files']]
 
 	# Make deep copy of actual present files
 	state = {name: dict(orig_state.get(name, {})) for name in index}
@@ -625,13 +478,8 @@ def process_state_queue(path):
 	state_queue = [f.path for f in state_queue]
 
 	for update_name in state_queue:
-		log.info(f'Processing {update_name}')
-		try:
-			with open(update_name) as fd:
-				updates = json.load(fd)
-				validate_json(updates, STATE_UPDATE_SCHEMA)
-		except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidationError) as e:
-			log.error(f'Parsing {update_name}: {str(e)}')
+		updates = dbs.json_read(update_name, dbs.STATE_UPDATE_SCHEMA)
+		if not updates:
 			continue
 
 		for name, update in updates.items():
@@ -654,8 +502,8 @@ def process_state_queue(path):
 					this_state.pop('watched', None)
 					this_state.pop('position', None)
 					this_state.pop('position_date', None)
-				elif update['watched'] == WATCHED_MAX:
-					this_state['watched'] = WATCHED_MAX
+				elif update['watched'] == dbs.WATCHED_MAX:
+					this_state['watched'] = dbs.WATCHED_MAX
 					this_state.pop('position', None)
 					this_state.pop('position_date', None)
 				else:
@@ -674,29 +522,26 @@ def process_state_queue(path):
 	#### Write new state
 	if state != orig_state:
 		if state:
-			log.info(f'Writing new state DB {state_db_name}')
-			try:
-				os.makedirs(os.path.dirname(state_db_name), exist_ok=True)
-				with gzip.open(state_db_name + PARTIAL_SUFFIX, 'wt') as fd:
-					json.dump(state, fd, indent=4)
-					os.fdatasync(fd)
-				os.rename(state_db_name + PARTIAL_SUFFIX, state_db_name)
-			except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidationError) as e:
-				log.error(f'Writing recursed {up_state_name}: {str(e)}')
+			dbs.json_write(state_db_name, state)
 		else:
 			log.info(f'Empty state; removing {state_db_name}')
-			os.unlink(state_db_name)
+			try:
+				os.unlink(state_db_name)
+			except FileNotFoundError:
+				pass
+			except OSError as e:
+				log.error(f'Removing {state_db_name}: {str(e)}')
 
 		# Flatten multiple states to one folder state
 		def flatten_state(state):
 			flat = {'trash': any(s.get('trash', False) for s in state.values())}
 
-			if any(0 < s.get('watched', 0) < WATCHED_MAX for s in state.values()):
-				flat['watched'] = 2 ** (WATCHED_STEPS // 2) - 1
+			if any(0 < s.get('watched', 0) < dbs.WATCHED_MAX for s in state.values()):
+				flat['watched'] = 2 ** (dbs.WATCHED_STEPS // 2) - 1
 			elif any(s.get('watched', 0) == 0 for s in state.values()):
 				flat['watched'] = 0
 			else:
-				flat['watched'] = WATCHED_MAX
+				flat['watched'] = dbs.WATCHED_MAX
 
 			return flat
 
@@ -706,15 +551,8 @@ def process_state_queue(path):
 		print('orig', orig_flat)
 		print('new', flat)
 		if flat != orig_flat:
-			up_state_name = os.path.join(os.path.dirname(path), QUEUE_DIR_NAME, str(uuid.uuid4()))
-			log.debug(f'Propagating new state upwards as {up_state_name}')
-			os.makedirs(os.path.dirname(up_state_name), exist_ok=True)
-			try:
-				with open(up_state_name, 'w') as fd:
-					json.dump({os.path.basename(path): flat}, fd, indent=4)
-					os.fdatasync(fd)
-			except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidationError) as e:
-				log.error(f'Writing recursed {up_state_name}: {str(e)}')
+			up_state_name = os.path.join(os.path.dirname(path), dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
+			dbs.json_write(up_state_name, {os.path.basename(path): flat})
 
 	for update_name in state_queue:
 		try:
@@ -754,20 +592,20 @@ for event in watcher.events(timeout=1):
 
 		if not event.isdir:
 			# Case: path/.fabella/queue/foo
-			if os.path.dirname(event.path).endswith('/' + QUEUE_DIR_NAME):
+			if os.path.dirname(event.path).endswith('/' + dbs.QUEUE_DIR_NAME):
 				if event.evtype in {'closed'}:
 					do_state_queue.append(os.path.dirname(os.path.dirname(os.path.dirname(event.path))))
 
 			# Case: path/.fabella/state.json.gz
-			elif event.path.endswith('/' + STATE_DB_NAME):
+			elif event.path.endswith('/' + dbs.STATE_DB_NAME):
 				do_state_queue.append(os.path.dirname(os.path.dirname(event.path)))
 
 			# Case: path/.fabella/index.json.gz
-			elif event.path.endswith('/' + INDEX_DB_NAME):
+			elif event.path.endswith('/' + dbs.INDEX_DB_NAME):
 				watcher.push(os.path.dirname(os.path.dirname(event.path)))
 
 			# Case: path/.fabella/covers.zip
-			elif event.path.endswith('/' + COVER_DB_NAME):
+			elif event.path.endswith('/' + dbs.COVER_DB_NAME):
 				watcher.push(os.path.dirname(os.path.dirname(event.path)))
 
 			# Case: path/.cover.jpg
@@ -777,7 +615,7 @@ for event in watcher.events(timeout=1):
 			# Case: path/foo.bar
 			else:
 				# Only do something for file extensions we care about
-				if event.path.endswith(VIDEO_EXTENSIONS):
+				if event.path.endswith(dbs.VIDEO_EXTENSIONS):
 					watcher.push(os.path.dirname(event.path))
 
 	scan_now = []
