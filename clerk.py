@@ -502,7 +502,7 @@ def process_state_queue(path):
 					this_state.pop('watched', None)
 					this_state.pop('position', None)
 					this_state.pop('position_date', None)
-				elif update['watched'] == dbs.WATCHED_MAX:
+				elif update['watched'] > dbs.WATCHED_MAX:
 					this_state['watched'] = dbs.WATCHED_MAX
 					this_state.pop('position', None)
 					this_state.pop('position_date', None)
