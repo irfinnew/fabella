@@ -19,7 +19,11 @@ FOLDER_COVER_FILE = '.cover.jpg'
 MKV_COVER_FILE = 'cover.jpg'
 EVENT_COOLDOWN_SECONDS = 1
 
-
+STATE_UPDATE_SCHEMA = {
+	'name': str,
+	'position?': float,
+	'watched?': bool,
+}
 
 import sys
 import os
@@ -43,6 +47,31 @@ from watch import Watcher
 from worker import Pool
 
 log = Logger(module='clerk', color=Logger.Magenta)
+
+
+
+class JsonValidateError(Exception):
+	pass
+
+def validate_json(data, schema, keyname=None):
+	if isinstance(schema, dict):
+		if not isinstance(data, dict):
+			raise JsonValidateError(f'Expected object, not {data}')
+		mandatory = {k: v for k, v in schema.items() if not k.endswith('?')}
+		optional = {k[:-1]: v for k, v in schema.items() if k.endswith('?')}
+		for k, v in data.items():
+			if k in mandatory:
+				validate_json(v, mandatory[k], keyname=k)
+				del mandatory[k]
+			if k in optional:
+				validate_json(v, optional[k], keyname=k)
+		if mandatory:
+			raise JsonValidateError(f'Missing keys {list(mandatory.keys())} in {data}')
+	elif schema in {str, bool, int, float}:
+		if not isinstance(data, schema):
+			raise JsonValidateError(f'Key {keyname}={data} should be type {schema}')
+	else:
+		raise ValueError(f'Unsupported schema type: {schema}')
 
 
 
@@ -343,13 +372,13 @@ class Meta:
 
 
 def scan(path, pool):
-	log.debug(f'Processing {path}')
+	log.debug(f'Scanning {path}')
 	if not os.path.isdir(path):
 		log.info(f'{path} is gone, nothing to do')
 		return
 
-	# Queue dir should exist, so enforce that here.
-	os.makedirs(os.path.join(path, QUEUE_DIR_NAME), exist_ok=True)
+	# Ensure state queue is processed
+	process_state_queue(path)
 
 	index_db_name = os.path.join(path, INDEX_DB_NAME)
 
@@ -379,7 +408,7 @@ def scan(path, pool):
 			log.error(f'Error parsing index DB version {index_db_name}: {str(e)}')
 
 
-	#### Covert index to tiles
+	#### Convert index to tiles
 	indexed_tiles = []
 	for data in indexes:
 		try:
@@ -500,10 +529,86 @@ def scan(path, pool):
 
 
 def process_state_queue(path):
-	#STATE_DB_NAME = '.fabella/state.json'
-	#QUEUE_DIR_NAME = '/fabella/queue'
-	pass
+	log.debug(f'Processing state events for {path}')
 
+	queue_dir_name = os.path.join(path, QUEUE_DIR_NAME)
+	state_db_name = os.path.join(path, STATE_DB_NAME)
+
+	# Ensure queue dir exists
+	os.makedirs(queue_dir_name, exist_ok=True)
+	os.chmod(queue_dir_name, 0o775)
+
+	try:
+		with open(state_db_name) as fd:
+			state = json.load(fd)
+	except FileNotFoundError:
+		log.debug(f'No state DB {state_db_name}; using empty state')
+		state = {}
+	except (OSError, EOFError, zlib.error, json.JSONDecodeError) as e:
+		log.error(f'Parsing {state_db_name}: {str(e)}')
+
+	state_queue = [f for f in os.scandir(queue_dir_name) if f.is_file()]
+	state_queue = sorted(state_queue, key=lambda f: f.stat().st_mtime)
+	state_queue = [f.path for f in state_queue]
+
+	print(state)
+
+	for update_name in state_queue:
+		try:
+			with open(update_name) as fd:
+				update = json.load(fd)
+		except (OSError, EOFError, zlib.error, json.JSONDecodeError) as e:
+			log.error(f'Parsing {update_name}: {str(e)}')
+			continue
+		print(update)
+		try:
+			validate_json(update, STATE_UPDATE_SCHEMA)
+		except JsonValidateError as e:
+			log.error(f'Parsing {update_name}: {str(e)}')
+			continue
+
+	name = update['name']
+	if name not in state:
+		state[name] = {}
+	this_state = state[name]
+
+	if 'position' in update:
+		if update['position'] > 0:
+			this_state['position'] = update['position']
+			this_state['position_date'] = time.time()
+		else:
+			this_state.pop('position')
+			this_state.pop('position_date')
+
+		if update['position'] > 0 and not this_state['watched']:
+			if not 'parts_watched' in this_state:
+				this_state['parts_watched'] = 0
+			this_state['parts_watched'] |= 2 ** int(position * 10)
+
+			if this_state['position'] > 0:
+				this_state['watching'] = True
+			if this_state['parts_watched'] >= 1023:
+				this_state['watching'] = False
+				this_state['watched'] = False
+
+	if 'watched' in update:
+		this_state.pop('position', None)
+		this_state.pop('position_date', None)
+		this_state.pop('parts_watched', None)
+		this_state.pop('watching', None)
+		this_state['watched'] = update['watched']
+
+	if 'trashed' in update:
+		this_state['trashed'] = update['trashed']
+
+	# FIXME: write new state file
+
+	for update_name in state_queue:
+		try:
+			log.debug(f'Removing {update_name}')
+			os.unlink(update_name)
+		except OSError as e:
+			log.error(f'Removing {update_name}: {str(e)}')
 
 
 roots = [os.path.abspath(root) for root in sys.argv[1:]]
@@ -515,29 +620,36 @@ for root in roots:
 	watcher.push(root, recursive=True)
 
 analyze_pool = Pool('analyze', threads=4)
-dirty = {}
+scan_dirty = {}
 for event in watcher.events(timeout=1):
 	if event:
 		log.debug(f'Got event: {event}')
 
+	do_state_queue = []
 	now = time.time()
 
 	if event:
-		# Case: path/ itself
-		if event.isdir and event.evtype in {'modified'} and not event.hidden():
-			dirty[event.path] = now
+		if event.isdir and not event.hidden():
+			# Case: path/ itself
+			if event.evtype in {'modified'}:
+				scan_dirty[event.path] = now
 
-		# Case: path/foo/
-		if event.isdir and event.evtype in {'created', 'deleted'}:
-			watcher.push(os.path.dirname(event.path))
+			# Case: path/foo/
+			if event.evtype in {'created', 'deleted'}:
+				watcher.push(os.path.dirname(event.path))
 
 		if not event.isdir:
+			# Case: path/.fabella/queue/foo
+			if os.path.dirname(event.path).endswith('/' + QUEUE_DIR_NAME):
+				if event.evtype in {'closed'}:
+					do_state_queue.append(os.path.dirname(os.path.dirname(os.path.dirname(event.path))))
+
 			# Case: path/.fabella/index.json.gz
-			if not event.isdir and event.path.endswith('/' + INDEX_DB_NAME):
+			elif event.path.endswith('/' + INDEX_DB_NAME):
 				watcher.push(os.path.dirname(os.path.dirname(event.path)))
 
 			# Case: path/.fabella/covers.zip
-			if not event.isdir and event.path.endswith('/' + COVER_DB_NAME):
+			elif event.path.endswith('/' + COVER_DB_NAME):
 				watcher.push(os.path.dirname(os.path.dirname(event.path)))
 
 			# Case: path/.cover.jpg
@@ -550,14 +662,17 @@ for event in watcher.events(timeout=1):
 				if event.path.endswith(VIDEO_EXTENSIONS):
 					watcher.push(os.path.dirname(event.path))
 
-	act_now = []
-	for path, age in list(dirty.items()):
+	scan_now = []
+	for path, age in list(scan_dirty.items()):
 		if now - age > EVENT_COOLDOWN_SECONDS:
-			del dirty[path]
-			act_now.append(path)
+			del scan_dirty[path]
+			scan_now.append(path)
 
-	for path in act_now:
+	for path in scan_now:
 		scan(path, pool=analyze_pool)
+
+	for path in do_state_queue:
+		process_state_queue(path)
 
 	#if not dirty:
 	#	break
