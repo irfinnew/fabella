@@ -571,7 +571,7 @@ watcher = Watcher(roots)
 for root in roots:
 	watcher.push(root, recursive=True)
 
-analyze_pool = Pool('analyze', threads=4)
+analyze_pool = Pool('analyze', threads=2)
 scan_dirty = {}
 for event in watcher.events(timeout=1):
 	if event:
