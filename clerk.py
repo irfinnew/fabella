@@ -25,7 +25,7 @@ STATE_UPDATE_SCHEMA = {
 	'*': {
 		'position?': float,
 		'watched?': int,
-		'trashed?': int,
+		'trash?': int,
 	}
 }
 STATE_DB_SCHEMA = {
@@ -33,7 +33,7 @@ STATE_DB_SCHEMA = {
 		'position?': float,
 		'position_date?': float,
 		'watched?': int,
-		'trashed?': int,
+		'trash?': int,
 	}
 }
 INDEX_DB_SCHEMA = {
@@ -661,11 +661,11 @@ def process_state_queue(path):
 				else:
 					this_state['watched'] = update['watched']
 
-			if 'trashed' in update:
-				if update['trashed']:
-					this_state['trashed'] = True
+			if 'trash' in update:
+				if update['trash']:
+					this_state['trash'] = True
 				else:
-					this_state.pop('trashed', None)
+					this_state.pop('trash', None)
 
 	# Filter out empty states
 	#state = {k: v for k, v in state.items() if v}
@@ -689,7 +689,7 @@ def process_state_queue(path):
 
 		# Flatten multiple states to one folder state
 		def flatten_state(state):
-			flat = {'trashed': any(s.get('trashed', False) for s in state.values())}
+			flat = {'trash': any(s.get('trash', False) for s in state.values())}
 
 			if any(0 < s.get('watched', 0) < WATCHED_MAX for s in state.values()):
 				flat['watched'] = 2 ** (WATCHED_STEPS // 2) - 1
