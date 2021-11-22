@@ -145,6 +145,16 @@ def json_write(filename, data):
 		with openfunc(new_filename, 'wt') as fd:
 			json.dump(data, fd, indent=4)
 			os.fdatasync(fd)
+
+		if filename.endswith('.gz'):
+			# UGHHHHHHHH.
+			# sshfs messes up when a file is replaced, frequently causing clients to short-read
+			# files, which then (rightly) trips up gzip. So we try padding the compressed stream
+			# so the short-read still returns enough data for gzip.
+			with open(new_filename, 'ab') as fd:
+				fd.write(bytes(1024))
+
+		# Atomic file replacement
 		os.rename(new_filename, filename)
 	except OSError as e:
 		log.error(f'Writing {filename}: {str(e)}')
