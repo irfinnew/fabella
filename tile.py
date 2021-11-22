@@ -88,6 +88,7 @@ class Tile:
 		self.duration = None
 		self.position = 0
 		self.watched = 0
+		self.trash = False
 
 		# Renderables
 		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines, pool=self.render_pool)
@@ -126,13 +127,14 @@ class Tile:
 				minutes = round((duration % 3600) / 60)
 				self.info.text = f'{hours}:{minutes:>02}'
 
-		# Position
 		if 'position' in meta:
 			self.position = meta['position']
 
-		# watched
 		if 'watched' in meta:
 			self.watched = meta['watched']
+
+		if 'trash' in meta:
+			self.trash = meta['trash']
 
 
 	def update_cover(self, covers_zip):
@@ -202,6 +204,14 @@ class Tile:
 			self.watched = 0
 		self.position = 0
 		self.write_state_update()
+
+
+	def toggle_trash(self):
+		if self.isdir:
+			return
+
+		self.trash = not self.trash
+		self.write_state_update({'trash': self.trash})
 
 
 	def draw(self, x, y, selected=False):
@@ -309,7 +319,7 @@ class Tile:
 			gl.glColor4f(0, 0, 0, 1)
 			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 			x1 += 2; y1 -= 2; x2 = x1 + 5; y2 += 2
-			gl.glColor4f(1, 0, 0, 1)
+			gl.glColor4f(0, 1, 0, 1)
 			for i in range(10):
 				if self.watched & (2 ** i):
 					gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
@@ -324,6 +334,16 @@ class Tile:
 			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 			x1 += 2; y1 -= 2; x2 -= 2; y2 += 2
 			gl.glColor4f(1, 1, 0, 1)
+			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
+		# "Trash" emblem
+		if self.trash:
+			x1, y1 = x - 10, y + 10
+			x2, y2 = x1 + 30, y1 - 30
+			gl.glColor4f(0, 0, 0, 1)
+			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+			x1 += 2; y1 -= 2; x2 -= 2; y2 += 2
+			gl.glColor4f(1, 0, 0, 1)
 			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# Title

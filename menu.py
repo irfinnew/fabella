@@ -150,6 +150,9 @@ class Menu:
 	def toggle_seen(self):
 		self.current.toggle_seen()
 
+	def toggle_trash(self):
+		self.current.toggle_trash()
+
 	def enter(self, video):
 		self.log.info('Enter')
 		tile = self.current
