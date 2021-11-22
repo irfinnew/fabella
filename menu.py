@@ -1,13 +1,11 @@
 import os  # FIXME
 import OpenGL.GL as gl
 import datetime
-import json
 import time
 import zipfile
-import gzip
-import zlib
 
 import config
+import dbs
 from logger import Logger
 from tile import Tile
 from font import Font
@@ -16,8 +14,6 @@ from worker import Pool
 class Menu:
 	log = Logger(module='Menu', color=Logger.Cyan)
 	enabled = False
-	state_file = None
-	state = None
 	path = None
 	tiles = []
 	tiles_per_row = 1
@@ -57,36 +53,20 @@ class Menu:
 		# BENCHMARK
 		self.bench = time.time()
 
-		self.state_file = os.path.join(path, '.fabella', 'state.json')
-
-		try:
-			with open(self.state_file) as fd:
-				self.state = json.load(fd)
-			self.log.info(f'Loaded state file {self.state_file}')
-		except FileNotFoundError:
-			self.log.info(f'State file {self.state_file} doesn\'t exist')
-			self.state = {}
-		except json.decoder.JSONDecodeError as e:
-			self.log.error(f'Loading state file {self.state_file}: {e}')
-			self.state = {}
+		state_db_name = os.path.join(path, dbs.STATE_DB_NAME)
+		state = dbs.json_read(state_db_name, dbs.STATE_DB_SCHEMA)
 
 		start = time.time()
-		index_db_name = os.path.join(path, '.fabella', 'index.json.gz')
-		try:
-			with gzip.open(index_db_name) as fd:
-				index = json.load(fd)['files']
-			self.log.debug(f'Loaded {index_db_name}')
-		except (OSError, EOFError, zlib.error, json.JSONDecodeError, KeyError) as e:
-			self.log.warning(f'Opening {index_db_name}: {repr(e)}')
+		index_db_name = os.path.join(path, dbs.INDEX_DB_NAME)
+		index = dbs.json_read(index_db_name, dbs.INDEX_DB_SCHEMA, default=None)
+		if index is None:
 			self.log.warning(f'falling back to scandir()')
 			index = []
 			for isfile, name in sorted((not de.is_dir(), de.name) for de in os.scandir(path)):
-				if name.startswith('.'):
-					continue
-				if name in config.tile.thumb_files:
-					continue
-				# FIXME: check for valid file extensions
-				index.append({'name': name, 'isdir': not isfile})
+				if not name.startswith('.') and name.endswith(dbs.VIDEO_EXTENSIONS):
+					index.append({'name': name, 'isdir': not isfile})
+		else:
+			index = index['files']
 		start = int((time.time() - start) * 1000); self.log.warning(f'Reading index: {start}ms')
 
 		self.path = path
@@ -100,7 +80,7 @@ class Menu:
 
 		start = time.time()
 		for tile, entry in zip(self.tiles, index):
-			meta = {**entry, **self.state.get(tile.name, {})}
+			meta = {**entry, **state.get(tile.name, {})}
 			tile.update_meta(meta)
 		start = int((time.time() - start) * 1000); self.log.warning(f'Updating meta: {start}ms')
 
@@ -131,16 +111,6 @@ class Menu:
 		except OSError as e:
 			self.log.error(f'Parsing cover DB {cover_db_name}: {e}')
 		start = int((time.time() - start) * 1000); self.log.warning(f'Updating covers: {start}ms')
-
-	def write_state(self, name, new_state):
-		self.log.info(f'Writing {self.state_file}')
-		self.state[name] = new_state
-		try:
-			os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
-			with open(self.state_file, 'w') as fd:
-				json.dump(self.state, fd, indent=4)
-		except OSError as e:
-			self.log.error(f'Writing {self.state_file}: {e}')
 
 	def forget(self):
 		self.log.info('Forgetting tiles')

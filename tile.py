@@ -1,8 +1,10 @@
 import os
 import time
+import uuid
 import OpenGL.GL as gl
 import functools
 
+import dbs
 import config
 from logger import Logger
 from image import Image
@@ -64,17 +66,6 @@ def get_hl():
 	return hl_texture
 
 
-def json_get(data, key, typ, none=False):
-	value = data[key]
-
-	if none and value is None:
-		return None
-
-	if not isinstance(value, typ):
-		raise TypeError(f'Expected {key} to be {typ}: {value}')
-	return value
-
-
 
 class Tile:
 	log = Logger(module='Tile', color=Logger.Magenta)
@@ -96,7 +87,7 @@ class Tile:
 		self.tile_color = (0, 0, 0)
 		self.duration = None
 		self.position = 0
-		self.parts_watched = [False] * 10
+		self.watched = 0
 
 		# Renderables
 		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines, pool=self.render_pool)
@@ -107,14 +98,14 @@ class Tile:
 	def update_meta(self, meta):
 		self.log.debug(f'Update metadata for {self}')
 
-		if json_get(meta, 'name', str) != self.name:
+		if meta['name'] != self.name:
 			raise ValueError('{self}.update_meta({meta})')
-		if json_get(meta, 'isdir', bool) != self.isdir:
+		if meta['isdir'] != self.isdir:
 			raise ValueError('{self}.update_meta({meta})')
 
 		# Tile color
 		if 'tile_color' in meta:
-			tile_color = json_get(meta, 'tile_color', str, none=True)
+			tile_color = meta.get('tile_color', None)
 			if tile_color is not None:
 				tile_color = tile_color.strip('#')
 				# FIXME: error checking
@@ -124,7 +115,7 @@ class Tile:
 
 		# Duration
 		if 'duration' in meta:
-			self.duration = json_get(meta, 'duration', int, none=True)
+			self.duration = meta.get('duration', None)
 			if not self.info:
 				self.info = self.font.text(None, max_width=None, lines=1, pool=self.render_pool)
 			if self.duration is None:
@@ -137,11 +128,11 @@ class Tile:
 
 		# Position
 		if 'position' in meta:
-			self.position = json_get(meta, 'position', (float, int))
+			self.position = meta['position']
 
-		# Parts_watched
-		if 'parts_watched' in meta:
-			self.parts_watched = [pw == '#' for pw in json_get(meta, 'parts_watched', str)]
+		# watched
+		if 'watched' in meta:
+			self.watched = meta['watched']
 
 
 	def update_cover(self, covers_zip):
@@ -175,41 +166,42 @@ class Tile:
 		old_pos = self.position
 		self.position = position
 		# FIXME: detect if user was watching for a while before marking part as watched
-		self.parts_watched[min(int(position * 10), 9)] = True
+		self.watched |= 2 ** int(position * 10)
 
 		now = time.time()
 		if now - self.state_last_update > 10 or abs(old_pos - position) > 0.01 or force:
 			self.state_last_update = now
-			self.write_state()
+			self.write_state_update()
 
 
-	def write_state(self):
-		self.log.info(f'Writing state for {self.name}')
-		parts_watched = ''.join('#' if pw else '.' for pw in self.parts_watched)
-		self.menu.write_state(self.name, {'position': self.position, 'parts_watched': parts_watched})
+	def write_state_update(self, state=None):
+		if state is None:
+			state = {'position': self.position, 'watched': self.watched}
+		self.log.info(f'Writing state for {self.name}: {state}')
+		update_name = os.path.join(self.path, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
+		dbs.json_write(update_name, {self.name: state})
 
 
 	@property
 	def unseen(self):
-		if self.isdir:
-			return False
-		return self.parts_watched == [False] * 10
+		return self.watched == 0
 
 
 	@property
 	def watching(self):
-		if self.isdir:
-			return False
-		return self.parts_watched != [False] * 10 and self.parts_watched != [True] * 10
+		return 0 < self.watched < dbs.WATCHED_MAX
 
 
 	def toggle_seen(self):
-		if self.parts_watched == [True] * 10:
-			self.parts_watched = [False] * 10
+		if self.isdir:
+			return
+
+		if self.watched < dbs.WATCHED_MAX:
+			self.watched = dbs.WATCHED_MAX
 		else:
-			self.parts_watched = [True] * 10
+			self.watched = 0
 		self.position = 0
-		self.write_state()
+		self.write_state_update()
 
 
 	def draw(self, x, y, selected=False):
@@ -319,7 +311,7 @@ class Tile:
 			x1 += 2; y1 -= 2; x2 = x1 + 5; y2 += 2
 			gl.glColor4f(1, 0, 0, 1)
 			for i in range(10):
-				if self.parts_watched[i]:
+				if self.watched & (2 ** i):
 					gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 				x1 += 7
 				x2 += 7
