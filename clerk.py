@@ -548,8 +548,6 @@ def process_state_queue(path):
 		# Propagate state upwards
 		orig_flat = flatten_state(orig_state)
 		flat = flatten_state(state)
-		print('orig', orig_flat)
-		print('new', flat)
 		if flat != orig_flat:
 			up_state_name = os.path.join(os.path.dirname(path), dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
 			dbs.json_write(up_state_name, {os.path.basename(path): flat})
