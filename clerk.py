@@ -23,8 +23,15 @@ WATCHED_STEPS = 10
 WATCHED_MAX = (2 ** WATCHED_STEPS - 1)
 STATE_UPDATE_SCHEMA = {
 	'name': str,
-	'position?': (int, float),
+	'position?': float,
 	'state?': int,
+}
+STATE_DB_SCHEMA = {
+	'*': {
+		'position?': float,
+		'position_date?': float,
+		'state?': int,
+	}
 }
 INDEX_DB_SCHEMA = {
 	'meta': { 'version': int },
@@ -34,8 +41,8 @@ INDEX_DB_SCHEMA = {
 			'isdir': bool,
 			'src_size': int,
 			'src_mtime': int,
-			'tile_color': str,
-			'duration': int,
+			'tile_color?': str,
+			'duration?': int,
 		}
 	],
 }
@@ -72,20 +79,47 @@ class JsonValidateError(Exception):
 def validate_json(data, schema, keyname=None):
 	if isinstance(schema, dict):
 		if not isinstance(data, dict):
-			raise JsonValidateError(f'Expected object, not {data}')
-		mandatory = {k: v for k, v in schema.items() if not k.endswith('?')}
-		optional = {k[:-1]: v for k, v in schema.items() if k.endswith('?')}
+			raise JsonValidateError(f'Expected object for {keyname}, not {data}')
+		mandatory, optional, wildcard = {}, {}, None
+		for k, v in schema.items():
+			if k == '*':
+				wildcard = v
+			elif k.endswith('?'):
+				optional[k[:-1]] = v
+			else:
+				mandatory[k] = v
+
+		unknown = []
 		for k, v in data.items():
 			if k in mandatory:
 				validate_json(v, mandatory[k], keyname=k)
 				del mandatory[k]
-			if k in optional:
+			elif k in optional:
 				validate_json(v, optional[k], keyname=k)
+			elif wildcard is not None:
+				validate_json(v, wildcard, keyname=k)
+			else:
+				unknown.append(k)
+
+		if unknown:
+			raise JsonValidateError(f'Extra keys {unknown} in {data}')
 		if mandatory:
 			raise JsonValidateError(f'Missing keys {list(mandatory.keys())} in {data}')
-	else:
+
+	elif isinstance(schema, list):
+		if len(schema) != 1:
+			raise ValueError(f'Schema list must have length one: {schema}')
+		schema = schema[0]
+		for idx, item in enumerate(data):
+			validate_json(item, schema, keyname=str(idx))
+
+	elif schema in {str, bool, int, float}:
+		if schema is float:
+			schema = (int, float)
 		if not isinstance(data, schema):
 			raise JsonValidateError(f'Key {keyname}={data} should be type {schema}')
+	else:
+		raise KeyError(f'Unsupported schema type: {schema}')
 
 
 
@@ -391,21 +425,20 @@ def scan(path, pool):
 		log.info(f'{path} is gone, nothing to do')
 		return
 
-	# Ensure state queue is processed
-	process_state_queue(path)
-
 	index_db_name = os.path.join(path, INDEX_DB_NAME)
 
 	#### Read index file
-	orig_index = {}
 	try:
 		with gzip.open(index_db_name) as fd:
 			log.debug(f'Found existing index DB {index_db_name}')
 			orig_index = json.load(fd)
+			validate_json(orig_index, INDEX_DB_SCHEMA)
 	except FileNotFoundError:
 		log.info(f'Index DB {index_db_name} missing')
-	except (OSError, EOFError, zlib.error, json.JSONDecodeError) as e:
+		orig_index = {}
+	except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidateError) as e:
 		log.error(f'Parsing {index_db_name}: {str(e)}')
+		orig_index = {}
 
 
 	#### Check meta version, extract file info index
@@ -543,7 +576,7 @@ def scan(path, pool):
 
 
 def process_state_queue(path):
-	log.debug(f'Processing state events for {path}')
+	log.info(f'Processing state events for {path}')
 
 	queue_dir_name = os.path.join(path, QUEUE_DIR_NAME)
 	state_db_name = os.path.join(path, STATE_DB_NAME)
@@ -556,25 +589,27 @@ def process_state_queue(path):
 	try:
 		with gzip.open(state_db_name) as fd:
 			orig_state = json.load(fd)
+			validate_json(orig_state, STATE_DB_SCHEMA)
 	except FileNotFoundError:
-		log.debug(f'No state DB {state_db_name}; using empty state')
+		log.info(f'No state DB {state_db_name}; using empty state')
 		orig_state = {}
-	except (OSError, EOFError, zlib.error, json.JSONDecodeError) as e:
+	except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidateError) as e:
 		log.error(f'Parsing {state_db_name}: {str(e)}')
-	# FIXME: validate state
+	log.debug(f'Original state: {orig_state}')
 
 	# FIXME: duplicate code
-	# BLABLAH
+	# Load filenames from index
 	index_db_name = os.path.join(path, INDEX_DB_NAME)
 	try:
 		with gzip.open(index_db_name) as fd:
 			log.debug(f'Adding names from {index_db_name}')
-			# FIXME: validate
-			index = [idx['name'] for idx in json.load(fd)['files']]
+			index = json.load(fd)
+			validate_json(index, INDEX_DB_SCHEMA)
+			index = [idx['name'] for idx in index['files']]
 	except FileNotFoundError:
-		log.debug(f'Index DB {index_db_name} missing')
+		log.warning(f'Index DB {index_db_name} missing')
 		index = []
-	except (OSError, EOFError, zlib.error, json.JSONDecodeError) as e:
+	except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidateError) as e:
 		log.error(f'Parsing {index_db_name}: {str(e)}')
 		index = []
 
@@ -585,10 +620,8 @@ def process_state_queue(path):
 	state_queue = sorted(state_queue, key=lambda f: f.stat().st_mtime)
 	state_queue = [f.path for f in state_queue]
 
-	print('before', state)
-
 	for update_name in state_queue:
-		log.debug(f'Processing {update_name}')
+		log.info(f'Processing {update_name}')
 		try:
 			with open(update_name) as fd:
 				update = json.load(fd)
@@ -596,7 +629,7 @@ def process_state_queue(path):
 			log.error(f'Parsing {update_name}: {str(e)}')
 			continue
 
-		print(update)
+		log.debug(f'State update: {update}')
 		try:
 			validate_json(update, STATE_UPDATE_SCHEMA)
 		except JsonValidateError as e:
@@ -633,7 +666,7 @@ def process_state_queue(path):
 
 	# Filter out empty states
 	#state = {k: v for k, v in state.items() if v}
-	print('after', state)
+	log.debug(f'New state: {state}')
 
 	#### Write new state
 	if state != orig_state:
@@ -674,6 +707,7 @@ def process_state_queue(path):
 			os.unlink(update_name)
 		except OSError as e:
 			log.error(f'Removing {update_name}: {str(e)}')
+
 
 
 roots = [os.path.abspath(root) for root in sys.argv[1:]]
@@ -739,6 +773,7 @@ for event in watcher.events(timeout=1):
 
 	for path in scan_now:
 		scan(path, pool=analyze_pool)
+		do_state_queue.append(path)
 
 	for path in do_state_queue:
 		process_state_queue(path)
