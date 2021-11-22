@@ -22,15 +22,18 @@ EVENT_COOLDOWN_SECONDS = 1
 WATCHED_STEPS = 10
 WATCHED_MAX = (2 ** WATCHED_STEPS - 1)
 STATE_UPDATE_SCHEMA = {
-	'name': str,
-	'position?': float,
-	'state?': int,
+	'*': {
+		'position?': float,
+		'watched?': int,
+		'trashed?': int,
+	}
 }
 STATE_DB_SCHEMA = {
 	'*': {
 		'position?': float,
 		'position_date?': float,
-		'state?': int,
+		'watched?': int,
+		'trashed?': int,
 	}
 }
 INDEX_DB_SCHEMA = {
@@ -73,13 +76,13 @@ log = Logger(module='clerk', color=Logger.Magenta)
 
 
 
-class JsonValidateError(Exception):
+class JsonValidationError(Exception):
 	pass
 
 def validate_json(data, schema, keyname=None):
 	if isinstance(schema, dict):
 		if not isinstance(data, dict):
-			raise JsonValidateError(f'Expected object for {keyname}, not {data}')
+			raise JsonValidationError(f'Expected object for {keyname}, not {data}')
 		mandatory, optional, wildcard = {}, {}, None
 		for k, v in schema.items():
 			if k == '*':
@@ -102,9 +105,9 @@ def validate_json(data, schema, keyname=None):
 				unknown.append(k)
 
 		if unknown:
-			raise JsonValidateError(f'Extra keys {unknown} in {data}')
+			raise JsonValidationError(f'Extra keys {unknown} in {data}')
 		if mandatory:
-			raise JsonValidateError(f'Missing keys {list(mandatory.keys())} in {data}')
+			raise JsonValidationError(f'Missing keys {list(mandatory.keys())} in {data}')
 
 	elif isinstance(schema, list):
 		if len(schema) != 1:
@@ -117,7 +120,7 @@ def validate_json(data, schema, keyname=None):
 		if schema is float:
 			schema = (int, float)
 		if not isinstance(data, schema):
-			raise JsonValidateError(f'Key {keyname}={data} should be type {schema}')
+			raise JsonValidationError(f'Key {keyname}={data} should be type {schema}')
 	else:
 		raise KeyError(f'Unsupported schema type: {schema}')
 
@@ -436,7 +439,7 @@ def scan(path, pool):
 	except FileNotFoundError:
 		log.info(f'Index DB {index_db_name} missing')
 		orig_index = {}
-	except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidateError) as e:
+	except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidationError) as e:
 		log.error(f'Parsing {index_db_name}: {str(e)}')
 		orig_index = {}
 
@@ -593,8 +596,9 @@ def process_state_queue(path):
 	except FileNotFoundError:
 		log.info(f'No state DB {state_db_name}; using empty state')
 		orig_state = {}
-	except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidateError) as e:
+	except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidationError) as e:
 		log.error(f'Parsing {state_db_name}: {str(e)}')
+		orig_state = {}
 	log.debug(f'Original state: {orig_state}')
 
 	# FIXME: duplicate code
@@ -609,7 +613,7 @@ def process_state_queue(path):
 	except FileNotFoundError:
 		log.warning(f'Index DB {index_db_name} missing')
 		index = []
-	except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidateError) as e:
+	except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidationError) as e:
 		log.error(f'Parsing {index_db_name}: {str(e)}')
 		index = []
 
@@ -624,45 +628,44 @@ def process_state_queue(path):
 		log.info(f'Processing {update_name}')
 		try:
 			with open(update_name) as fd:
-				update = json.load(fd)
-		except (OSError, EOFError, zlib.error, json.JSONDecodeError) as e:
+				updates = json.load(fd)
+				validate_json(updates, STATE_UPDATE_SCHEMA)
+		except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidationError) as e:
 			log.error(f'Parsing {update_name}: {str(e)}')
 			continue
 
-		log.debug(f'State update: {update}')
-		try:
-			validate_json(update, STATE_UPDATE_SCHEMA)
-		except JsonValidateError as e:
-			log.error(f'Parsing {update_name}: {str(e)}')
-			continue
+		for name, update in updates.items():
+			log.debug(f'State update for {name}: {update}')
 
-		name = update['name']
-		if name not in state:
-			state[name] = {}
-		this_state = state[name]
+			if name not in state:
+				state[name] = {}
+			this_state = state[name]
 
-		if 'position' in update:
-			if update['position'] > 0:
-				this_state['position'] = update['position']
-				this_state['position_date'] = time.time()
-			else:
-				this_state.pop('position', None)
-				this_state.pop('position_date', None)
+			if 'position' in update:
+				if update['position'] > 0:
+					this_state['position'] = update['position']
+					this_state['position_date'] = time.time()
+				else:
+					this_state.pop('position', None)
+					this_state.pop('position_date', None)
 
-		if 'state' in update:
-			if update['state'] == 0:
-				this_state.pop('state', None)
-				this_state.pop('position', None)
-				this_state.pop('position_date', None)
-			elif update['state'] == WATCHED_MAX:
-				this_state['state'] = WATCHED_MAX
-				this_state.pop('position', None)
-				this_state.pop('position_date', None)
-			else:
-				this_state['state'] = update['state']
+			if 'watched' in update:
+				if update['watched'] == 0:
+					this_state.pop('watched', None)
+					this_state.pop('position', None)
+					this_state.pop('position_date', None)
+				elif update['watched'] == WATCHED_MAX:
+					this_state['watched'] = WATCHED_MAX
+					this_state.pop('position', None)
+					this_state.pop('position_date', None)
+				else:
+					this_state['watched'] = update['watched']
 
-		if 'trashed' in update:
-			this_state['trashed'] = update['trashed']
+			if 'trashed' in update:
+				if update['trashed']:
+					this_state['trashed'] = True
+				else:
+					this_state.pop('trashed', None)
 
 	# Filter out empty states
 	#state = {k: v for k, v in state.items() if v}
@@ -670,36 +673,48 @@ def process_state_queue(path):
 
 	#### Write new state
 	if state != orig_state:
-		# FIXME: error checking
 		if state:
 			log.info(f'Writing new state DB {state_db_name}')
-			os.makedirs(os.path.dirname(state_db_name), exist_ok=True)
-			with gzip.open(state_db_name + PARTIAL_SUFFIX, 'wt') as fd:
-				json.dump(state, fd, indent=4)
-				os.fdatasync(fd)
-			os.rename(state_db_name + PARTIAL_SUFFIX, state_db_name)
+			try:
+				os.makedirs(os.path.dirname(state_db_name), exist_ok=True)
+				with gzip.open(state_db_name + PARTIAL_SUFFIX, 'wt') as fd:
+					json.dump(state, fd, indent=4)
+					os.fdatasync(fd)
+				os.rename(state_db_name + PARTIAL_SUFFIX, state_db_name)
+			except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidationError) as e:
+				log.error(f'Writing recursed {up_state_name}: {str(e)}')
 		else:
 			log.info(f'Empty state; removing {state_db_name}')
 			os.unlink(state_db_name)
 
+		# Flatten multiple states to one folder state
 		def flatten_state(state):
-			# Flatten multiple states to one folder state
-			if any(0 < s.get('state', 0) < WATCHED_MAX for s in state.values()):
-				return 2 ** (WATCHED_STEPS // 2) - 1
-			if any(s.get('state', 0) == 0 for s in state.values()):
-				return 0
-			return WATCHED_MAX
+			flat = {'trashed': any(s.get('trashed', False) for s in state.values())}
+
+			if any(0 < s.get('watched', 0) < WATCHED_MAX for s in state.values()):
+				flat['watched'] = 2 ** (WATCHED_STEPS // 2) - 1
+			elif any(s.get('watched', 0) == 0 for s in state.values()):
+				flat['watched'] = 0
+			else:
+				flat['watched'] = WATCHED_MAX
+
+			return flat
 
 		# Propagate state upwards
+		orig_flat = flatten_state(orig_state)
 		flat = flatten_state(state)
-		if flat != flatten_state(orig_state):
+		print('orig', orig_flat)
+		print('new', flat)
+		if flat != orig_flat:
 			up_state_name = os.path.join(os.path.dirname(path), QUEUE_DIR_NAME, str(uuid.uuid4()))
 			log.debug(f'Propagating new state upwards as {up_state_name}')
 			os.makedirs(os.path.dirname(up_state_name), exist_ok=True)
-			# FIXME: Error checking
-			with open(up_state_name, 'w') as fd:
-				json.dump({"name": os.path.basename(path), "state": flat}, fd, indent=4)
-				os.fdatasync(fd)
+			try:
+				with open(up_state_name, 'w') as fd:
+					json.dump({os.path.basename(path): flat}, fd, indent=4)
+					os.fdatasync(fd)
+			except (OSError, EOFError, zlib.error, json.JSONDecodeError, JsonValidationError) as e:
+				log.error(f'Writing recursed {up_state_name}: {str(e)}')
 
 	for update_name in state_queue:
 		try:
