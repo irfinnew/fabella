@@ -591,7 +591,7 @@ for event in watcher.events(timeout=1):
 		if not event.isdir:
 			# Case: path/.fabella/queue/foo
 			if os.path.dirname(event.path).endswith('/' + dbs.QUEUE_DIR_NAME):
-				if event.evtype in {'closed'}:
+				if not event.path.endswith(dbs.NEW_SUFFIX):
 					do_state_queue.append(os.path.dirname(os.path.dirname(os.path.dirname(event.path))))
 
 			# Case: path/.fabella/state.json.gz
