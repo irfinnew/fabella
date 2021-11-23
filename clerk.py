@@ -473,14 +473,11 @@ def process_state_queue(path):
 	# Make deep copy of actual present files
 	state = {name: dict(orig_state.get(name, {})) for name in index}
 
-	state_queue = [f for f in os.scandir(queue_dir_name) if f.is_file()]
+	state_queue = [f for f in os.scandir(queue_dir_name) if f.is_file() and not f.path.endswith(dbs.NEW_SUFFIX)]
 	state_queue = sorted(state_queue, key=lambda f: f.stat().st_mtime)
 	state_queue = [f.path for f in state_queue]
 
 	for update_name in state_queue:
-		if update_name.endswith(dbs.NEW_SUFFIX):
-			continue
-
 		updates = dbs.json_read(update_name, dbs.STATE_UPDATE_SCHEMA)
 		if not updates:
 			continue
