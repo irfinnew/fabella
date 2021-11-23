@@ -2,6 +2,7 @@ import os  # FIXME
 import OpenGL.GL as gl
 import datetime
 import time
+import uuid
 import zipfile
 
 import config
@@ -151,10 +152,16 @@ class Menu:
 		self.current.toggle_seen()
 
 	def toggle_seen_all(self):
-		seen = any(t.unseen for t in self.tiles)
+		watched = dbs.WATCHED_MAX if any(t.unseen for t in self.tiles) else 0
+		state = {}
 		for tile in self.tiles:
 			if not tile.isdir:
-				tile.toggle_seen(seen=seen)
+				tile.watched = watched
+				tile.position = 0
+				state[tile.name] = {'watched': watched, 'position': 0}
+
+		update_name = os.path.join(self.path, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
+		dbs.json_write(update_name, state)
 
 	def toggle_trash(self):
 		self.current.toggle_trash()
