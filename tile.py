@@ -194,14 +194,15 @@ class Tile:
 		return 0 < self.watched < dbs.WATCHED_MAX
 
 
-	def toggle_seen(self):
+	def toggle_seen(self, seen=None):
 		if self.isdir:
 			return
 
-		if self.watched < dbs.WATCHED_MAX:
-			self.watched = dbs.WATCHED_MAX
+		if seen is None:
+			self.watched = dbs.WATCHED_MAX if self.watched < dbs.WATCHED_MAX else 0
 		else:
-			self.watched = 0
+			self.watched = dbs.WATCHED_MAX if seen else 0
+
 		self.position = 0
 		self.write_state_update()
 

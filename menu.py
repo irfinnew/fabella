@@ -150,6 +150,12 @@ class Menu:
 	def toggle_seen(self):
 		self.current.toggle_seen()
 
+	def toggle_seen_all(self):
+		seen = any(t.unseen for t in self.tiles)
+		for tile in self.tiles:
+			if not tile.isdir:
+				tile.toggle_seen(seen=seen)
+
 	def toggle_trash(self):
 		self.current.toggle_trash()
 

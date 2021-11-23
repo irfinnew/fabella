@@ -85,7 +85,7 @@ while not window.closed():
 						video.mpv.show_text(f'Subtitles {subid}/{sub_count}: {sublang.upper()}\n{subtitle}')
 
 	if menu.enabled:
-		for key, scancode, action, modifiers  in window.get_events():
+		for key, scancode, action, modifiers in window.get_events():
 			if action == glfw.PRESS:
 				log.info(f'Parsing key {key} in menu mode')
 				if key == glfw.KEY_Q:
@@ -105,6 +105,8 @@ while not window.closed():
 					#video.pause(False)
 				if key == glfw.KEY_TAB:
 					menu.toggle_seen()
+				if key == glfw.KEY_TAB and modifiers == glfw.MOD_SHIFT:
+					menu.toggle_seen_all()
 				if key in [glfw.KEY_ENTER, glfw.KEY_SPACE]:
 					menu.enter(video)
 				if key == glfw.KEY_BACKSPACE:
