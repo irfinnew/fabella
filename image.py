@@ -1,14 +1,24 @@
 import io
 import OpenGL.GL as gl
-import PIL.Image, PIL.ImageOps
+import PIL.Image, PIL.ImageOps, PIL.ImageFilter
 
 from logger import Logger
+
+
+class ImgLib:
+	@classmethod
+	def add(cls, name, filename, width, height, pool, shadow=None):
+		with open(filename, 'rb') as fd:
+			data = fd.read()
+		img = Image(data, width, height, name=name, pool=pool, mode='RGBA', shadow=shadow)
+		setattr(cls, name, img)
+
 
 
 class Image:
 	log = Logger(module='Image', color=Logger.Black + Logger.Bright)
 
-	def __init__(self, source, width, height, name='None', pool=None):
+	def __init__(self, source, width, height, name='None', pool=None, mode='RGB', shadow=None):
 		self._source = None
 		self.pixels = None
 		self.rendered = False
@@ -16,6 +26,8 @@ class Image:
 
 		self.width = width
 		self.height = height
+		self.mode = mode
+		self.shadow = shadow
 		self.name = name
 		self.pool = pool
 		self.source = source
@@ -43,10 +55,30 @@ class Image:
 			return
 
 		with PIL.Image.open(io.BytesIO(self._source)) as image:
-			if image.mode != 'RGB':
-				image = image.convert('RGB')
+			if image.mode != self.mode:
+				image = image.convert(self.mode)
 			if image.width != self.width or image.height != self.height:
 				image = PIL.ImageOps.fit(image, (self.width, self.height))
+
+			if self.shadow:
+				blur_radius, blur_count = self.shadow
+				outset = blur_radius + blur_count // 2 + 1
+
+				# Stencil
+				new = PIL.Image.new('RGBA', (self.width + outset * 2, self.height + outset * 2))
+
+				for i in range(blur_count):
+					new.paste((0, 0, 0), (outset - 1, outset - 1), mask=image)
+					new.paste((0, 0, 0), (outset + 1, outset - 1), mask=image)
+					new.paste((0, 0, 0), (outset + 1, outset + 1), mask=image)
+					new.paste((0, 0, 0), (outset - 1, outset + 1), mask=image)
+					new = new.filter(PIL.ImageFilter.GaussianBlur(blur_radius))
+				new.paste(image, (outset, outset), mask=image)
+
+				image = new.convert(self.mode)
+				self.width = new.width
+				self.height = new.height
+
 			pixels = image.tobytes()
 
 		self.pixels = pixels
@@ -60,10 +92,11 @@ class Image:
 		if self._texture is None:
 			self._texture = gl.glGenTextures(1)
 
+		glmode = {'RGB': gl.GL_RGB, 'RGBA': gl.GL_RGBA}[self.mode]
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self._texture)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, self.width, self.height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, self.pixels)
+		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, glmode, self.width, self.height, 0, glmode, gl.GL_UNSIGNED_BYTE, self.pixels)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		self.pixels = None

@@ -1,5 +1,6 @@
 import os
 import time
+import math
 import uuid
 import OpenGL.GL as gl
 import functools
@@ -7,7 +8,7 @@ import functools
 import dbs
 import config
 from logger import Logger
-from image import Image
+from image import Image, ImgLib
 
 # FIXME: UGH
 shadow_blursize = 32
@@ -168,10 +169,11 @@ class Tile:
 		old_pos = self.position
 		self.position = position
 		# FIXME: detect if user was watching for a while before marking part as watched
-		self.watched |= 2 ** int(position * 10)
+		old_watched = self.watched
+		self.watched |= 2 ** int(position * dbs.WATCHED_STEPS)
 
 		now = time.time()
-		if now - self.state_last_update > 10 or abs(old_pos - position) > 0.01 or force:
+		if now - self.state_last_update > 10 or abs(old_pos - position) > 0.01 or self.watched != old_watched or force:
 			self.state_last_update = now
 			self.write_state_update()
 
@@ -315,37 +317,59 @@ class Tile:
 
 		# "Watching" emblem
 		if self.watching:
-			x1, y1 = x + config.tile.width - 62, y + 10
-			x2, y2 = x1 + 72, y1 - 30
-			gl.glColor4f(0, 0, 0, 1)
-			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
-			x1 += 2; y1 -= 2; x2 = x1 + 5; y2 += 2
-			gl.glColor4f(0, 1, 0, 1)
-			for i in range(10):
-				if self.watched & (2 ** i):
-					gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
-				x1 += 7
-				x2 += 7
+			watching = int(math.log2(self.watched)) + 1
+			watching = getattr(ImgLib, f'Watching{watching}')
+			x2, y2 = x + config.tile.width + watching.width // 2, y + watching.height // 2
+			x1, y1 = x2 - watching.width, y2 - watching.height
+			gl.glColor4f(1, 1, 1, 1)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, watching.texture)
+			gl.glBegin(gl.GL_QUADS)
+			gl.glTexCoord2f(0.0, 1.0)
+			gl.glVertex2f(x1, y1)
+			gl.glTexCoord2f(1.0, 1.0)
+			gl.glVertex2f(x2, y1)
+			gl.glTexCoord2f(1.0, 0.0)
+			gl.glVertex2f(x2, y2)
+			gl.glTexCoord2f(0.0, 0.0)
+			gl.glVertex2f(x1, y2)
+			gl.glEnd()
+			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# "Unseen" emblem
 		if self.unseen:
-			x1, y1 = x + config.tile.width - 20, y + 10
-			x2, y2 = x1 + 30, y1 - 30
-			gl.glColor4f(0, 0, 0, 1)
-			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
-			x1 += 2; y1 -= 2; x2 -= 2; y2 += 2
-			gl.glColor4f(1, 1, 0, 1)
-			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+			x2, y2 = x + config.tile.width + ImgLib.Unseen.width // 2, y + ImgLib.Unseen.height // 2
+			x1, y1 = x2 - ImgLib.Unseen.width, y2 - ImgLib.Unseen.height
+			gl.glColor4f(1, 1, 1, 1)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, ImgLib.Unseen.texture)
+			gl.glBegin(gl.GL_QUADS)
+			gl.glTexCoord2f(0.0, 1.0)
+			gl.glVertex2f(x1, y1)
+			gl.glTexCoord2f(1.0, 1.0)
+			gl.glVertex2f(x2, y1)
+			gl.glTexCoord2f(1.0, 0.0)
+			gl.glVertex2f(x2, y2)
+			gl.glTexCoord2f(0.0, 0.0)
+			gl.glVertex2f(x1, y2)
+			gl.glEnd()
+			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# "Trash" emblem
 		if self.trash:
-			x1, y1 = x - 10, y + 10
-			x2, y2 = x1 + 30, y1 - 30
-			gl.glColor4f(0, 0, 0, 1)
-			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
-			x1 += 2; y1 -= 2; x2 -= 2; y2 += 2
-			gl.glColor4f(1, 0, 0, 1)
-			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+			x1, y2 = x - ImgLib.Trash.width // 2, y + ImgLib.Trash.height // 2
+			x2, y1 = x1 + ImgLib.Trash.width, y2 - ImgLib.Trash.height
+			gl.glColor4f(1, 1, 1, 1)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, ImgLib.Trash.texture)
+			gl.glBegin(gl.GL_QUADS)
+			gl.glTexCoord2f(0.0, 1.0)
+			gl.glVertex2f(x1, y1)
+			gl.glTexCoord2f(1.0, 1.0)
+			gl.glVertex2f(x2, y1)
+			gl.glTexCoord2f(1.0, 0.0)
+			gl.glVertex2f(x2, y2)
+			gl.glTexCoord2f(0.0, 0.0)
+			gl.glVertex2f(x1, y2)
+			gl.glEnd()
+			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# Title
 		if self.title and self.title.texture:

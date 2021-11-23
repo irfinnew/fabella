@@ -11,6 +11,8 @@ from logger import Logger
 from tile import Tile
 from font import Font
 from worker import Pool
+from image import ImgLib
+
 
 class Menu:
 	log = Logger(module='Menu', color=Logger.Cyan)
@@ -36,6 +38,11 @@ class Menu:
 		self.menu_font = Font('Ubuntu Medium', config.menu.text_size, stroke_width=4)
 		self.load(path)
 		self.enabled = enabled
+
+		ImgLib.add('Unseen', 'img/unseen.png', 48, 48, self.render_pool, shadow=(2, 12))
+		ImgLib.add('Trash', 'img/error.png', 48, 48, self.render_pool, shadow=(2, 12))
+		for i in range(13):
+			ImgLib.add(f'Watching{i}', f'img/watching-{i}.png', 48, 48, self.render_pool, shadow=(2, 12))
 
 		self.bread_text = self.menu_font.text(None, pool=self.render_pool)
 		self.clock_text = self.menu_font.text(None, pool=self.render_pool)
