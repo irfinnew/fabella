@@ -152,7 +152,7 @@ class Menu:
 		self.current.toggle_seen()
 
 	def toggle_seen_all(self):
-		watched = dbs.WATCHED_MAX if any(t.unseen for t in self.tiles) else 0
+		watched = dbs.WATCHED_MAX if any(t.unseen and not t.isdir for t in self.tiles) else 0
 		state = {}
 		for tile in self.tiles:
 			if not tile.isdir:

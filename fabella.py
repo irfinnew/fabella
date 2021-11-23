@@ -28,7 +28,7 @@ while not window.closed():
 		for key, scancode, action, modifiers  in window.get_events():
 			if action == glfw.PRESS:
 				log.info(f'Parsing key {key} in video mode')
-				if key == glfw.KEY_Q:
+				if key == glfw.KEY_Q and modifier == glfw.MOD_CONTROL:
 					log.info('Quitting.')
 					menu.forget()
 					video.stop()
@@ -88,7 +88,7 @@ while not window.closed():
 		for key, scancode, action, modifiers in window.get_events():
 			if action == glfw.PRESS:
 				log.info(f'Parsing key {key} in menu mode')
-				if key == glfw.KEY_Q:
+				if key == glfw.KEY_Q and modifiers == glfw.MOD_CONTROL:
 					log.info('Quitting.')
 					menu.forget()
 					video.stop()
@@ -103,7 +103,7 @@ while not window.closed():
 					else:
 						video.info('No video open; refusing to close menu.')
 					#video.pause(False)
-				if key == glfw.KEY_TAB:
+				if key == glfw.KEY_TAB and modifiers == 0:
 					menu.toggle_seen()
 				if key == glfw.KEY_TAB and modifiers == glfw.MOD_SHIFT:
 					menu.toggle_seen_all()
