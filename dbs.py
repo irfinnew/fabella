@@ -152,7 +152,7 @@ def json_write(filename, data):
 			# files, which then (rightly) trips up gzip. So we try padding the compressed stream
 			# so the short-read still returns enough data for gzip.
 			with open(new_filename, 'ab') as fd:
-				fd.write(bytes(1024))
+				fd.write(bytes(4096))
 
 		# Atomic file replacement
 		os.rename(new_filename, filename)
