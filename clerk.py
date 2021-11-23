@@ -478,6 +478,9 @@ def process_state_queue(path):
 	state_queue = [f.path for f in state_queue]
 
 	for update_name in state_queue:
+		if update_name.endswith(dbs.NEW_SUFFIX):
+			continue
+
 		updates = dbs.json_read(update_name, dbs.STATE_UPDATE_SCHEMA)
 		if not updates:
 			continue
