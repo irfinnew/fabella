@@ -114,8 +114,10 @@ def json_validate(data, schema, keyname=None):
 
 
 
-def json_read(filename, schema, default={}):
+def json_read(filename, schema, default=...):
 	openfunc = gzip.open if filename.endswith('.gz') else open
+	if default is ...:
+		default = {}
 
 	try:
 		with openfunc(filename) as fd:
