@@ -2,7 +2,10 @@ import io
 import OpenGL.GL as gl
 import PIL.Image, PIL.ImageOps, PIL.ImageFilter
 
-from logger import Logger
+import loghelper
+
+log = loghelper.get_logger('Image', loghelper.Color.BrightBlack)
+
 
 
 class ImgLib:
@@ -16,8 +19,6 @@ class ImgLib:
 
 
 class Image:
-	log = Logger(module='Image', color=Logger.Black + Logger.Bright)
-
 	def __init__(self, source, width, height, name='None', pool=None, mode='RGB', shadow=None):
 		self._source = None
 		self.pixels = None
@@ -34,7 +35,7 @@ class Image:
 
 	def __del__(self):
 		if self._texture:
-			self.log.error(f'{self}.__del__(): lingering texture!')
+			log.error(f'{self}.__del__(): lingering texture!')
 
 	@property
 	def source(self):
@@ -48,10 +49,10 @@ class Image:
 			self.pool.schedule(self.render)
 
 	def render(self):
-		self.log.debug(f'Rendering image: {self.name}')
+		log.debug(f'Rendering image: {self.name}')
 
 		if self.rendered:
-			self.log.warning('Already rendered, skipping')
+			log.warning('Already rendered, skipping')
 			return
 
 		with PIL.Image.open(io.BytesIO(self._source)) as image:

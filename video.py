@@ -6,10 +6,13 @@ import time
 import mpv
 import OpenGL.GL as gl
 
-from logger import Logger
+import loghelper
+
+log = loghelper.get_logger('Video', loghelper.Color.Yellow)
+
+
 
 class Video:
-	log = Logger(module='Video', color=Logger.Yellow)
 	mpv = None
 	context = None
 	current_file = None
@@ -22,15 +25,24 @@ class Video:
 	tile = None
 
 	def __init__(self):
-		self.log.debug('Created instance')
-		def mpv_log(loglevel, component, message):
-			loglevel = {'fatal': 'critical', 'warn': 'warning', 'v': 'info', 'trace': 'debug'}.get(loglevel, loglevel)
-			self.log.log(loglevel, component + ': ' + message, module='libmpv', color=Logger.Green)
+		log.debug('Created instance')
+
+		mpv_logger = loghelper.get_logger('libmpv', loghelper.Color.Green)
+		mpv_levels = {
+			'fatal': 50,
+			'error': 40,
+			'warn': 30,
+			'info': 20,
+			'status': 20,
+			'v': 15,
+			'debug': 10,
+			'trace': 5
+		}
+		self.mpv = mpv.MPV(log_handler=lambda l, c, m: mpv_logger.log(mpv_levels[l], f'{c}: {m}'), loglevel='debug')
 
 		self.should_render = False
 		self.menu = None
-		self.mpv = mpv.MPV(log_handler=mpv_log, loglevel='debug')
-		self.log.warning('FIXME: setting MPV options')
+		log.warning('FIXME: setting MPV options')
 		self.mpv['hwdec'] = 'auto'
 		self.mpv['osd-duration'] = 1000
 		self.mpv['osd-level'] = 1
@@ -73,7 +85,7 @@ class Video:
 		if value is False:
 			return
 
-		self.log.info('Reached EOF')
+		log.info('Reached EOF')
 		self.position = 0.0
 		self.stop()
 		# FIXME: tight coupling
@@ -85,14 +97,14 @@ class Video:
 			self.menu.open()
 
 	def size_changed(self, prop, value):
-		self.log.info(f'Video {prop} is {value}')
+		log.info(f'Video {prop} is {value}')
 
 	def position_changed(self, prop, value):
-		self.log.debug(f'Video percent-pos changed to {value}')
+		log.debug(f'Video percent-pos changed to {value}')
 		assert prop == 'percent-pos'
 
 		if self.position_immune_until > time.time():
-			self.log.debug(f'Video percent-pos is immune, ignoring')
+			log.debug(f'Video percent-pos is immune, ignoring')
 			return
 		if value is None:
 			return
@@ -106,13 +118,13 @@ class Video:
 			pause = not self.mpv.pause
 
 		if pause != self.mpv.pause:
-			self.log.info('Pausing video' if pause else 'Unpausing video')
+			log.info('Pausing video' if pause else 'Unpausing video')
 			self.mpv.pause = pause
 
 	def start(self, filename, position=0, menu=None, tile=None):
 		if self.current_file:
 			self.stop()
-		self.log.info(f'Starting playback for {filename}')
+		log.info(f'Starting playback for {filename}')
 
 		self.current_file = filename
 		self.should_render = True
@@ -125,7 +137,7 @@ class Video:
 		self.mpv.play(filename)
 		self.pause(False)
 		if position > 0:
-			self.log.info(f'Starting playback at position {position}')
+			log.info(f'Starting playback at position {position}')
 			# FIXME
 			# Updating the position only works after libmpv has had
 			# a chance to initialize the video; so we spin here until
@@ -135,7 +147,7 @@ class Video:
 			self.mpv.percent_pos = position * 100
 
 	def stop(self):
-		self.log.info(f'Stopping playback for {self.current_file}')
+		log.info(f'Stopping playback for {self.current_file}')
 		# Not sure why this'd be necessary
 		#self.pause(False)
 		self.mpv.stop()
@@ -150,18 +162,18 @@ class Video:
 		self.tile = None
 
 	def seek(self, amount, whence='relative'):
-		self.log.info(f'Seeking {whence} {amount}')
+		log.info(f'Seeking {whence} {amount}')
 		try:
 			self.mpv.seek(amount, whence)
 		except SystemError as e:
 			# FIXME
-			self.log.warning('Seek error')
+			log.warning('Seek error')
 			print(e)
 
 	def render(self, width, height):
 		force_render = False
 		if self.video_size != (width, height):
-			self.log.info(f'Resizing video texture from {self.video_size} to {(width, height)}')
+			log.info(f'Resizing video texture from {self.video_size} to {(width, height)}')
 			gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
 			gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, width, height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, None)
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
@@ -170,7 +182,7 @@ class Video:
 			force_render = True
 
 		if self.should_render and (self.context.update() or force_render):
-			self.log.debug('Rendering frame')
+			log.debug('Rendering frame')
 			# FIXME: apparently, we shouldn't call other mpv functions from the same
 			# thread as render(). Find a way to fix that.
 			ret = self.context.render(flip_y=True, opengl_fbo={'w': width, 'h': height, 'fbo': self.fbo})
@@ -178,10 +190,10 @@ class Video:
 
 	def draw(self, window_width, window_height):
 		if not self.rendered:
-			#self.log.debug('Drawing frame skipped because not rendered')
+			#log.debug('Drawing frame skipped because not rendered')
 			return
 
-		#self.log.debug('Drawing frame')
+		#log.debug('Drawing frame')
 		video_width, video_height = self.video_size
 
 		# Draw video

@@ -7,8 +7,12 @@ import functools
 
 import dbs
 import config
-from logger import Logger
+import loghelper
 from image import Image, ImgLib
+
+log = loghelper.get_logger('Tile', loghelper.Color.Cyan)
+
+
 
 # FIXME: UGH
 shadow_blursize = 32
@@ -69,9 +73,6 @@ def get_hl():
 
 
 class Tile:
-	log = Logger(module='Tile', color=Logger.Magenta)
-
-
 	def __init__(self, path, name, isdir, menu, font, render_pool):
 		self.name = name
 		self.path = path
@@ -82,7 +83,7 @@ class Tile:
 		self.font = font
 		self.state_last_update = 0  # FIXME: is this still needed?
 
-		self.log.debug(f'Created {self}')
+		log.debug(f'Created {self}')
 
 		# Metadata, will be populated later
 		self.tile_color = (0, 0, 0)
@@ -98,7 +99,7 @@ class Tile:
 		self.info = None
 
 	def update_meta(self, meta):
-		self.log.debug(f'Update metadata for {self}')
+		log.debug(f'Update metadata for {self}')
 
 		if meta['name'] != self.name:
 			raise ValueError('{self}.update_meta({meta})')
@@ -148,7 +149,7 @@ class Tile:
 				if image:
 					self.cover.source = image
 		except KeyError:
-			self.log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
+			log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
 
 
 	@classmethod
@@ -157,7 +158,7 @@ class Tile:
 		tobjs = [o for o in tobjs if o]
 
 		textures = [o._texture for o in tobjs if o._texture]
-		cls.log.info(f'Deleting {len(textures)} textures')
+		log.info(f'Deleting {len(textures)} textures')
 		gl.glDeleteTextures(textures)
 
 		for o in tobjs:
@@ -165,7 +166,7 @@ class Tile:
 
 
 	def update_pos(self, position, force=False):
-		self.log.debug(f'{self} update_pos({position}, {force})')
+		log.debug(f'{self} update_pos({position}, {force})')
 		old_pos = self.position
 		self.position = position
 		# FIXME: detect if user was watching for a while before marking part as watched
@@ -181,7 +182,7 @@ class Tile:
 	def write_state_update(self, state=None):
 		if state is None:
 			state = {'position': self.position, 'watched': self.watched}
-		self.log.info(f'Writing state for {self.name}: {state}')
+		log.info(f'Writing state for {self.name}: {state}')
 		update_name = os.path.join(self.path, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
 		dbs.json_write(update_name, {self.name: state})
 

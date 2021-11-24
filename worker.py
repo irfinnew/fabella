@@ -2,10 +2,10 @@ import queue
 import threading
 import traceback
 
-from logger import Logger
+import loghelper
 
+log = loghelper.get_logger('Worker', loghelper.Color.BrightMagenta)
 
-log = Logger(module='Worker', color=Logger.Magenta + Logger.Bright)
 
 
 class Pool:

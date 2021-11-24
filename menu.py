@@ -5,17 +5,21 @@ import time
 import uuid
 import zipfile
 
+import loghelper
 import config
 import dbs
-from logger import Logger
 from tile import Tile
 from font import Font
 from worker import Pool
 from image import ImgLib
 
 
+
+log = loghelper.get_logger('Menu', loghelper.Color.Cyan)
+
+
+
 class Menu:
-	log = Logger(module='Menu', color=Logger.Cyan)
 	enabled = False
 	path = None
 	tiles = []
@@ -29,7 +33,7 @@ class Menu:
 	clock_text = None
 
 	def __init__(self, path='/', enabled=False):
-		self.log.info(f'Created instance, path={path}, enabled={enabled}')
+		log.info(f'Created instance, path={path}, enabled={enabled}')
 
 		# FIXME: number of threads
 		self.render_pool = Pool('render', threads=3)
@@ -48,16 +52,16 @@ class Menu:
 		self.clock_text = self.menu_font.text(None, pool=self.render_pool)
 
 	def open(self):
-		self.log.info('Opening Menu')
+		log.info('Opening Menu')
 		self.enabled = True
 
 	def close(self):
-		self.log.info('Closing Menu')
+		log.info('Closing Menu')
 		self.enabled = False
 
 	def load(self, path):
 		self.forget()
-		self.log.info(f'Loading {path}')
+		log.info(f'Loading {path}')
 		# BENCHMARK
 		self.bench = time.time()
 
@@ -68,14 +72,14 @@ class Menu:
 		index_db_name = os.path.join(path, dbs.INDEX_DB_NAME)
 		index = dbs.json_read(index_db_name, dbs.INDEX_DB_SCHEMA, default=None)
 		if index is None:
-			self.log.warning(f'falling back to scandir()')
+			log.warning(f'falling back to scandir()')
 			index = []
 			for isfile, name in sorted((not de.is_dir(), de.name) for de in os.scandir(path)):
 				if not name.startswith('.') and name.endswith(dbs.VIDEO_EXTENSIONS):
 					index.append({'name': name, 'isdir': not isfile})
 		else:
 			index = index['files']
-		start = int((time.time() - start) * 1000); self.log.warning(f'Reading index: {start}ms')
+		start = int((time.time() - start) * 1000); log.warning(f'Reading index: {start}ms')
 
 		self.path = path
 		self.tiles = []
@@ -84,13 +88,13 @@ class Menu:
 			name = entry['name']
 			isdir = entry['isdir']
 			self.tiles.append(Tile(path, name, isdir, self, self.tile_font, self.render_pool))
-		start = int((time.time() - start) * 1000); self.log.warning(f'Creating tiles: {start}ms')
+		start = int((time.time() - start) * 1000); log.warning(f'Creating tiles: {start}ms')
 
 		start = time.time()
 		for tile, entry in zip(self.tiles, index):
 			meta = {**entry, **state.get(tile.name, {})}
 			tile.update_meta(meta)
-		start = int((time.time() - start) * 1000); self.log.warning(f'Updating meta: {start}ms')
+		start = int((time.time() - start) * 1000); log.warning(f'Updating meta: {start}ms')
 
 		self.tile_pool.schedule(self.load_covers)
 
@@ -117,11 +121,11 @@ class Menu:
 				for tile in self.tiles:
 					tile.update_cover(fd)
 		except OSError as e:
-			self.log.error(f'Parsing cover DB {cover_db_name}: {e}')
-		start = int((time.time() - start) * 1000); self.log.warning(f'Updating covers: {start}ms')
+			log.error(f'Parsing cover DB {cover_db_name}: {e}')
+		start = int((time.time() - start) * 1000); log.warning(f'Updating covers: {start}ms')
 
 	def forget(self):
-		self.log.info('Forgetting tiles')
+		log.info('Forgetting tiles')
 		self.tile_pool.flush()
 		self.render_pool.flush()
 		Tile.release_all_textures(self.tiles)
@@ -133,12 +137,12 @@ class Menu:
 		return self.tiles[self.current_idx]
 
 	def previous_row(self):
-		self.log.info('Select previous row')
+		log.info('Select previous row')
 		if self.current_idx >= self.tiles_per_row:
 			self.current_idx -= self.tiles_per_row
 
 	def next_row(self):
-		self.log.info('Select next row')
+		log.info('Select next row')
 		if self.current_idx // self.tiles_per_row < (len(self.tiles) - 1) // self.tiles_per_row:
 			self.current_idx = min(
 				len(self.tiles) - 1,
@@ -146,12 +150,12 @@ class Menu:
 			)
 
 	def previous(self):
-		self.log.info('Select previous')
+		log.info('Select previous')
 		if self.current_idx > 0:
 			self.current_idx -= 1
 
 	def next(self):
-		self.log.info('Select next')
+		log.info('Select next')
 		if self.current_idx < len(self.tiles) - 1:
 			self.current_idx += 1
 
@@ -174,7 +178,7 @@ class Menu:
 		self.current.toggle_trash()
 
 	def enter(self, video):
-		self.log.info('Enter')
+		log.info('Enter')
 		tile = self.current
 		if tile.isdir:
 			self.breadcrumbs.append(tile.name)
@@ -183,17 +187,17 @@ class Menu:
 			self.play(tile, video)
 
 	def play(self, tile, video):
-		self.log.info(f'Play; (currently {video.tile})')
+		log.info(f'Play; (currently {video.tile})')
 		if tile is not video.tile:
-			self.log.info(f'Starting new video: {tile}')
+			log.info(f'Starting new video: {tile}')
 			video.start(tile.full_path, position=tile.position, menu=self, tile=tile)
 		else:
-			self.log.info('Already playing this video, just maybe unpause')
+			log.info('Already playing this video, just maybe unpause')
 			video.pause(False)
 		self.close()
 
 	def back(self):
-		self.log.info('Back')
+		log.info('Back')
 		self.breadcrumbs.pop()
 		new = os.path.dirname(self.path)
 		if not new:
@@ -261,7 +265,7 @@ class Menu:
 		if self.bench and self.tiles:
 			t = self.tiles[-1]
 			if t.title and t.title.rendered:
-				self.log.warning(f'Rendering: {int((time.time() - self.bench) * 1000)}ms')
+				log.warning(f'Rendering: {int((time.time() - self.bench) * 1000)}ms')
 				self.bench = None
 
 		tile_width = config.tile.width

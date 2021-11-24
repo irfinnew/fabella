@@ -26,13 +26,14 @@ import subprocess
 import PIL.Image
 import PIL.ImageOps
 
+import loghelper
 import colorpicker
-from logger import Logger
 from watch import Watcher
 from worker import Pool
 import dbs
 
-log = Logger(module='clerk', color=Logger.Magenta)
+loghelper.set_up_logging(15, 0, 'clerk.log')
+log = loghelper.get_logger('Clerk', loghelper.Color.Red)
 
 
 

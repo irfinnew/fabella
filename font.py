@@ -6,12 +6,12 @@ from gi.repository import Pango
 gi.require_version('PangoCairo', '1.0')
 from gi.repository import PangoCairo
 
-from logger import Logger
+import loghelper
+
+log = loghelper.get_logger('Font', loghelper.Color.BrightBlack)
 
 
 class Text:
-	log = Logger(module='Font', color=Logger.Black + Logger.Bright)
-
 	def __init__(self, font, text, max_width=None, lines=1, pool=None):
 		self._text = None
 		self.width = 0
@@ -28,7 +28,7 @@ class Text:
 
 	def __del__(self):
 		if self._texture:
-			self.log.error(f'{self}.__del__(): lingering texture!')
+			log.error(f'{self}.__del__(): lingering texture!')
 
 	@property
 	def text(self):
@@ -41,10 +41,10 @@ class Text:
 			self.pool.schedule(self.render)
 
 	def render(self):
-		self.log.debug(f'Rendering text: "{self._text}"')
+		log.debug(f'Rendering text: "{self._text}"')
 
 		if self.rendered:
-			self.log.warning('Already rendered, skipping')
+			log.warning('Already rendered, skipping')
 			return
 
 		border = self.font.stroke_width
@@ -114,14 +114,13 @@ class Text:
 
 
 class Font:
-	log = Logger(module='Font', color=Logger.Black + Logger.Bright)
 	face = None
 	name = None
 	size = None
 	stroke_width = 0
 
 	def __init__(self, fontname, size, stroke_width):
-		self.log.info(f'Creating instance for {fontname} {size}')
+		log.info(f'Creating instance for {fontname} {size}')
 		self.name = fontname
 		self.size = size
 		self.stroke_width = stroke_width

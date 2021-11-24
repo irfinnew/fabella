@@ -49,8 +49,9 @@ import gzip
 import zlib
 import json
 
-from logger import Logger
-log = Logger(module='dbs', color=Logger.Magenta)
+import loghelper
+
+log = loghelper.get_logger('DBs', loghelper.Color.Magenta)
 
 
 

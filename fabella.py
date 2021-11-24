@@ -7,15 +7,21 @@ import glfw
 import time
 import OpenGL.GL as gl
 
-from logger import Logger
+import loghelper
 from window import Window
 from menu import Menu
 from video import Video
 
+
+
+loghelper.set_up_logging(15, 0, 'fabella.log')
+log = loghelper.get_logger('Fabella', loghelper.Color.Red)
+
+
+
 window = Window(1920, 1080, "Fabella")
 menu = Menu(sys.argv[1], enabled=True)
 video = Video()
-log = Logger(module='Main', color=Logger.Red)
 
 #### Main loop
 last_time = 0
