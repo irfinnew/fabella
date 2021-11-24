@@ -5,7 +5,7 @@ class tile:
 	min_vspace = 64
 	text_vspace = 8
 	text_size = 18
-	text_lines = 2
+	text_lines = 3
 	highlight_outset = 0
 
 	pos_bar_height = 2
