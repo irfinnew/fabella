@@ -117,13 +117,13 @@ while not window.closed():
 					menu.enter(video)
 				if key == glfw.KEY_BACKSPACE:
 					menu.back()
-				if key == glfw.KEY_UP:
+				if key in [glfw.KEY_UP, glfw.KEY_K]:
 					menu.previous_row()
-				if key == glfw.KEY_DOWN:
+				if key in [glfw.KEY_DOWN, glfw.KEY_J]:
 					menu.next_row()
-				if key == glfw.KEY_RIGHT:
+				if key in [glfw.KEY_RIGHT, glfw.KEY_L]:
 					menu.next()
-				if key == glfw.KEY_LEFT:
+				if key in [glfw.KEY_LEFT, glfw.KEY_H]:
 					menu.previous()
 				if key == glfw.KEY_DELETE:
 					menu.toggle_trash()
