@@ -320,24 +320,25 @@ class Tile:
 		if self.watching:
 			watching = int(math.log2(self.watched)) + 1
 			watching = getattr(ImgLib, f'Watching{watching}')
-			x2, y2 = x + config.tile.width + watching.width // 2, y + watching.height // 2
-			x1, y1 = x2 - watching.width, y2 - watching.height
-			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, watching.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+			if watching.texture:
+				x2, y2 = x + config.tile.width + watching.width // 2, y + watching.height // 2
+				x1, y1 = x2 - watching.width, y2 - watching.height
+				gl.glColor4f(1, 1, 1, 1)
+				gl.glBindTexture(gl.GL_TEXTURE_2D, watching.texture)
+				gl.glBegin(gl.GL_QUADS)
+				gl.glTexCoord2f(0.0, 1.0)
+				gl.glVertex2f(x1, y1)
+				gl.glTexCoord2f(1.0, 1.0)
+				gl.glVertex2f(x2, y1)
+				gl.glTexCoord2f(1.0, 0.0)
+				gl.glVertex2f(x2, y2)
+				gl.glTexCoord2f(0.0, 0.0)
+				gl.glVertex2f(x1, y2)
+				gl.glEnd()
+				gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# "Unseen" emblem
-		if self.unseen:
+		if self.unseen and ImgLib.Unseen.texture:
 			x2, y2 = x + config.tile.width + ImgLib.Unseen.width // 2, y + ImgLib.Unseen.height // 2
 			x1, y1 = x2 - ImgLib.Unseen.width, y2 - ImgLib.Unseen.height
 			gl.glColor4f(1, 1, 1, 1)
@@ -355,7 +356,7 @@ class Tile:
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# "Trash" emblem
-		if self.trash:
+		if self.trash and ImgLib.Trash.texture:
 			x1, y2 = x - ImgLib.Trash.width // 2, y + ImgLib.Trash.height // 2
 			x2, y1 = x1 + ImgLib.Trash.width, y2 - ImgLib.Trash.height
 			gl.glColor4f(1, 1, 1, 1)
