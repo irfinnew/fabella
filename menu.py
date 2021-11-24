@@ -272,7 +272,7 @@ class Menu:
 		tile_hspace = config.tile.min_hspace
 		tile_htotal = tile_width + tile_hspace
 
-		tile_height = config.tile.thumb_height + config.tile.text_vspace + config.tile.text_size * config.tile.text_lines
+		tile_height = config.tile.thumb_height + config.tile.text_vspace + int(config.tile.text_size * 1.65) * config.tile.text_lines
 		tile_vspace = config.tile.min_vspace
 		tile_vtotal = tile_height + tile_vspace
 
@@ -282,9 +282,9 @@ class Menu:
 		self.tiles_per_row = tiles_per_row
 
 		# FIXME: yuck
-		height -= int(config.menu.header_vspace + config.menu.text_size)
+		height -= int(config.menu.header_vspace + config.menu.text_size * 1.65)
 		tile_rows = max(height // tile_vtotal, 1)
-		tile_voffset = (height - tile_rows * tile_vtotal + tile_vspace) // 2
+		tile_voffset = (height - tile_rows * tile_vtotal) // 2 + tile_vspace
 
 		# Fix offset
 		while self.current_idx // tiles_per_row < self.current_offset:

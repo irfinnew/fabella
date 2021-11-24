@@ -2,7 +2,7 @@ class tile:
 	width = 320
 	thumb_height = 200
 	min_hspace = 48
-	min_vspace = 64
+	min_vspace = 32
 	text_vspace = 8
 	text_size = 18
 	text_lines = 3
@@ -25,4 +25,4 @@ class menu:
 	background_color = (0.16, 0.16, 0.2, 1)
 	text_size = 36
 	header_hspace = 64
-	header_vspace = 64
+	header_vspace = 32
