@@ -14,3 +14,5 @@
  - Perhaps display multiple seasons in one menu? Separated by a text header?
  - copy better thumbnail generation from mkv-gencover
  - clerk immediately recreates removed directories, so removing is futile
+ - navigating up from top lvl in fabella crashes
+ - clerk puts .fabella dir above root
