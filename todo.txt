@@ -1,15 +1,15 @@
+ - Fix position sometimes resetting to 0 when stopping video
+ - Fix sometimes-crash on seek (probably because MPV thread stuff)
+ - Fix GLFW bugs
+ - Display time/title/etc on movie with osd stuff
+ - Split out file I/O etc to its own thread
+ - Maybe just use position for new/watching/watched state?
  - Add configuration file
- - Better "watched" logic
- - Upgrade to full state files
- - Tile view
  - Add background
- - Thumbnails
  - Menu animations
  - OpenGL error checking
  - Improve drawing effiency (remove OpenGL immediate mode)
  - Abstract out glfw key events
- - split out file I/O etc to its own file
- - make a library watch daemon
  - Videos with non-square pixels are poorly supported; video playback is letterboxed; thumbnails get squashed (IT crowd)
  - Perhaps display multiple seasons in one menu? Separated by a text header?
- - copy better thumbnail generation from mkv-gencover
+ - Copy better thumbnail generation from mkv-gencover
