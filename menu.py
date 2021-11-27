@@ -198,7 +198,12 @@ class Menu:
 
 	def back(self):
 		log.info('Back')
-		self.breadcrumbs.pop()
+		try:
+			self.breadcrumbs.pop()
+		except IndexError:
+			log.info("Hit root, not going up.")
+			return
+
 		new = os.path.dirname(self.path)
 		if not new:
 			return
