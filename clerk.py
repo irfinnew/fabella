@@ -457,6 +457,10 @@ def scan(path, pool):
 
 
 def process_state_queue(path):
+	if not os.path.isdir(path):
+		log.debug(f'{path} is gone, nothing to do')
+		return
+
 	log.info(f'Processing state events for {path}')
 
 	queue_dir_name = os.path.join(path, dbs.QUEUE_DIR_NAME)
@@ -468,7 +472,7 @@ def process_state_queue(path):
 
 	#### Load original state
 	orig_state = dbs.json_read(state_db_name, dbs.STATE_DB_SCHEMA)
-	log.debug(f'Original state: {orig_state}')
+	#log.debug(f'Original state: {orig_state}')
 
 	# Load filenames from index
 	index = dbs.json_read(os.path.join(path, dbs.INDEX_DB_NAME), dbs.INDEX_DB_SCHEMA, default={'files': []})
@@ -521,14 +525,16 @@ def process_state_queue(path):
 
 	# Filter out empty states
 	#state = {k: v for k, v in state.items() if v}
-	log.debug(f'New state: {state}')
+	#log.debug(f'New state: {state}')
 
 	#### Write new state
-	if state != orig_state:
+	if state == orig_state:
+		log.debug('State unchanged, not updating.')
+	else:
 		if state:
 			dbs.json_write(state_db_name, state)
 		else:
-			log.info(f'Empty state; removing {state_db_name}')
+			log.debug(f'Empty state; removing {state_db_name}')
 			try:
 				os.unlink(state_db_name)
 			except FileNotFoundError:
