@@ -456,7 +456,7 @@ def scan(path, pool):
 
 
 
-def process_state_queue(path):
+def process_state_queue(path, roots):
 	if not os.path.isdir(path):
 		log.debug(f'{path} is gone, nothing to do')
 		return
@@ -559,8 +559,11 @@ def process_state_queue(path):
 		orig_flat = flatten_state(orig_state)
 		flat = flatten_state(state)
 		if flat != orig_flat:
-			up_state_name = os.path.join(os.path.dirname(path), dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
-			dbs.json_write(up_state_name, {os.path.basename(path): flat})
+			parent = os.path.dirname(path)
+			# Don't travel outside our roots
+			if parent not in roots:
+				parent_state_name = os.path.join(parent, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
+				dbs.json_write(parent_state_name, {os.path.basename(path): flat})
 
 	for update_name in state_queue:
 		try:
@@ -637,7 +640,7 @@ for event in watcher.events(timeout=1):
 		do_state_queue.append(path)
 
 	for path in do_state_queue:
-		process_state_queue(path)
+		process_state_queue(path, roots)
 
 	#if not dirty:
 	#	break
