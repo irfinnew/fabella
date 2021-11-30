@@ -87,8 +87,11 @@ class Video:
 		if value is False:
 			return
 
-		log.info('Reached EOF')
-		self.position = 0.0
+		log.info(f'Reached EOF (pos={self.position})')
+		# Ugh, this may be called because of a genuine EOF, or because of stop().
+		# In the last case, we don't want to reset the position. So... this hack?
+		if self.position > 0.99:
+			self.position = 0.0
 		self.stop()
 		# FIXME: tight coupling
 		if self.menu:

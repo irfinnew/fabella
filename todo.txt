@@ -1,4 +1,3 @@
- - Fix position sometimes resetting to 0 when stopping video
  - Fix sometimes-crash on seek (probably because MPV thread stuff)
  - Fix GLFW bugs
  - Split out file I/O etc to its own thread
