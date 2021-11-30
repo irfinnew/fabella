@@ -4,6 +4,7 @@ class tile:
 	min_hspace = 48
 	min_vspace = 32
 	text_vspace = 8
+	text_font = 'Ubuntu Medium'
 	text_size = 18
 	text_lines = 3
 	highlight_outset = 0
@@ -23,6 +24,7 @@ class tile:
 
 class menu:
 	background_color = (0.16, 0.16, 0.2, 1)
+	text_font = 'Ubuntu Medium'
 	text_size = 36
 	header_hspace = 64
 	header_vspace = 32

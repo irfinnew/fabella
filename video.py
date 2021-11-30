@@ -19,6 +19,7 @@ class Video:
 	fbo = None
 	texture = None
 	video_size = (640, 360)
+	duration = 0
 	position = 0
 	position_immune_until = 0
 	rendered = False
@@ -64,6 +65,7 @@ class Video:
 		self.mpv.observe_property('width', self.size_changed)
 		self.mpv.observe_property('height', self.size_changed)
 		self.mpv.observe_property('percent-pos', self.position_changed)
+		self.mpv.observe_property('duration', self.duration_changed)
 		self.mpv.observe_property('eof-reached', self.eof_reached)
 
 		# FIXME
@@ -113,6 +115,11 @@ class Video:
 		if self.tile:
 			self.tile.update_pos(self.position)
 
+	def duration_changed(self, prop, value):
+		log.debug(f'Video duration changed to {value}')
+		assert prop == 'duration'
+		self.duration = value
+
 	def pause(self, pause=None):
 		if pause is None:
 			pause = not self.mpv.pause
@@ -130,6 +137,7 @@ class Video:
 		self.should_render = True
 		self.rendered = False
 		self.position = position
+		self.duration = None
 		self.tile = tile
 		self.menu = menu
 

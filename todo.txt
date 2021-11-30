@@ -1,7 +1,6 @@
  - Fix position sometimes resetting to 0 when stopping video
  - Fix sometimes-crash on seek (probably because MPV thread stuff)
  - Fix GLFW bugs
- - Display time/title/etc on movie with osd stuff
  - Split out file I/O etc to its own thread
  - Maybe just use position for new/watching/watched state?
  - Add configuration file

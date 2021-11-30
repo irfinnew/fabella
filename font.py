@@ -119,11 +119,14 @@ class Font:
 	size = None
 	stroke_width = 0
 
-	def __init__(self, fontname, size, stroke_width):
+	def __init__(self, fontname, size, stroke_width=None):
 		log.info(f'Creating instance for {fontname} {size}')
 		self.name = fontname
 		self.size = size
-		self.stroke_width = stroke_width
+		if stroke_width is None:
+			self.stroke_width = 2 + round(size / 15)
+		else:
+			self.stroke_width = stroke_width
 		self.face = Pango.font_description_from_string(f'{fontname} {size}')
 
 		# Surface and context will be re-used for every Text instance to create

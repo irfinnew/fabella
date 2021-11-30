@@ -26,6 +26,7 @@ video = Video()
 #### Main loop
 last_time = 0
 frame_count = 0
+osd = False
 log.info('Starting main loop')
 while not window.closed():
 	window.wait()
@@ -51,7 +52,8 @@ while not window.closed():
 					window.set_fullscreen()
 				if key == glfw.KEY_O:
 					log.info('Cycling OSD')
-					video.mpv['osd-level'] ^= 2
+					#video.mpv['osd-level'] ^= 2
+					osd = not osd
 				if key == glfw.KEY_SPACE:
 					video.pause()
 				if key == glfw.KEY_RIGHT:
@@ -147,6 +149,8 @@ while not window.closed():
 	gl.glMatrixMode (gl.GL_MODELVIEW)
 
 	video.draw(width, height)
+	if osd or video.mpv.pause:
+		menu.draw_osd(width, height, video)
 
 	if menu.enabled:
 		menu.draw(width, height, transparent=video.rendered)

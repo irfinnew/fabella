@@ -38,8 +38,8 @@ class Menu:
 		# FIXME: number of threads
 		self.render_pool = Pool('render', threads=3)
 		self.tile_pool = Pool('tile', threads=1)
-		self.tile_font = Font('Ubuntu Medium', config.tile.text_size, stroke_width=3)
-		self.menu_font = Font('Ubuntu Medium', config.menu.text_size, stroke_width=4)
+		self.tile_font = Font(config.tile.text_font, config.tile.text_size)
+		self.menu_font = Font(config.menu.text_font, config.menu.text_size)
 		self.load(path)
 		self.enabled = enabled
 
@@ -50,6 +50,8 @@ class Menu:
 
 		self.bread_text = self.menu_font.text(None, pool=self.render_pool)
 		self.clock_text = self.menu_font.text(None, pool=self.render_pool)
+		self.name_text = self.menu_font.text(None, pool=self.render_pool)
+		self.duration_text = self.menu_font.text(None, pool=self.render_pool)
 
 	def open(self):
 		log.info('Opening Menu')
@@ -183,7 +185,11 @@ class Menu:
 		if tile.isdir:
 			self.breadcrumbs.append(tile.name)
 			self.load(tile.full_path)
+			# Do this after the load, because the load flushes the render queues.
+			self.bread_text.text = '  ›  '.join(self.breadcrumbs)
 		else:
+			# Yuck, tight coupling
+			self.name_text.text = tile.title.text
 			self.play(tile, video)
 
 	def play(self, tile, video):
@@ -200,6 +206,7 @@ class Menu:
 		log.info('Back')
 		try:
 			self.breadcrumbs.pop()
+			self.bread_text.text = '  ›  '.join(self.breadcrumbs)
 		except IndexError:
 			log.info("Hit root, not going up.")
 			return
@@ -227,51 +234,13 @@ class Menu:
 			gl.glColor4f(*config.menu.background_color)
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
-		# Breadcrumbs
-		self.bread_text.text = '  ›  '.join(self.breadcrumbs)
-
-		if self.bread_text.texture:
-			x1, y1 = config.menu.header_hspace, height - config.menu.header_vspace - self.bread_text.height
-			x2, y2 = x1 + self.bread_text.width, y1 + self.bread_text.height
-			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.bread_text.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-
-		# Clock
-		self.clock_text.text = datetime.datetime.now().strftime('%H:%M:%S')
-
-		if self.clock_text.texture:
-			x1, y1 = width - config.menu.header_hspace - self.clock_text.width, height - config.menu.header_vspace - self.clock_text.height
-			x2, y2 = x1 + self.clock_text.width, y1 + self.clock_text.height
-			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.clock_text.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-
 		if self.bench and self.tiles:
 			t = self.tiles[-1]
 			if t.title and t.title.rendered:
 				log.warning(f'Rendering: {int((time.time() - self.bench) * 1000)}ms')
 				self.bench = None
+
+		self.draw_header(width, height)
 
 		tile_width = config.tile.width
 		tile_hspace = config.tile.min_hspace
@@ -312,3 +281,95 @@ class Menu:
 				except IndexError:
 					break
 				tile.draw(tile_hoffset + x * tile_htotal, height - tile_voffset - y * tile_vtotal, idx == self.current_idx)
+
+	def draw_header(self, width, height):
+		# Breadcrumbs
+		if self.bread_text.texture:
+			x1, y1 = config.menu.header_hspace, height - config.menu.header_vspace - self.bread_text.height
+			x2, y2 = x1 + self.bread_text.width, y1 + self.bread_text.height
+			gl.glColor4f(1, 1, 1, 1)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.bread_text.texture)
+			gl.glBegin(gl.GL_QUADS)
+			gl.glTexCoord2f(0.0, 1.0)
+			gl.glVertex2f(x1, y1)
+			gl.glTexCoord2f(1.0, 1.0)
+			gl.glVertex2f(x2, y1)
+			gl.glTexCoord2f(1.0, 0.0)
+			gl.glVertex2f(x2, y2)
+			gl.glTexCoord2f(0.0, 0.0)
+			gl.glVertex2f(x1, y2)
+			gl.glEnd()
+			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+
+		# Clock
+		self.clock_text.text = datetime.datetime.now().strftime('%H:%M:%S')
+
+		if self.clock_text.texture:
+			x1, y1 = width - config.menu.header_hspace - self.clock_text.width, height - config.menu.header_vspace - self.clock_text.height
+			x2, y2 = x1 + self.clock_text.width, y1 + self.clock_text.height
+			gl.glColor4f(1, 1, 1, 1)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.clock_text.texture)
+			gl.glBegin(gl.GL_QUADS)
+			gl.glTexCoord2f(0.0, 1.0)
+			gl.glVertex2f(x1, y1)
+			gl.glTexCoord2f(1.0, 1.0)
+			gl.glVertex2f(x2, y1)
+			gl.glTexCoord2f(1.0, 0.0)
+			gl.glVertex2f(x2, y2)
+			gl.glTexCoord2f(0.0, 0.0)
+			gl.glVertex2f(x1, y2)
+			gl.glEnd()
+			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+
+	def draw_osd(self, width, height, video):
+		self.draw_header(width, height)
+
+		if self.name_text.texture:
+			x1, y1 = config.menu.header_hspace, height - config.menu.header_vspace * 2 - self.bread_text.height - self.name_text.height
+			x2, y2 = x1 + self.name_text.width, y1 + self.name_text.height
+			gl.glColor4f(1, 1, 1, 1)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.name_text.texture)
+			gl.glBegin(gl.GL_QUADS)
+			gl.glTexCoord2f(0.0, 1.0)
+			gl.glVertex2f(x1, y1)
+			gl.glTexCoord2f(1.0, 1.0)
+			gl.glVertex2f(x2, y1)
+			gl.glTexCoord2f(1.0, 0.0)
+			gl.glVertex2f(x2, y2)
+			gl.glTexCoord2f(0.0, 0.0)
+			gl.glVertex2f(x1, y2)
+			gl.glEnd()
+			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+
+		if video.position is None or video.duration is None:
+			self.duration_text.text = '?:??'
+		else:
+			# FIXME: deduplicate this
+			position = int(video.position * video.duration)
+			hours = position // 3600
+			minutes = round((position % 3600) / 60)
+			position = f'{hours}:{minutes:>02}'
+
+			duration = int(video.duration)
+			hours = duration // 3600
+			minutes = round((duration % 3600) / 60)
+			duration = f'{hours}:{minutes:>02}'
+
+			self.duration_text.text = f'{position}  ∕  {duration}'
+
+		if self.duration_text.texture:
+			x1, y1 = width - config.menu.header_hspace - self.duration_text.width, height - config.menu.header_vspace * 2 - self.bread_text.height - self.duration_text.height
+			x2, y2 = x1 + self.duration_text.width, y1 + self.duration_text.height
+			gl.glColor4f(1, 1, 1, 1)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.duration_text.texture)
+			gl.glBegin(gl.GL_QUADS)
+			gl.glTexCoord2f(0.0, 1.0)
+			gl.glVertex2f(x1, y1)
+			gl.glTexCoord2f(1.0, 1.0)
+			gl.glVertex2f(x2, y1)
+			gl.glTexCoord2f(1.0, 0.0)
+			gl.glVertex2f(x2, y2)
+			gl.glTexCoord2f(0.0, 0.0)
+			gl.glVertex2f(x1, y2)
+			gl.glEnd()
+			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
