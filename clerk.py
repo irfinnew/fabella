@@ -609,7 +609,7 @@ for event in watcher.events(timeout=1):
 
 			# Case: path/.fabella/state.json.gz
 			elif event.path.endswith('/' + dbs.STATE_DB_NAME):
-				state.dirty[os.path.dirname(os.path.dirname(event.path))] = now
+				state_dirty[os.path.dirname(os.path.dirname(event.path))] = now
 
 			# Case: path/.fabella/index.json.gz
 			elif event.path.endswith('/' + dbs.INDEX_DB_NAME):
