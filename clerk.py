@@ -584,11 +584,11 @@ for root in roots:
 
 analyze_pool = Pool('analyze', threads=2)
 scan_dirty = {}
+state_dirty = {}
 for event in watcher.events(timeout=1):
 	if event:
 		log.debug(f'Got event: {event}')
 
-	do_state_queue = []
 	now = time.time()
 
 	if event:
@@ -605,11 +605,11 @@ for event in watcher.events(timeout=1):
 			# Case: path/.fabella/queue/foo
 			if os.path.dirname(event.path).endswith('/' + dbs.QUEUE_DIR_NAME):
 				if not event.path.endswith(dbs.NEW_SUFFIX):
-					do_state_queue.append(os.path.dirname(os.path.dirname(os.path.dirname(event.path))))
+					state_dirty[os.path.dirname(os.path.dirname(os.path.dirname(event.path)))] = now
 
 			# Case: path/.fabella/state.json.gz
 			elif event.path.endswith('/' + dbs.STATE_DB_NAME):
-				do_state_queue.append(os.path.dirname(os.path.dirname(event.path)))
+				state.dirty[os.path.dirname(os.path.dirname(event.path))] = now
 
 			# Case: path/.fabella/index.json.gz
 			elif event.path.endswith('/' + dbs.INDEX_DB_NAME):
@@ -629,18 +629,18 @@ for event in watcher.events(timeout=1):
 				if event.path.endswith(dbs.VIDEO_EXTENSIONS):
 					watcher.push(os.path.dirname(event.path))
 
-	scan_now = []
+	# Full scan
 	for path, age in list(scan_dirty.items()):
 		if now - age > EVENT_COOLDOWN_SECONDS:
 			del scan_dirty[path]
-			scan_now.append(path)
+			scan(path, pool=analyze_pool)
+			state_dirty[path] = now
 
-	for path in scan_now:
-		scan(path, pool=analyze_pool)
-		do_state_queue.append(path)
-
-	for path in do_state_queue:
-		process_state_queue(path, roots)
+	# Process state
+	for path, age in list(state_dirty.items()):
+		if now - age > EVENT_COOLDOWN_SECONDS:
+			del state_dirty[path]
+			process_state_queue(path, roots)
 
 	#if not dirty:
 	#	break
