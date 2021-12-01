@@ -484,6 +484,8 @@ def process_state_queue(path, roots):
 	# FIXME: remove
 	# Remove deprecated keys from state
 	for s in state.values():
+		if s.get('watched', 0) == 4095:
+			s['position'] = 1
 		s.pop('watched', None)
 		s.pop('position_date', None)
 
