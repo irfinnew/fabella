@@ -87,7 +87,7 @@ class Tile:
 		log.debug(f'Created {self}')
 
 		# Metadata, will be populated later
-		self.tile_color = (0, 0, 0)
+		self.tile_color = (0, 0, 0, 1)
 		self.duration = None
 		self.position = 0
 		self.tagged = False
@@ -112,9 +112,9 @@ class Tile:
 			if tile_color is not None:
 				tile_color = tile_color.strip('#')
 				# FIXME: error checking
-				self.tile_color = tuple(int(tile_color[i:i+2], 16) / 255 for i in range(0, 6, 2))
+				self.tile_color = tuple(int(tile_color[i:i+2], 16) / 255 for i in range(0, 6, 2)) + (1,)
 			else:
-				self.tile_color = (0.3, 0.3, 0.3)
+				self.tile_color = (0.3, 0.3, 0.3, 1)
 
 		# Duration
 		if 'duration' in meta:
@@ -226,10 +226,12 @@ class Tile:
 		x1, y1, x2, y2 = x - 2, y - config.tile.thumb_height - 2, x + config.tile.width + 2, y + 2
 		FlatQuad((x1, y1, x2, y2), 202, config.tile.shadow_color)
 
-		# Thumbnail
+		# Cover image
 		x1, y1, x2, y2 = x, y - config.tile.thumb_height, x + config.tile.width, y
-		if self.cover:
+		if self.cover and self.cover.texture:
 			TexturedQuad((x1, y1, x2, y2), 203, self.cover.texture)
+		else:
+			FlatQuad((x1, y1, x2, y2), 203, self.tile_color)
 
 		# Info
 		if self.info:
