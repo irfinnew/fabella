@@ -128,7 +128,7 @@ while not window.closed():
 				if key in [glfw.KEY_LEFT, glfw.KEY_H]:
 					menu.previous()
 				if key == glfw.KEY_DELETE:
-					menu.toggle_trash()
+					menu.toggle_tagged()
 
 	width, height = window.size()
 	#log.debug(f'Window size {width}x{height}')

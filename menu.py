@@ -45,7 +45,7 @@ class Menu:
 
 		ImgLib.add('Unseen', 'img/unseen.png', 48, 48, self.render_pool, shadow=(2, 12))
 		ImgLib.add('Watching', 'img/watching.png', 48, 48, self.render_pool, shadow=(2, 12))
-		ImgLib.add('Trash', 'img/error.png', 48, 48, self.render_pool, shadow=(2, 12))
+		ImgLib.add('Tagged', 'img/tagged.png', 48, 48, self.render_pool, shadow=(2, 12))
 
 		self.bread_text = self.menu_font.text(None, pool=self.render_pool)
 		self.clock_text = self.menu_font.text(None, pool=self.render_pool)
@@ -174,8 +174,8 @@ class Menu:
 		update_name = os.path.join(self.path, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
 		dbs.json_write(update_name, state)
 
-	def toggle_trash(self):
-		self.current.toggle_trash()
+	def toggle_tagged(self):
+		self.current.toggle_tagged()
 
 	def enter(self, video):
 		log.info('Enter')

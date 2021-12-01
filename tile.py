@@ -89,7 +89,7 @@ class Tile:
 		self.tile_color = (0, 0, 0)
 		self.duration = None
 		self.position = 0
-		self.trash = False
+		self.tagged = False
 
 		# Renderables
 		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines, pool=self.render_pool)
@@ -131,8 +131,8 @@ class Tile:
 		if 'position' in meta:
 			self.position = meta['position']
 
-		if 'trash' in meta:
-			self.trash = meta['trash']
+		if 'tagged' in meta:
+			self.tagged = meta['tagged']
 
 
 	def update_cover(self, covers_zip):
@@ -202,12 +202,12 @@ class Tile:
 		self.write_state_update()
 
 
-	def toggle_trash(self):
+	def toggle_tagged(self):
 		if self.isdir:
 			return
 
-		self.trash = not self.trash
-		self.write_state_update({'trash': self.trash})
+		self.tagged = not self.tagged
+		self.write_state_update({'tagged': self.tagged})
 
 
 	def draw(self, x, y, selected=False):
@@ -344,12 +344,12 @@ class Tile:
 			gl.glEnd()
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
-		# "Trash" emblem
-		if self.trash and ImgLib.Trash.texture:
-			x1, y2 = x - ImgLib.Trash.width // 2, y + ImgLib.Trash.height // 2
-			x2, y1 = x1 + ImgLib.Trash.width, y2 - ImgLib.Trash.height
+		# "Tagged" emblem
+		if self.tagged and ImgLib.Tagged.texture:
+			x1, y2 = x - ImgLib.Tagged.width // 2, y + ImgLib.Tagged.height // 2
+			x2, y1 = x1 + ImgLib.Tagged.width, y2 - ImgLib.Tagged.height
 			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, ImgLib.Trash.texture)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, ImgLib.Tagged.texture)
 			gl.glBegin(gl.GL_QUADS)
 			gl.glTexCoord2f(0.0, 1.0)
 			gl.glVertex2f(x1, y1)

@@ -14,7 +14,7 @@ STATE_UPDATE_SCHEMA = {
 	'*': {
 		'position?': float,
 		'watched?': int,  # FIXME: deprecated
-		'trash?': int,
+		'tagged?': int,
 	}
 }
 STATE_DB_SCHEMA = {
@@ -22,7 +22,7 @@ STATE_DB_SCHEMA = {
 		'position?': float,
 		'position_date?': float,  # FIXME: deprecated
 		'watched?': int,  # FIXME: deprecated
-		'trash?': int,
+		'tagged?': int,
 	}
 }
 INDEX_DB_SCHEMA = {

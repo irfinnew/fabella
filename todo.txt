@@ -1,7 +1,6 @@
  - Fix sometimes-crash on seek (probably because MPV thread stuff)
  - Fix GLFW bugs
  - Split out file I/O etc to its own thread
- - Trashed -> tagged
  - Make symlinks for tagged
  - Add configuration file
  - Add background

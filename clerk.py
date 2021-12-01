@@ -509,11 +509,11 @@ def process_state_queue(path, roots):
 				else:
 					this_state.pop('position', None)
 
-			if 'trash' in update:
-				if update['trash']:
-					this_state['trash'] = True
+			if 'tagged' in update:
+				if update['tagged']:
+					this_state['tagged'] = True
 				else:
-					this_state.pop('trash', None)
+					this_state.pop('tagged', None)
 
 	#### Write new state
 	if state == orig_state:
@@ -533,7 +533,7 @@ def process_state_queue(path, roots):
 		# Propagate state upwards (but not outside root dir)
 		parent = os.path.dirname(path)
 		if parent not in roots:
-			flat = {'trash': any(s.get('trash', False) for s in state.values())}
+			flat = {'tagged': any(s.get('tagged', False) for s in state.values())}
 
 			if any(0 < s.get('position', 0) < 1 for s in state.values()):
 				flat['position'] = 0.5
