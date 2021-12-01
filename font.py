@@ -14,6 +14,7 @@ log = loghelper.get_logger('Font', loghelper.Color.BrightBlack)
 class Text:
 	def __init__(self, font, text, max_width=None, lines=1, pool=None):
 		self._text = None
+		self._max_width = None
 		self.width = 0
 		self.height = 0
 		self.update = None
@@ -21,9 +22,9 @@ class Text:
 		self._texture = None
 
 		self.font = font
-		self.max_width = max_width
 		self.lines = lines
 		self.pool = pool
+		self.max_width = max_width
 		self.text = text
 
 	def __del__(self):
@@ -37,6 +38,16 @@ class Text:
 	def text(self, text):
 		if text != self._text:
 			self._text = text
+			self.rendered = False
+			self.pool.schedule(self.render)
+
+	@property
+	def max_width(self):
+		return self._max_width
+	@max_width.setter
+	def max_width(self, max_width):
+		if max_width != self._max_width:
+			self._max_width = max_width
 			self.rendered = False
 			self.pool.schedule(self.render)
 
@@ -55,15 +66,15 @@ class Text:
 		layout.set_text(self._text, -1)
 
 		# Wrapping
-		if self.max_width:
-			layout.set_width((self.max_width - border * 2) * Pango.SCALE)
+		if self._max_width:
+			layout.set_width((self._max_width - border * 2) * Pango.SCALE)
 		layout.set_height(-self.lines)
 
 		# Create actual surface
 		width, height = layout.get_size()
 		height = height // Pango.SCALE + border * 2
-		if self.max_width:
-			width = self.max_width
+		if self._max_width:
+			width = self._max_width
 		else:
 			width = width // Pango.SCALE + border * 2
 
@@ -124,7 +135,7 @@ class Font:
 		self.name = fontname
 		self.size = size
 		if stroke_width is None:
-			self.stroke_width = 2 + round(size / 15)
+			self.stroke_width = 1 + round(size / 9)
 		else:
 			self.stroke_width = stroke_width
 		self.face = Pango.font_description_from_string(f'{fontname} {size}')

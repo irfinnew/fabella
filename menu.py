@@ -49,7 +49,7 @@ class Menu:
 
 		self.bread_text = self.menu_font.text(None, pool=self.render_pool)
 		self.clock_text = self.menu_font.text(None, pool=self.render_pool)
-		self.name_text = self.menu_font.text(None, pool=self.render_pool)
+		self.name_text = self.menu_font.text(None, lines=4, pool=self.render_pool)
 		self.duration_text = self.menu_font.text(None, pool=self.render_pool)
 
 	def open(self):
@@ -300,7 +300,7 @@ class Menu:
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# Clock
-		self.clock_text.text = datetime.datetime.now().strftime('%H:%M:%S')
+		self.clock_text.text = datetime.datetime.now().strftime('%a %H:%M:%S')
 
 		if self.clock_text.texture:
 			x1, y1 = width - config.menu.header_hspace - self.clock_text.width, height - config.menu.header_vspace - self.clock_text.height
@@ -320,6 +320,8 @@ class Menu:
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 	def draw_osd(self, width, height, video):
+		self.name_text.max_width = width - config.menu.header_hspace * 3 - self.duration_text.width
+
 		self.draw_header(width, height)
 
 		if self.name_text.texture:
@@ -339,21 +341,24 @@ class Menu:
 			gl.glEnd()
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
+		duration_text = '⏸️  ' if video.mpv.pause else '▶️  '
 		if video.position is None or video.duration is None:
-			self.duration_text.text = '?:??'
+			duration_text += '?:??'
 		else:
 			# FIXME: deduplicate this
 			position = int(video.position * video.duration)
 			hours = position // 3600
-			minutes = round((position % 3600) / 60)
+			minutes = (position % 3600) // 60
 			position = f'{hours}:{minutes:>02}'
 
 			duration = int(video.duration)
 			hours = duration // 3600
-			minutes = round((duration % 3600) / 60)
+			minutes = (duration % 3600) // 60
 			duration = f'{hours}:{minutes:>02}'
 
-			self.duration_text.text = f'{position}  ∕  {duration}'
+			duration_text += f'{position}  ∕  {duration}'
+		# Hmm '\n ⏵▶⏸❚❚ || ▋▋ ▌▌ ▍▍ ▎▎  ▶ I I  ▶️  ⏸️ '
+		self.duration_text.text = duration_text
 
 		if self.duration_text.texture:
 			x1, y1 = width - config.menu.header_hspace - self.duration_text.width, height - config.menu.header_vspace * 2 - self.bread_text.height - self.duration_text.height

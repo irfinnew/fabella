@@ -125,7 +125,7 @@ class Tile:
 			else:
 				duration = int(self.duration)
 				hours = duration // 3600
-				minutes = round((duration % 3600) / 60)
+				minutes = (duration % 3600) // 60
 				self.info.text = f'{hours}:{minutes:>02}'
 
 		if 'position' in meta:
