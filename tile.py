@@ -303,10 +303,14 @@ class Tile:
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# Position bar
-		x1, y1 = x, y - config.tile.thumb_height - 1 - config.tile.pos_bar_height
-		x2, y2 = x1 + config.tile.width * self.position, y1 + config.tile.pos_bar_height
-		gl.glColor4f(*config.tile.pos_bar_color)
-		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+		if self.position < 1 and not self.isdir:
+			x1, y1 = x, y - config.tile.thumb_height - 1
+			x2, y2 = x1 + config.tile.width * self.position, y1 + config.tile.pos_bar_height
+			gl.glColor4f(*config.tile.shadow_color)
+			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1 - 1, y1 - 1); gl.glVertex2f(x2 + 1, y1 - 1); gl.glVertex2f(x2 + 1, y2 + 1); gl.glVertex2f(x1 - 1, y2 + 1); gl.glEnd()
+			gl.glColor4f(*config.tile.pos_bar_color)
+			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+
 
 		# "Watching" emblem
 		if self.watching and ImgLib.Watching.texture:
