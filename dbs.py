@@ -10,21 +10,13 @@ NEW_SUFFIX = '.new'
 VIDEO_FILETYPES = ['mkv', 'mp4', 'webm', 'avi', 'wmv']
 VIDEO_EXTENSIONS = tuple('.' + ext for ext in VIDEO_FILETYPES)
 
-STATE_UPDATE_SCHEMA = {
-	'*': {
-		'position?': float,
-		'watched?': int,  # FIXME: deprecated
-		'tagged?': int,
-	}
-}
 STATE_DB_SCHEMA = {
 	'*': {
 		'position?': float,
-		'position_date?': float,  # FIXME: deprecated
-		'watched?': int,  # FIXME: deprecated
 		'tagged?': int,
 	}
 }
+STATE_UPDATE_SCHEMA = STATE_DB_SCHEMA
 INDEX_DB_SCHEMA = {
 	'meta': { 'version': int },
 	'files': [

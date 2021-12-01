@@ -481,14 +481,6 @@ def process_state_queue(path, roots):
 	# Make deep copy of actual present files
 	state = {name: dict(orig_state.get(name, {})) for name in index}
 
-	# FIXME: remove
-	# Remove deprecated keys from state
-	for s in state.values():
-		if s.get('watched', 0) == 4095:
-			s['position'] = 1
-		s.pop('watched', None)
-		s.pop('position_date', None)
-
 	state_queue = [f for f in os.scandir(queue_dir_name) if f.is_file() and not f.path.endswith(dbs.NEW_SUFFIX)]
 	state_queue = sorted(state_queue, key=lambda f: f.stat().st_mtime)
 	state_queue = [f.path for f in state_queue]
