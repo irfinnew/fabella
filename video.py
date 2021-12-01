@@ -87,11 +87,10 @@ class Video:
 		if value is False:
 			return
 
-		log.info(f'Reached EOF (pos={self.position})')
-		# Ugh, this may be called because of a genuine EOF, or because of stop().
-		# In the last case, we don't want to reset the position. So... this hack?
+		log.info(f'Reached EOF @pos={self.position}')
+		# The video is likely to not reach pos=1 on EOF, so we round up.
 		if self.position > 0.99:
-			self.position = 0.0
+			self.position = 1
 		self.stop()
 		# FIXME: tight coupling
 		if self.menu:
@@ -134,12 +133,12 @@ class Video:
 	def start(self, filename, position=0, menu=None, tile=None):
 		if self.current_file:
 			self.stop()
-		log.info(f'Starting playback for {filename}')
+		log.info(f'Starting playback for {filename} at pos={position}')
 
 		self.current_file = filename
 		self.should_render = True
 		self.rendered = False
-		self.position = position
+		self.position = 0 if position == 1 else position
 		self.duration = None
 		self.tile = tile
 		self.menu = menu
@@ -147,8 +146,8 @@ class Video:
 		self.position_immune_until = time.time() + 1
 		self.mpv.play(filename)
 		self.pause(False)
-		if position > 0:
-			log.info(f'Starting playback at position {position}')
+		if self.position > 0:
+			log.info(f'Seeking to position {position}')
 			# FIXME
 			# Updating the position only works after libmpv has had
 			# a chance to initialize the video; so we spin here until

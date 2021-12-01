@@ -89,7 +89,6 @@ class Tile:
 		self.tile_color = (0, 0, 0)
 		self.duration = None
 		self.position = 0
-		self.watched = 0
 		self.trash = False
 
 		# Renderables
@@ -132,9 +131,6 @@ class Tile:
 		if 'position' in meta:
 			self.position = meta['position']
 
-		if 'watched' in meta:
-			self.watched = meta['watched']
-
 		if 'trash' in meta:
 			self.trash = meta['trash']
 
@@ -169,19 +165,16 @@ class Tile:
 		log.debug(f'{self} update_pos({position}, {force})')
 		old_pos = self.position
 		self.position = position
-		# FIXME: detect if user was watching for a while before marking part as watched
-		old_watched = self.watched
-		self.watched |= 2 ** int(position * dbs.WATCHED_STEPS)
 
 		now = time.time()
-		if now - self.state_last_update > 10 or abs(old_pos - position) > 0.01 or self.watched != old_watched or force:
+		if now - self.state_last_update > 10 or abs(old_pos - position) > 0.01 or force:
 			self.state_last_update = now
 			self.write_state_update()
 
 
 	def write_state_update(self, state=None):
 		if state is None:
-			state = {'position': self.position, 'watched': self.watched}
+			state = {'position': self.position}
 		log.info(f'Writing state for {self.name}: {state}')
 		update_name = os.path.join(self.path, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
 		dbs.json_write(update_name, {self.name: state})
@@ -189,12 +182,12 @@ class Tile:
 
 	@property
 	def unseen(self):
-		return self.watched == 0
+		return self.position == 0
 
 
 	@property
 	def watching(self):
-		return 0 < self.watched < dbs.WATCHED_MAX
+		return 0 < self.position < 1
 
 
 	def toggle_seen(self, seen=None):
@@ -202,11 +195,10 @@ class Tile:
 			return
 
 		if seen is None:
-			self.watched = dbs.WATCHED_MAX if self.watched < dbs.WATCHED_MAX else 0
+			self.position = 1 if self.position < 1 else 0
 		else:
-			self.watched = dbs.WATCHED_MAX if seen else 0
+			self.position = 1 if seen else 0
 
-		self.position = 0
 		self.write_state_update()
 
 
@@ -317,25 +309,22 @@ class Tile:
 		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
 
 		# "Watching" emblem
-		if self.watching:
-			watching = int(math.log2(self.watched)) + 1
-			watching = getattr(ImgLib, f'Watching{watching}')
-			if watching.texture:
-				x2, y2 = x + config.tile.width + watching.width // 2, y + watching.height // 2
-				x1, y1 = x2 - watching.width, y2 - watching.height
-				gl.glColor4f(1, 1, 1, 1)
-				gl.glBindTexture(gl.GL_TEXTURE_2D, watching.texture)
-				gl.glBegin(gl.GL_QUADS)
-				gl.glTexCoord2f(0.0, 1.0)
-				gl.glVertex2f(x1, y1)
-				gl.glTexCoord2f(1.0, 1.0)
-				gl.glVertex2f(x2, y1)
-				gl.glTexCoord2f(1.0, 0.0)
-				gl.glVertex2f(x2, y2)
-				gl.glTexCoord2f(0.0, 0.0)
-				gl.glVertex2f(x1, y2)
-				gl.glEnd()
-				gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		if self.watching and ImgLib.Watching.texture:
+			x2, y2 = x + config.tile.width + ImgLib.Watching.width // 2, y + ImgLib.Watching.height // 2
+			x1, y1 = x2 - ImgLib.Watching.width, y2 - ImgLib.Watching.height
+			gl.glColor4f(1, 1, 1, 1)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, ImgLib.Watching.texture)
+			gl.glBegin(gl.GL_QUADS)
+			gl.glTexCoord2f(0.0, 1.0)
+			gl.glVertex2f(x1, y1)
+			gl.glTexCoord2f(1.0, 1.0)
+			gl.glVertex2f(x2, y1)
+			gl.glTexCoord2f(1.0, 0.0)
+			gl.glVertex2f(x2, y2)
+			gl.glTexCoord2f(0.0, 0.0)
+			gl.glVertex2f(x1, y2)
+			gl.glEnd()
+			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		# "Unseen" emblem
 		if self.unseen and ImgLib.Unseen.texture:

@@ -10,21 +10,18 @@ NEW_SUFFIX = '.new'
 VIDEO_FILETYPES = ['mkv', 'mp4', 'webm', 'avi', 'wmv']
 VIDEO_EXTENSIONS = tuple('.' + ext for ext in VIDEO_FILETYPES)
 
-WATCHED_STEPS = 12
-WATCHED_MAX = (2 ** WATCHED_STEPS - 1)
-
 STATE_UPDATE_SCHEMA = {
 	'*': {
 		'position?': float,
-		'watched?': int,
+		'watched?': int,  # FIXME: deprecated
 		'trash?': int,
 	}
 }
 STATE_DB_SCHEMA = {
 	'*': {
 		'position?': float,
-		'position_date?': float,
-		'watched?': int,
+		'position_date?': float,  # FIXME: deprecated
+		'watched?': int,  # FIXME: deprecated
 		'trash?': int,
 	}
 }

@@ -44,9 +44,8 @@ class Menu:
 		self.enabled = enabled
 
 		ImgLib.add('Unseen', 'img/unseen.png', 48, 48, self.render_pool, shadow=(2, 12))
+		ImgLib.add('Watching', 'img/watching.png', 48, 48, self.render_pool, shadow=(2, 12))
 		ImgLib.add('Trash', 'img/error.png', 48, 48, self.render_pool, shadow=(2, 12))
-		for i in range(13):
-			ImgLib.add(f'Watching{i}', f'img/watching-{i}.png', 48, 48, self.render_pool, shadow=(2, 12))
 
 		self.bread_text = self.menu_font.text(None, pool=self.render_pool)
 		self.clock_text = self.menu_font.text(None, pool=self.render_pool)
@@ -165,13 +164,12 @@ class Menu:
 		self.current.toggle_seen()
 
 	def toggle_seen_all(self):
-		watched = dbs.WATCHED_MAX if any(t.unseen and not t.isdir for t in self.tiles) else 0
+		position = 1 if any(t.unseen and not t.isdir for t in self.tiles) else 0
 		state = {}
 		for tile in self.tiles:
 			if not tile.isdir:
-				tile.watched = watched
-				tile.position = 0
-				state[tile.name] = {'watched': watched, 'position': 0}
+				tile.position = position
+				state[tile.name] = {'position': position}
 
 		update_name = os.path.join(self.path, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
 		dbs.json_write(update_name, state)

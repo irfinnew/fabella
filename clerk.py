@@ -481,6 +481,12 @@ def process_state_queue(path, roots):
 	# Make deep copy of actual present files
 	state = {name: dict(orig_state.get(name, {})) for name in index}
 
+	# FIXME: remove
+	# Remove deprecated keys from state
+	for s in state.values():
+		s.pop('watched', None)
+		s.pop('position_date', None)
+
 	state_queue = [f for f in os.scandir(queue_dir_name) if f.is_file() and not f.path.endswith(dbs.NEW_SUFFIX)]
 	state_queue = sorted(state_queue, key=lambda f: f.stat().st_mtime)
 	state_queue = [f.path for f in state_queue]
@@ -500,32 +506,14 @@ def process_state_queue(path, roots):
 			if 'position' in update:
 				if update['position'] > 0:
 					this_state['position'] = update['position']
-					this_state['position_date'] = time.time()
 				else:
 					this_state.pop('position', None)
-					this_state.pop('position_date', None)
-
-			if 'watched' in update:
-				if update['watched'] == 0:
-					this_state.pop('watched', None)
-					this_state.pop('position', None)
-					this_state.pop('position_date', None)
-				elif update['watched'] > dbs.WATCHED_MAX:
-					this_state['watched'] = dbs.WATCHED_MAX
-					this_state.pop('position', None)
-					this_state.pop('position_date', None)
-				else:
-					this_state['watched'] = update['watched']
 
 			if 'trash' in update:
 				if update['trash']:
 					this_state['trash'] = True
 				else:
 					this_state.pop('trash', None)
-
-	# Filter out empty states
-	#state = {k: v for k, v in state.items() if v}
-	#log.debug(f'New state: {state}')
 
 	#### Write new state
 	if state == orig_state:
@@ -542,28 +530,20 @@ def process_state_queue(path, roots):
 			except OSError as e:
 				log.error(f'Removing {state_db_name}: {str(e)}')
 
-		# Flatten multiple states to one folder state
-		def flatten_state(state):
+		# Propagate state upwards (but not outside root dir)
+		parent = os.path.dirname(path)
+		if parent not in roots:
 			flat = {'trash': any(s.get('trash', False) for s in state.values())}
 
-			if any(0 < s.get('watched', 0) < dbs.WATCHED_MAX for s in state.values()):
-				flat['watched'] = 2 ** (dbs.WATCHED_STEPS // 2) - 1
-			elif any(s.get('watched', 0) == 0 for s in state.values()):
-				flat['watched'] = 0
+			if any(0 < s.get('position', 0) < 1 for s in state.values()):
+				flat['position'] = 0.5
+			elif any(s.get('position', 0) == 0 for s in state.values()):
+				flat['position'] = 0
 			else:
-				flat['watched'] = dbs.WATCHED_MAX
+				flat['position'] = 1
 
-			return flat
-
-		# Propagate state upwards
-		orig_flat = flatten_state(orig_state)
-		flat = flatten_state(state)
-		if flat != orig_flat:
-			parent = os.path.dirname(path)
-			# Don't travel outside our roots
-			if parent not in roots:
-				parent_state_name = os.path.join(parent, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
-				dbs.json_write(parent_state_name, {os.path.basename(path): flat})
+			parent_state_name = os.path.join(parent, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
+			dbs.json_write(parent_state_name, {os.path.basename(path): flat})
 
 	for update_name in state_queue:
 		try:

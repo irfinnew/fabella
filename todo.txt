@@ -1,7 +1,6 @@
  - Fix sometimes-crash on seek (probably because MPV thread stuff)
  - Fix GLFW bugs
  - Split out file I/O etc to its own thread
- - Maybe just use position for new/watching/watched state?
  - Trashed -> tagged
  - Make symlinks for tagged
  - Add configuration file
@@ -13,3 +12,4 @@
  - Videos with non-square pixels are poorly supported; video playback is letterboxed; thumbnails get squashed (IT crowd)
  - Perhaps display multiple seasons in one menu? Separated by a text header?
  - Copy better thumbnail generation from mkv-gencover
+ - Have clerk preserve state across renames
