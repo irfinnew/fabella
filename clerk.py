@@ -7,7 +7,7 @@ COVER_HEIGHT = 200
 THUMB_VIDEO_POSITION = 0.25
 FOLDER_COVER_FILE = '.cover.jpg'
 MKV_COVER_FILE = 'cover.jpg'
-EVENT_COOLDOWN_SECONDS = 1
+EVENT_COOLDOWN_SECONDS = 0.5
 
 
 
@@ -531,8 +531,7 @@ def process_state_queue(path, roots):
 				log.error(f'Removing {state_db_name}: {str(e)}')
 
 		# Propagate state upwards (but not outside root dir)
-		parent = os.path.dirname(path)
-		if parent not in roots:
+		if path not in roots:
 			flat = {'tagged': any(s.get('tagged', False) for s in state.values())}
 
 			if any(0 < s.get('position', 0) < 1 for s in state.values()):
@@ -542,7 +541,7 @@ def process_state_queue(path, roots):
 			else:
 				flat['position'] = 1
 
-			parent_state_name = os.path.join(parent, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
+			parent_state_name = os.path.join(os.path.dirname(path), dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
 			dbs.json_write(parent_state_name, {os.path.basename(path): flat})
 
 	for update_name in state_queue:
