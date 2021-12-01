@@ -2,6 +2,8 @@
  - Fix GLFW bugs
  - Split out file I/O etc to its own thread
  - Maybe just use position for new/watching/watched state?
+ - Trashed -> tagged
+ - Make symlinks for tagged
  - Add configuration file
  - Add background
  - Menu animations
