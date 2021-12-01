@@ -7,6 +7,7 @@ gi.require_version('PangoCairo', '1.0')
 from gi.repository import PangoCairo
 
 import loghelper
+from draw import TexturedQuad
 
 log = loghelper.get_logger('Font', loghelper.Color.BrightBlack)
 
@@ -116,6 +117,14 @@ class Text:
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		return self._texture
+
+	def as_quad(self, x, y, z, color=None):
+		if self.texture:
+			if y < 0:
+				y = -y - self.height
+			if x < 0:
+				x = -x - self.width
+			TexturedQuad((x, y, x + self.width, y + self.height), z, self.texture, color=color)
 
 	def __str__(self):
 		return f'Text({self.font.name} {self.font.size}, {repr(self._text)})'

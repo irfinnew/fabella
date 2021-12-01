@@ -7,7 +7,6 @@ class tile:
 	text_font = 'Ubuntu Medium'
 	text_size = 18
 	text_lines = 3
-	highlight_outset = 0
 
 	pos_bar_height = 2
 	#pos_bar_color = (0.4, 0.4, 1, 1)

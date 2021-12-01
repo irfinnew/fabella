@@ -1,5 +1,4 @@
 import os  # FIXME
-import OpenGL.GL as gl
 import datetime
 import time
 import uuid
@@ -12,6 +11,7 @@ from tile import Tile
 from font import Font
 from worker import Pool
 from image import ImgLib
+from draw import FlatQuad
 
 
 
@@ -225,12 +225,7 @@ class Menu:
 			self.tile_pool.schedule(self.load_covers)
 
 		# Background
-		x1, y1, x2, y2 = 0, 0, width, height
-		if transparent:
-			gl.glColor4f(0, 0, 0, 0.66)
-		else:
-			gl.glColor4f(*config.menu.background_color)
-		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+		FlatQuad((0, 0, width, height), 100, (0, 0, 0, 0.66) if transparent else config.menu.background_color)
 
 		if self.bench and self.tiles:
 			t = self.tiles[-1]
@@ -282,64 +277,18 @@ class Menu:
 
 	def draw_header(self, width, height):
 		# Breadcrumbs
-		if self.bread_text.texture:
-			x1, y1 = config.menu.header_hspace, height - config.menu.header_vspace - self.bread_text.height
-			x2, y2 = x1 + self.bread_text.width, y1 + self.bread_text.height
-			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.bread_text.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		self.bread_text.as_quad(config.menu.header_hspace, -(height - config.menu.header_vspace), 101)
 
 		# Clock
 		self.clock_text.text = datetime.datetime.now().strftime('%a %H:%M:%S')
-
-		if self.clock_text.texture:
-			x1, y1 = width - config.menu.header_hspace - self.clock_text.width, height - config.menu.header_vspace - self.clock_text.height
-			x2, y2 = x1 + self.clock_text.width, y1 + self.clock_text.height
-			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.clock_text.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		self.clock_text.as_quad(-(width - config.menu.header_hspace), -(height - config.menu.header_vspace), 101)
 
 	def draw_osd(self, width, height, video):
 		self.name_text.max_width = width - config.menu.header_hspace * 3 - self.duration_text.width
 
 		self.draw_header(width, height)
 
-		if self.name_text.texture:
-			x1, y1 = config.menu.header_hspace, height - config.menu.header_vspace * 2 - self.bread_text.height - self.name_text.height
-			x2, y2 = x1 + self.name_text.width, y1 + self.name_text.height
-			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.name_text.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		self.name_text.as_quad(config.menu.header_hspace, -(height - config.menu.header_vspace * 2 - self.bread_text.height), 101)
 
 		duration_text = '⏸️  ' if video.mpv.pause else '▶️  '
 		if video.position is None or video.duration is None:
@@ -360,19 +309,8 @@ class Menu:
 		# Hmm '\n ⏵▶⏸❚❚ || ▋▋ ▌▌ ▍▍ ▎▎  ▶ I I  ▶️  ⏸️ '
 		self.duration_text.text = duration_text
 
-		if self.duration_text.texture:
-			x1, y1 = width - config.menu.header_hspace - self.duration_text.width, height - config.menu.header_vspace * 2 - self.bread_text.height - self.duration_text.height
-			x2, y2 = x1 + self.duration_text.width, y1 + self.duration_text.height
-			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.duration_text.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		self.duration_text.as_quad(
+			-(width - config.menu.header_hspace),
+			-(height - config.menu.header_vspace * 2 - self.bread_text.height),
+			101
+		)

@@ -7,6 +7,7 @@ import mpv
 import OpenGL.GL as gl
 
 import loghelper
+from draw import Quad, FlatQuad, ShadedQuad, TexturedQuad
 
 log = loghelper.get_logger('Video', loghelper.Color.Yellow)
 
@@ -195,7 +196,7 @@ class Video:
 			log.debug('Rendering frame')
 			# FIXME: apparently, we shouldn't call other mpv functions from the same
 			# thread as render(). Find a way to fix that.
-			ret = self.context.render(flip_y=True, opengl_fbo={'w': width, 'h': height, 'fbo': self.fbo})
+			ret = self.context.render(flip_y=False, opengl_fbo={'w': width, 'h': height, 'fbo': self.fbo})
 			self.rendered = True
 
 	def draw(self, window_width, window_height):
@@ -207,41 +208,20 @@ class Video:
 		video_width, video_height = self.video_size
 
 		# Draw video
-		gl.glColor4f(1, 1, 1, 1)
-		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
-		gl.glBegin(gl.GL_QUADS)
-		gl.glTexCoord2f(0.0, 0.0)
-		gl.glVertex2i(0, 0)
-		gl.glTexCoord2f(1.0, 0.0)
-		gl.glVertex2i(window_width, 0)
-		gl.glTexCoord2f(1.0, 1.0)
-		gl.glVertex2i(window_width, window_height)
-		gl.glTexCoord2f(0.0, 1.0)
-		gl.glVertex2i(0, window_height)
-		gl.glEnd()
-		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		TexturedQuad((0, 0, window_width, window_height), 0, self.texture)
 
 		# Draw position bar + shadow
 		position_bar_height = 3
-		position_shadow_height = 4
+		position_shadow_height = 5
 		position_shadow_top_color = (0, 0, 0, 0.25)
 		position_shadow_bottom_color = (0, 0, 0, 1)
 		position_bar_color = (0.4, 0.4, 1, 1)  # Blueish
 		#position_bar_color = (0.8, 0.1, 0.1, 1)  # Red
 
-		gl.glBegin(gl.GL_QUADS)
-		gl.glColor4f(*position_shadow_bottom_color)
-		gl.glVertex2f(0, position_bar_height)
-		gl.glVertex2f(window_width, position_bar_height)
-		gl.glColor4f(*position_shadow_top_color)
-		gl.glVertex2f(window_width, position_bar_height + position_shadow_height)
-		gl.glVertex2f(0, position_bar_height + position_shadow_height)
-		gl.glEnd()
-
-		x1, y1, x2, y2 = self.position * window_width, 0, window_width, position_bar_height
-		gl.glColor4f(*position_shadow_bottom_color)
-		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
-
-		x1, y1, x2, y2 = 0, 0, self.position * window_width, position_bar_height
-		gl.glColor4f(*position_bar_color)
-		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+		ShadedQuad(
+			(0, position_bar_height, window_width, position_bar_height + position_shadow_height),
+			1,
+			((0, 0, 0, 1), (0, 0, 0, 1), (0, 0, 0, 0), (0, 0, 0, 0))
+		)
+		FlatQuad((0, 0, window_width                , position_bar_height), 1, (0, 0, 0, 1))
+		FlatQuad((0, 0, window_width * self.position, position_bar_height), 2, position_bar_color)

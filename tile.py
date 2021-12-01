@@ -9,6 +9,7 @@ import dbs
 import config
 import loghelper
 from image import Image, ImgLib
+from draw import FlatQuad, TexturedQuad
 
 log = loghelper.get_logger('Tile', loghelper.Color.Cyan)
 
@@ -211,182 +212,56 @@ class Tile:
 
 
 	def draw(self, x, y, selected=False):
-		outset_x = int(config.tile.width * config.tile.highlight_outset / 2)
-		outset_y = int(config.tile.thumb_height * config.tile.highlight_outset / 2)
-
 		# Drop shadow
 		x1, y1, x2, y2 = x - shadow_blursize, y - config.tile.thumb_height - shadow_blursize, x + config.tile.width + shadow_blursize, y + shadow_blursize
 		x1 += 8; x2 += 8; y1 -= 8; y2 -= 8
-		#if selected: x1 += 4; x2 += 4; y1 -= 4; y2 -= 4
-		#if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
-		if selected and False:
-			gl.glColor4f(*config.tile.highlight_color)
-		else:
-			gl.glColor4f(*config.tile.shadow_color)
-		gl.glBindTexture(gl.GL_TEXTURE_2D, get_shadow())
-		gl.glBegin(gl.GL_QUADS)
-		gl.glTexCoord2f(0.0, 1.0)
-		gl.glVertex2f(x1, y1)
-		gl.glTexCoord2f(1.0, 1.0)
-		gl.glVertex2f(x2, y1)
-		gl.glTexCoord2f(1.0, 0.0)
-		gl.glVertex2f(x2, y2)
-		gl.glTexCoord2f(0.0, 0.0)
-		gl.glVertex2f(x1, y2)
-		gl.glEnd()
-		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		TexturedQuad((x1, y1, x2, y2), 200, get_shadow(), color=config.tile.shadow_color)
 
 		# Select
 		if selected:
 			x1, y1, x2, y2 = x - hl_blursize, y - config.tile.thumb_height - hl_blursize, x + config.tile.width + hl_blursize, y + hl_blursize
-			gl.glBindTexture(gl.GL_TEXTURE_2D, get_hl())
-			gl.glColor4f(*config.tile.highlight_color)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+			TexturedQuad((x1, y1, x2, y2), 201, get_hl(), color=config.tile.highlight_color)
 
 		# Outline
 		x1, y1, x2, y2 = x - 2, y - config.tile.thumb_height - 2, x + config.tile.width + 2, y + 2
-		#if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
-		gl.glColor4f(*config.tile.shadow_color)
-		gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+		FlatQuad((x1, y1, x2, y2), 202, config.tile.shadow_color)
 
 		# Thumbnail
 		x1, y1, x2, y2 = x, y - config.tile.thumb_height, x + config.tile.width, y
-		#if selected: x1 -= 4; x2 -= 4; y1 += 4; y2 += 4
-		if self.cover and self.cover.texture:
-			if selected: x1 -= outset_x; y1 -= outset_y; x2 += outset_x; y2 += outset_y
-			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.cover.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-		else:
-			gl.glColor4f(*self.tile_color, 1)
-			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
+		if self.cover:
+			TexturedQuad((x1, y1, x2, y2), 203, self.cover.texture)
 
 		# Info
-		if self.info and self.info.texture:
-			y1, x2 = y - config.tile.thumb_height, x + int(config.tile.width * 0.98)
-			x1, y2 = x2 - self.info.width, y1 + self.info.height
-			if selected:
-				gl.glColor4f(*config.tile.text_hl_color)
-			else:
-				gl.glColor4f(*config.tile.text_color)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.info.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		if self.info:
+			self.info.as_quad(
+				-(x + int(config.tile.width * 0.98)), y - config.tile.thumb_height,
+				204,
+				config.tile.text_hl_color if selected else config.tile.text_color
+			)
 
 		# Position bar
 		if self.position < 1 and not self.isdir:
 			x1, y1 = x, y - config.tile.thumb_height - 1
 			x2, y2 = x1 + config.tile.width * self.position, y1 + config.tile.pos_bar_height
-			gl.glColor4f(*config.tile.shadow_color)
-			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1 - 1, y1 - 1); gl.glVertex2f(x2 + 1, y1 - 1); gl.glVertex2f(x2 + 1, y2 + 1); gl.glVertex2f(x1 - 1, y2 + 1); gl.glEnd()
-			gl.glColor4f(*config.tile.pos_bar_color)
-			gl.glBegin(gl.GL_QUADS); gl.glVertex2f(x1, y1); gl.glVertex2f(x2, y1); gl.glVertex2f(x2, y2); gl.glVertex2f(x1, y2); gl.glEnd()
-
+			FlatQuad((x1 - 1, y1 - 1, x2 + 1, y2 + 1), 204, config.tile.shadow_color)
+			FlatQuad((x1, y1, x2, y2), 205, config.tile.pos_bar_color)
 
 		# "Watching" emblem
-		if self.watching and ImgLib.Watching.texture:
-			x2, y2 = x + config.tile.width + ImgLib.Watching.width // 2, y + ImgLib.Watching.height // 2
-			x1, y1 = x2 - ImgLib.Watching.width, y2 - ImgLib.Watching.height
-			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, ImgLib.Watching.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		if self.watching:
+			ImgLib.Watching.as_quad(x + config.tile.width - ImgLib.Watching.width // 2, y - ImgLib.Watching.height // 2, 204)
 
 		# "Unseen" emblem
-		if self.unseen and ImgLib.Unseen.texture:
-			x2, y2 = x + config.tile.width + ImgLib.Unseen.width // 2, y + ImgLib.Unseen.height // 2
-			x1, y1 = x2 - ImgLib.Unseen.width, y2 - ImgLib.Unseen.height
-			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, ImgLib.Unseen.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		if self.unseen:
+			ImgLib.Unseen.as_quad(x + config.tile.width - ImgLib.Unseen.width // 2, y - ImgLib.Unseen.height // 2, 204)
 
 		# "Tagged" emblem
-		if self.tagged and ImgLib.Tagged.texture:
-			x1, y2 = x - ImgLib.Tagged.width // 2, y + ImgLib.Tagged.height // 2
-			x2, y1 = x1 + ImgLib.Tagged.width, y2 - ImgLib.Tagged.height
-			gl.glColor4f(1, 1, 1, 1)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, ImgLib.Tagged.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		if self.tagged:
+			ImgLib.Tagged.as_quad(x - ImgLib.Tagged.width // 2, y - ImgLib.Tagged.height // 2, 204)
 
 		# Title
-		if self.title and self.title.texture:
+		if self.title:
 			x1, y1 = x, y - config.tile.thumb_height - config.tile.text_vspace - self.title.height
-			x2, y2 = x1 + self.title.width, y1 + self.title.height
-			if selected: y1 -= outset_y; y2 -= outset_y
-			if selected:
-				gl.glColor4f(*config.tile.text_hl_color)
-			else:
-				gl.glColor4f(*config.tile.text_color)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.title.texture)
-			gl.glBegin(gl.GL_QUADS)
-			gl.glTexCoord2f(0.0, 1.0)
-			gl.glVertex2f(x1, y1)
-			gl.glTexCoord2f(1.0, 1.0)
-			gl.glVertex2f(x2, y1)
-			gl.glTexCoord2f(1.0, 0.0)
-			gl.glVertex2f(x2, y2)
-			gl.glTexCoord2f(0.0, 0.0)
-			gl.glVertex2f(x1, y2)
-			gl.glEnd()
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+			self.title.as_quad(x1, y1, 204, color=config.tile.text_hl_color if selected else config.tile.text_color)
 
 
 	def __str__(self):

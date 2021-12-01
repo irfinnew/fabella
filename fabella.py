@@ -11,6 +11,7 @@ import loghelper
 from window import Window
 from menu import Menu
 from video import Video
+from draw import Quad
 
 
 
@@ -148,12 +149,16 @@ while not window.closed():
 	gl.glOrtho(0.0, width, 0.0, height, 0.0, 1.0)
 	gl.glMatrixMode (gl.GL_MODELVIEW)
 
-	video.draw(width, height)
-	if osd or video.mpv.pause:
-		menu.draw_osd(width, height, video)
+	if video.rendered:
+		video.draw(width, height)
+
+		if osd or video.mpv.pause:
+			menu.draw_osd(width, height, video)
 
 	if menu.enabled:
 		menu.draw(width, height, transparent=video.rendered)
+
+	Quad.draw_all()
 
 	window.swap_buffers()
 
