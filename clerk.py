@@ -194,8 +194,7 @@ class BaseTile:
 
 	@property
 	def sortkey(self):
-		casename = self.name.strip().casefold()
-		simplename = casename
+		simplename = os.path.splitext(self.name)[0].strip().casefold()
 		for a in ['a ', 'an ', 'the ']:
 			if simplename.startswith(a):
 				simplename = simplename[len(a):].strip()
