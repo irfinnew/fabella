@@ -132,6 +132,20 @@ while not window.closed():
 					menu.next()
 				if key in [glfw.KEY_LEFT, glfw.KEY_H]:
 					menu.previous()
+				if key == glfw.KEY_PAGE_UP:
+					# FIXME: actually use the number of rows
+					for i in range(3): menu.previous_row()
+				if key == glfw.KEY_PAGE_DOWN:
+					# FIXME: actually use the number of rows
+					for i in range(3): menu.next_row()
+				if key == glfw.KEY_HOME:
+					# FIXME: cmon
+					for i in range(100): menu.previous_row()
+					for i in range(4): menu.previous()
+				if key == glfw.KEY_END:
+					# FIXME: cmon
+					for i in range(100): menu.next_row()
+					for i in range(4): menu.next()
 				if key == glfw.KEY_DELETE:
 					menu.toggle_tagged()
 
