@@ -199,10 +199,8 @@ class BaseTile:
 			if simplename.startswith(a):
 				simplename = simplename[len(a):].strip()
 				break
-		# Sort folders first, then files.
-		# Next, sort on case-insensitive simplified name.
-		# Finally, just the raw name for deterministic ordering.
-		return (not self.isdir, simplename, self.name)
+		# Sort on case-insensitive simplified name, then raw name (for deterministic ordering).
+		return (simplename, self.name)
 
 
 	def __str__(self):
