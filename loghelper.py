@@ -1,4 +1,5 @@
 import logging
+import logging.handlers
 
 
 
@@ -66,14 +67,20 @@ def set_up_logging(console_level=20, file_level=10, filename=None):
 	logging.addLevelName(40, 'error')
 	logging.addLevelName(50, 'critical')
 
-	if filename:
-		format = '%(asctime)s %(levelname)8s: %(name)20s.%(funcName)-20s -> %(message)s'
-		logging.basicConfig(filename=filename, level=file_level, format=format)
+	logger = logging.getLogger()
+	logger.setLevel(logging.NOTSET)
 
-	stderr = logging.StreamHandler()
-	stderr.setLevel(console_level)
-	stderr.setFormatter(ColoredFormatter())
-	logging.getLogger().addHandler(stderr)
+	if filename:
+		handler = logging.handlers.WatchedFileHandler(filename)
+		handler.setLevel(file_level)
+		format = '%(asctime)s %(levelname)8s: %(name)20s.%(funcName)-20s -> %(message)s'
+		handler.setFormatter(logging.Formatter(format))
+		logger.addHandler(handler)
+
+	handler = logging.StreamHandler()
+	handler.setLevel(console_level)
+	handler.setFormatter(ColoredFormatter())
+	logger.addHandler(handler)
 
 
 

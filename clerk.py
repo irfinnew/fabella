@@ -37,6 +37,7 @@ loghelper.set_up_logging(15, 0, 'clerk.log')
 log = loghelper.get_logger('Clerk', loghelper.Color.Red)
 # Enzyme spams the logs with stuff we don't care about
 logging.getLogger('enzyme').setLevel(logging.CRITICAL)
+log.info('Starting Clerk.')
 
 
 

@@ -17,6 +17,7 @@ from draw import Quad
 
 loghelper.set_up_logging(15, 0, 'fabella.log')
 log = loghelper.get_logger('Fabella', loghelper.Color.Red)
+log.info('Starting Fabella.')
 
 
 
