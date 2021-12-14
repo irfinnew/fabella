@@ -86,7 +86,7 @@ class BaseTile:
 		self.tile_color = '#' + ''.join(f'{c:02x}' for c in colorpicker.pick(cover))
 
 		buffer = io.BytesIO()
-		cover.save(buffer, format='JPEG', quality=90, optimize=True)
+		cover.save(buffer, format='JPEG', quality=90, subsampling=0, optimize=True)
 		return buffer.getvalue()
 
 
