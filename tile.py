@@ -248,17 +248,21 @@ class Tile:
 			FlatQuad((x1 - 1, y1 - 1, x2 + 1, y2 + 1), 204, config.tile.shadow_color)
 			FlatQuad((x1, y1, x2, y2), 205, config.tile.pos_bar_color)
 
+		tagged_xpos = x + config.tile.width + ImgLib.Tagged.width // 2
+
 		# "Watching" emblem
 		if self.watching:
 			ImgLib.Watching.as_quad(x + config.tile.width - ImgLib.Watching.width // 2, y - ImgLib.Watching.height // 2, 204)
+			tagged_xpos = x + config.tile.width - ImgLib.Watching.width // 2
 
 		# "Unseen" emblem
 		if self.unseen:
 			ImgLib.Unseen.as_quad(x + config.tile.width - ImgLib.Unseen.width // 2, y - ImgLib.Unseen.height // 2, 204)
+			tagged_xpos = x + config.tile.width - ImgLib.Unseen.width // 2
 
 		# "Tagged" emblem
 		if self.tagged:
-			ImgLib.Tagged.as_quad(x - ImgLib.Tagged.width // 2, y - ImgLib.Tagged.height // 2, 204)
+			ImgLib.Tagged.as_quad(tagged_xpos - ImgLib.Tagged.width, y - ImgLib.Tagged.height // 2, 204)
 
 		# Title
 		if self.title:
