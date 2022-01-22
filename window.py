@@ -16,6 +16,11 @@ class Window:
 		if not glfw.init():
 			log.critical('glfw.init() failed')
 			raise 'glfw.init()'
+
+		glfw.window_hint(glfw.DECORATED, False)
+		glfw.window_hint(glfw.AUTO_ICONIFY, False)
+		glfw.window_hint(glfw.FOCUSED, False)
+
 		self.window = glfw.create_window(width, height, title, None, None)
 		if not self.window:
 			log.critical('glfw.create_window() failed')
