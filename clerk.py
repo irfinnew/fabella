@@ -130,7 +130,7 @@ class BaseTile:
 				self.duration = round(duration)
 				duration = str(duration * THUMB_VIDEO_POSITION)
 
-				sp = run_command(['ffmpeg', '-ss', duration, '-threads', '1', '-i', self.full_path, '-vf', 'thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
+				sp = run_command(['ffmpeg', '-ss', duration, '-threads', '1', '-i', self.full_path, '-vf', 'scale=1280:720,thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
 				return self.scale_encode(io.BytesIO(sp.stdout))
 			except subprocess.CalledProcessError:
 				raise TileError(f'Processing {self.full_path}: Command returned error')
@@ -553,7 +553,7 @@ watcher = Watcher(roots)
 for root in roots:
 	watcher.push(root, recursive=True)
 
-analyze_pool = Pool('analyze', threads=2)
+analyze_pool = Pool('analyze', threads=4)
 scan_dirty = {}
 state_dirty = {}
 for event in watcher.events(timeout=1):
