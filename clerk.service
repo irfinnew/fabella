@@ -1,0 +1,11 @@
+[Unit]
+Description=Fabella Clerk
+
+[Service]
+ExecStart=/home/marcelm/fabella/clerk.py /data/Videos
+WorkingDirectory=/home/marcelm/fabella
+User=marcelm
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
