@@ -479,15 +479,22 @@ def process_state_queue(path, roots):
 	# Make deep copy of actual present files
 	state = {name: dict(orig_state.get(name, {})) for name in index}
 
-	state_queue = [f for f in os.scandir(queue_dir_name) if f.is_file() and not f.path.endswith(dbs.NEW_SUFFIX)]
-	state_queue = sorted(state_queue, key=lambda f: f.stat().st_mtime)
-	state_queue = [f.path for f in state_queue]
+	state_queue = {}
+	try:
+		for f in os.scandir(queue_dir_name):
+			try:
+				if not f.is_file() or f.path.endswith(dbs.NEW_SUFFIX):
+					continue
+				updates = dbs.json_read(f.path, dbs.STATE_UPDATE_SCHEMA)
+				if updates:
+					state_queue[f.stat().st_mtime, f.path] = updates
+			except OSError as e:
+				log.error(f'Reading {f.path}: {str(e)}')
+	except OSError as e:
+		log.error(f'Reading {queue_dir_name}: {str(e)}')
+		state_queue = {}
 
-	for update_name in state_queue:
-		updates = dbs.json_read(update_name, dbs.STATE_UPDATE_SCHEMA)
-		if not updates:
-			continue
-
+	for meta, updates in sorted(state_queue.items()):
 		for name, update in updates.items():
 			log.debug(f'State update for {name}: {update}')
 
@@ -536,7 +543,7 @@ def process_state_queue(path, roots):
 			parent_state_name = os.path.join(os.path.dirname(path), dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
 			dbs.json_write(parent_state_name, {os.path.basename(path): flat})
 
-	for update_name in state_queue:
+	for update_mtime, update_name in state_queue.keys():
 		try:
 			log.debug(f'Removing {update_name}')
 			os.unlink(update_name)
