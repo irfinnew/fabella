@@ -1,3 +1,9 @@
+# Fabella - Simple, elegant video library and player.
+#
+# Copyright 2020-2021 Marcel Moreaux.
+# Licensed under GPL v2.0, or (at your option) any later version.
+# (SPDX GPL-2.0-or-later) See LICENSE file for details.
+
 import OpenGL.GL as gl
 import cairo
 import gi

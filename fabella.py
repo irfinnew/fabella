@@ -1,6 +1,9 @@
 #! /usr/bin/env python3
-
-# Requires pyGLFW, PyOpenGL, python-mpv, pillow >= 6.2.0
+# Fabella - Simple, elegant video library and player.
+#
+# Copyright 2020-2021 Marcel Moreaux.
+# Licensed under GPL v2.0, or (at your option) any later version.
+# (SPDX GPL-2.0-or-later) See LICENSE file for details.
 
 import sys
 import glfw
