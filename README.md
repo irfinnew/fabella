@@ -1,3 +1,5 @@
+![Fabella cover image](https://moreaux.nl/projects/fabella/github.png)
+
 **Note:** Fabella is very much in the "v0.1" stage.
 It does the basics, for me, on my system, but it's nowhere near a finished product.
 That said, here it is, and here is even a preliminary readme:
