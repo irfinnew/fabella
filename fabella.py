@@ -177,7 +177,7 @@ while not window.closed():
 	if menu.enabled:
 		menu.draw(width, height, transparent=video.rendered)
 
-	Quad.draw_all()
+	Quad.render_all()
 
 	window.swap_buffers()
 

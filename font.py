@@ -39,8 +39,7 @@ class Text:
 	def text(self, text):
 		if text != self._text:
 			self._text = text
-			self.rendered = False
-			self.pool.schedule(self.render)
+			self.schedule_render()
 
 	@property
 	def max_width(self):
@@ -49,7 +48,14 @@ class Text:
 	def max_width(self, max_width):
 		if max_width != self._max_width:
 			self._max_width = max_width
-			self.rendered = False
+			self.schedule_render()
+
+	def schedule_render(self):
+		self.rendered = False
+		assert self.pool is None  # FIXME: fix TexturedQuad.update_texture() first
+		if self.pool is None:
+			self.render()
+		else:
 			self.pool.schedule(self.render)
 
 	def render(self):
