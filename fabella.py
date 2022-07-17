@@ -21,7 +21,8 @@ log.info('Starting Fabella.')
 
 
 
-window = Window(1920, 1080, "Fabella")
+# FIXME: hardcoded monitor
+window = Window(2, "Fabella")
 menu = Menu(sys.argv[1], enabled=True)
 video = Video()
 
