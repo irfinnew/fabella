@@ -7,11 +7,11 @@ import zipfile
 import loghelper
 import config
 import dbs
+import draw
 from tile import Tile
 from font import Font
 from worker import Pool
 from image import ImgLib
-from draw import FlatQuad
 
 
 
@@ -27,19 +27,16 @@ class Menu:
 		self.menu_font = Font(config.menu.text_font, config.menu.text_size)
 		self.visible = False
 		self.path = None
-		self.row_size = 1
 		self.current_idx = 0
 		self.current_offset = 0
 		self.tiles = []
-		self.background = FlatQuad(0, 0, 1, 1, 0, (0, 0, 0, 0.66))
+		self.background = draw.FlatQuad(0, 0, 1, 1, 0, (0, 0, 0, 0.66))
 
-		self.resize(width, height)
+		self.row_size = 1
+
+
 		self.load(path)
 		self.show(visible)
-
-
-	def resize(self, width, height):
-		raise ...
 
 
 	def hide(self):

@@ -11,80 +11,6 @@ def render():
 
 
 
-class Quad:
-	def __init__(self, x, y, w, h, z):
-		self.x = x
-		self.y = y
-		self.z = z
-		self.w = w
-		self.h = h
-		self.hidden = False
-		quads.add(self)
-
-	# FIXME: hack alert
-	def __setattr__(self, name, value):
-		super().__setattr__(name, value)
-		try:
-			if name in 'xywh':
-				self.x1, self.x2 = sorted([self.x, self.x + self.w])
-				self.y1, self.y2 = sorted([self.y, self.y + self.h])
-		except AttributeError:
-			pass
-
-	def destroy(self):
-		quads.remove(self)
-		del self.x
-		del self.y
-		del self.w
-		del self.h
-		del self.z
-		del self.hidden
-
-	def __str__(self):
-		return f'<{type(self).__name__} {self.x}x{self.y} +{self.w}+{self.h} @{self.z}>'
-
-	def __repr__(self):
-		return str(self)
-
-
-
-class FlatQuad(Quad):
-	def __init__(self, x, y, w, h, z, color):
-		self.color = color
-		super().__init__(x, y, w, h, z)
-
-	# Only call from main thread
-	def render(self):
-		gl.glColor4f(*self.color)
-		gl.glBegin(gl.GL_QUADS)
-		gl.glVertex2f(self.x, self.y)
-		gl.glVertex2f(self.x + self.w, self.y)
-		gl.glVertex2f(self.x + self.w, self.y + self.h)
-		gl.glVertex2f(self.x, self.y + self.h)
-		gl.glEnd()
-
-
-
-class ShadedQuad(Quad):
-	def __init__(self, x, y, w, h, z, colors):
-		self.colors = colors
-		super().__init__(x, y, w, h, z)
-
-	# Only call from main thread
-	def render(self):
-		gl.glBegin(gl.GL_QUADS)
-		gl.glColor4f(*self.colors[0])
-		gl.glVertex2f(self.x, self.y)
-		gl.glColor4f(*self.colors[1])
-		gl.glVertex2f(self.x + self.w, self.y)
-		gl.glColor4f(*self.colors[2])
-		gl.glVertex2f(self.x + self.w, self.y + self.h)
-		gl.glColor4f(*self.colors[3])
-		gl.glVertex2f(self.x, self.y + self.h)
-		gl.glEnd()
-
-
-
 class Texture:
 	def __init__(self, image=None, persistent=True):
 		self.persistent = persistent
@@ -119,7 +45,6 @@ class Texture:
 			return
 		self.concrete = False
 		gl.glDeleteTexturs([self.tid])
-		#self.tid = None
 		del self.tid
 		del self.concrete
 		del self.persistent
@@ -129,6 +54,86 @@ class Texture:
 
 	def __repr__(self):
 		return str(self)
+
+
+
+class Quad:
+	def __init__(self, x, y, w, h, z):
+		self.x = x
+		self.y = y
+		self.z = z
+		self.w = w
+		self.h = h
+		self.hidden = False
+		quads.add(self)
+
+	@property
+	def x1(self):
+		return min(self.x, self.x + self.w)
+
+	@property
+	def x2(self):
+		return max(self.x, self.x + self.w)
+
+	@property
+	def y1(self):
+		return min(self.y, self.y + self.h)
+
+	@property
+	def y2(self):
+		return max(self.y, self.y + self.h)
+
+	def destroy(self):
+		quads.remove(self)
+		del self.x
+		del self.y
+		del self.w
+		del self.h
+		del self.z
+		del self.hidden
+
+	def __str__(self):
+		return f'<{type(self).__name__} {self.x}x{self.y} +{self.w}+{self.h} @{self.z}>'
+
+	def __repr__(self):
+		return str(self)
+
+
+
+class FlatQuad(Quad):
+	def __init__(self, x, y, w, h, z, color):
+		self.color = color
+		super().__init__(x, y, w, h, z)
+
+	# Only call from main thread
+	def render(self):
+		gl.glColor4f(*self.color)
+		gl.glBegin(gl.GL_QUADS)
+		gl.glVertex2f(self.x1, self.y1)
+		gl.glVertex2f(self.x2, self.y1)
+		gl.glVertex2f(self.x2, self.y2)
+		gl.glVertex2f(self.x1, self.y2)
+		gl.glEnd()
+
+
+
+class ShadedQuad(Quad):
+	def __init__(self, x, y, w, h, z, colors):
+		self.colors = colors
+		super().__init__(x, y, w, h, z)
+
+	# Only call from main thread
+	def render(self):
+		gl.glBegin(gl.GL_QUADS)
+		gl.glColor4f(*self.colors[0])
+		gl.glVertex2f(self.x1, self.y1)
+		gl.glColor4f(*self.colors[1])
+		gl.glVertex2f(self.x2, self.y1)
+		gl.glColor4f(*self.colors[2])
+		gl.glVertex2f(self.x2, self.y2)
+		gl.glColor4f(*self.colors[3])
+		gl.glVertex2f(self.x1, self.y2)
+		gl.glEnd()
 
 
 

@@ -23,7 +23,7 @@ log.info('Starting Fabella.')
 
 # FIXME: hardcoded monitor
 window = Window(2, "Fabella")
-menu = Menu(sys.argv[1], enabled=True)
+menu = Menu(sys.argv[1], window.width, window.height, visible=True)
 video = Video()
 
 #### Main loop
