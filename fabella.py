@@ -11,7 +11,7 @@ import loghelper
 from window import Window
 from menu import Menu
 from video import Video
-from draw import Quad
+import draw
 
 
 
@@ -23,7 +23,7 @@ log.info('Starting Fabella.')
 
 # FIXME: hardcoded monitor
 window = Window(2, "Fabella")
-menu = Menu(sys.argv[1], window.width, window.height, visible=True)
+menu = Menu(sys.argv[1], window.width, window.height, enabled=True)
 video = Video()
 
 #### Main loop
@@ -151,34 +151,31 @@ while not window.closed():
 				if key == glfw.KEY_DELETE:
 					menu.toggle_tagged()
 
-	width, height = window.size()
-	#log.debug(f'Window size {width}x{height}')
-
-	video.render(width, height)
+	video.render(window.width, window.height)
 
 	# MPV seems to reset some of this stuff, so re-init
 	gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 	gl.glEnable(gl.GL_BLEND)
 	gl.glEnable(gl.GL_TEXTURE_2D)
 
-	gl.glViewport(0, 0, width, height)
+	gl.glViewport(0, 0, window.width, window.height)
 	gl.glClearColor(0.0, 0.0, 0.0, 1)
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 	gl.glMatrixMode(gl.GL_PROJECTION)
 	gl.glLoadIdentity()
-	gl.glOrtho(0.0, width, 0.0, height, 0.0, 1.0)
+	gl.glOrtho(0.0, window.width, 0.0, window.height, 0.0, 1.0)
 	gl.glMatrixMode (gl.GL_MODELVIEW)
 
 	if video.rendered:
-		video.draw(width, height)
+		video.draw(window.width, window.height)
 
 		if osd or video.mpv.pause:
-			menu.draw_osd(width, height, video)
+			menu.draw_osd(window.width, window.height, video)
 
-	if menu.enabled:
-		menu.draw(width, height, transparent=video.rendered)
+	#if menu.enabled:
+	#	menu.draw(window.width, window.height, transparent=video.rendered)
 
-	Quad.render_all()
+	draw.render()
 
 	window.swap_buffers()
 

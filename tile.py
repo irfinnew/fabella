@@ -1,4 +1,5 @@
 import os
+import io
 import time
 import math
 import uuid
@@ -8,83 +9,29 @@ import functools
 import dbs
 import config
 import loghelper
-from image import Image, ImgLib
-from draw import FlatQuad, TexturedQuad
+import draw
+import PIL.Image
 
 log = loghelper.get_logger('Tile', loghelper.Color.Cyan)
 
 
 
-# FIXME: UGH
-shadow_blursize = 32
-shadow_expand = 4
-shadow_img = None
-shadow_texture = None
-
-def get_shadow():
-	global shadow_img, shadow_texture
-	if shadow_texture is not None:
-		return shadow_texture
-
-	import PIL.Image, PIL.ImageFilter
-	w, h = config.tile.width + shadow_blursize * 2, config.tile.thumb_height + shadow_blursize * 2
-
-	shadow_img = PIL.Image.new('RGBA', (w, h), (255, 255, 255, 0))
-	shadow_img.paste((255, 255, 255, 255), (shadow_blursize - shadow_expand, shadow_blursize - shadow_expand, w - shadow_blursize + shadow_expand, h - shadow_blursize + shadow_expand))
-	shadow_img = shadow_img.filter(PIL.ImageFilter.GaussianBlur((shadow_blursize - shadow_expand) // 2))
-	#shadow_img.paste((255, 255, 255, 255), (shadow_blursize, shadow_blursize, w - shadow_blursize, h - shadow_blursize))
-	#shadow_img = shadow_img.filter(PIL.ImageFilter.GaussianBlur(shadow_blursize // 3))
-
-	shadow_texture = gl.glGenTextures(1)
-	gl.glBindTexture(gl.GL_TEXTURE_2D, shadow_texture)
-	gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-	gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-	gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, w, h, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, shadow_img.tobytes())
-	gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-	return shadow_texture
-
-# FIXME: UGH
-hl_blursize = 19
-hl_expand = 10
-hl_img = None
-hl_texture = None
-
-def get_hl():
-	global hl_img, hl_texture
-	if hl_texture is not None:
-		return hl_texture
-
-	import PIL.Image, PIL.ImageFilter
-	w, h = config.tile.width + hl_blursize * 2, config.tile.thumb_height + hl_blursize * 2
-
-	hl_img = PIL.Image.new('RGBA', (w, h), (255, 255, 255, 0))
-	hl_img.paste((255, 255, 255, 255), (hl_blursize - hl_expand, hl_blursize - hl_expand, w - hl_blursize + hl_expand, h - hl_blursize + hl_expand))
-	hl_img = hl_img.filter(PIL.ImageFilter.GaussianBlur((hl_blursize - hl_expand) // 2))
-	#hl_img.paste((255, 255, 255, 255), (hl_blursize, hl_blursize, w - hl_blursize, h - hl_blursize))
-	#hl_img = hl_img.filter(PIL.ImageFilter.GaussianBlur(hl_blursize // 3))
-
-	hl_texture = gl.glGenTextures(1)
-	gl.glBindTexture(gl.GL_TEXTURE_2D, hl_texture)
-	gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-	gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-	gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, w, h, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, hl_img.tobytes())
-	gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-	return hl_texture
-
-
-
 class Tile:
-	def __init__(self, path, name, isdir, menu, font, render_pool):
+	def __init__(self, path, name, isdir, menu, font):
 		self.name = name
 		self.path = path
 		self.full_path = os.path.join(path, name)
 		self.isdir = isdir
 		self.menu = menu
-		self.render_pool = render_pool
 		self.font = font
-		self.state_last_update = 0  # FIXME: is this still needed?
 
 		log.debug(f'Created {self}')
+
+		# Internal state
+		self.x = None
+		self.y = None
+		self.selected = False
+		self.quad = None
 
 		# Metadata, will be populated later
 		self.tile_color = (0, 0, 0, 1)
@@ -92,11 +39,13 @@ class Tile:
 		self.position = 0
 		self.tagged = False
 
+		self.cover_data = None
+		self.img_cover = None
 		# Renderables
-		self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines, pool=self.render_pool)
-		self.title.text = self.name if self.isdir else os.path.splitext(self.name)[0]
-		self.cover = None
-		self.info = None
+		#self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines, pool=self.render_pool)
+		#self.title.text = self.name if self.isdir else os.path.splitext(self.name)[0]
+		#self.info = None
+
 
 	def update_meta(self, meta):
 		log.debug(f'Update metadata for {self}')
@@ -137,29 +86,42 @@ class Tile:
 
 
 	def update_cover(self, covers_zip):
-		if not self.cover:
-			self.cover = Image(None, config.tile.width, config.tile.thumb_height, self.name, pool=self.render_pool)
 		try:
 			with covers_zip.open(self.name) as fd:
-				image = fd.read()
-				# The cover image can be empty (if no cover is known)
-				if image:
-					self.cover.source = image
+				self.cover_data = fd.read()
+				self.img_cover = None
 		except KeyError:
+			self.cover_data = None
 			log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
 
 
-	@classmethod
-	def release_all_textures(cls, tiles):
-		tobjs = [t.title for t in tiles] + [t.cover for t in tiles] + [t.info for t in tiles]
-		tobjs = [o for o in tobjs if o]
+	def show(self, x, y, selected):
+		if (x, y, selected, bool(self.quad)) != (self.x, self.y, self.selected, True):
+			# FIXME: If just x and y change, just update quad coords
+			self.x = x
+			self.y = y
+			self.selected = selected
+			self.draw()
 
-		textures = [o._texture for o in tobjs if o._texture]
-		log.info(f'Deleting {len(textures)} textures')
-		gl.glDeleteTextures(textures)
 
-		for o in tobjs:
-			o._texture = None
+	def hide(self):
+		self.x = None
+		self.y = None
+		self.selected = False
+
+		if self.quad is not None:
+			self.quad.destroy()
+			self.quad = None
+
+
+	def draw(self):
+		if self.cover_data and not self.img_cover:
+			self.img_cover = PIL.Image.open(io.BytesIO(self.cover_data))
+
+		if self.quad is not None:
+			self.quad.destroy()
+
+		self.quad = draw.TexturedQuad(self.x, self.y, config.tile.width, -config.tile.thumb_height, 200, image=self.img_cover, color=(1, 1, 1, 1 if self.selected else 0.5))
 
 
 	def update_pos(self, position, force=False):
@@ -211,68 +173,9 @@ class Tile:
 		self.write_state_update({'tagged': self.tagged})
 
 
-	def draw(self, x, y, selected=False):
-		# Drop shadow
-		x1, y1, x2, y2 = x - shadow_blursize, y - config.tile.thumb_height - shadow_blursize, x + config.tile.width + shadow_blursize, y + shadow_blursize
-		x1 += 8; x2 += 8; y1 -= 8; y2 -= 8
-		TexturedQuad((x1, y1, x2, y2), 200, get_shadow(), color=config.tile.shadow_color)
-
-		# Select
-		if selected:
-			x1, y1, x2, y2 = x - hl_blursize, y - config.tile.thumb_height - hl_blursize, x + config.tile.width + hl_blursize, y + hl_blursize
-			TexturedQuad((x1, y1, x2, y2), 201, get_hl(), color=config.tile.highlight_color)
-
-		# Outline
-		x1, y1, x2, y2 = x - 2, y - config.tile.thumb_height - 2, x + config.tile.width + 2, y + 2
-		FlatQuad((x1, y1, x2, y2), 202, config.tile.shadow_color)
-
-		# Cover image
-		x1, y1, x2, y2 = x, y - config.tile.thumb_height, x + config.tile.width, y
-		if self.cover and self.cover.texture:
-			TexturedQuad((x1, y1, x2, y2), 203, self.cover.texture)
-		else:
-			FlatQuad((x1, y1, x2, y2), 203, self.tile_color)
-
-		# Info
-		if self.info:
-			self.info.as_quad(
-				-(x + int(config.tile.width * 0.98)), y - config.tile.thumb_height,
-				204,
-				config.tile.text_hl_color if selected else config.tile.text_color
-			)
-
-		# Position bar
-		if self.position < 1 and not self.isdir:
-			x1, y1 = x, y - config.tile.thumb_height - 1
-			x2, y2 = x1 + config.tile.width * self.position, y1 + config.tile.pos_bar_height
-			FlatQuad((x1 - 1, y1 - 1, x2 + 1, y2 + 1), 204, config.tile.shadow_color)
-			FlatQuad((x1, y1, x2, y2), 205, config.tile.pos_bar_color)
-
-		tagged_xpos = x + config.tile.width + ImgLib.Tagged.width // 2
-
-		# "Watching" emblem
-		if self.watching:
-			ImgLib.Watching.as_quad(x + config.tile.width - ImgLib.Watching.width // 2, y - ImgLib.Watching.height // 2, 204)
-			tagged_xpos = x + config.tile.width - ImgLib.Watching.width // 2
-
-		# "Unseen" emblem
-		if self.unseen:
-			ImgLib.Unseen.as_quad(x + config.tile.width - ImgLib.Unseen.width // 2, y - ImgLib.Unseen.height // 2, 204)
-			tagged_xpos = x + config.tile.width - ImgLib.Unseen.width // 2
-
-		# "Tagged" emblem
-		if self.tagged:
-			ImgLib.Tagged.as_quad(tagged_xpos - ImgLib.Tagged.width, y - ImgLib.Tagged.height // 2, 204)
-
-		# Title
-		if self.title:
-			x1, y1 = x, y - config.tile.thumb_height - config.tile.text_vspace - self.title.height
-			self.title.as_quad(x1, y1, 204, color=config.tile.text_hl_color if selected else config.tile.text_color)
-
-
 	def __str__(self):
-		return f'Tile(path={self.path}, name={self.name}, isdir={self.isdir})'
+		return f'<Tile path={self.path}, name={self.name}, isdir={self.isdir}>'
 
 
 	def __repr__(self):
-		return self.__str__()
+		return str(self)
