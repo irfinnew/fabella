@@ -34,7 +34,7 @@ class Menu:
 		self.current_offset = 0
 		self.tiles = []
 		self.shown_tiles = set()
-		self.background = draw.FlatQuad(0, 0, 1, 1, 0, (0, 0, 0, 0.66))
+		self.background = draw.FlatQuad(0, 0, width, height, 0, config.menu.background_color)
 		self.breadcrumbs = []
 		self.bread_text = self.menu_font.text(config.menu.header_hspace, height - config.menu.header_vspace, 101, 'breadcrumbs', anchor='tl')
 		self.clock_text = self.menu_font.text(width - config.menu.header_hspace, height - config.menu.header_vspace, 101, 'clock', anchor='tr')
@@ -107,6 +107,7 @@ class Menu:
 			index = index['files']
 
 		self.path = path
+		start = time.time()
 		for entry in index:
 			name = entry['name']
 			isdir = entry['isdir']

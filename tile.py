@@ -44,7 +44,7 @@ class Tile:
 		# Renderables
 		#self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines, pool=self.render_pool)
 		#self.title.text = self.name if self.isdir else os.path.splitext(self.name)[0]
-		#self.info = None
+		self.info = None
 
 
 	def update_meta(self, meta):
@@ -69,7 +69,7 @@ class Tile:
 		if 'duration' in meta:
 			self.duration = meta.get('duration', None)
 			if not self.info:
-				self.info = self.font.text(None, max_width=None, lines=1, pool=self.render_pool)
+				self.info = self.font.text(0, 0, 1, None, max_width=None, lines=1)
 			if self.duration is None:
 				self.info.text = '?:??'
 			else:
