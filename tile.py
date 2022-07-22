@@ -17,20 +17,23 @@ log = loghelper.get_logger('Tile', loghelper.Color.Cyan)
 
 
 class Tile:
-	def __init__(self, path, name, isdir, menu, font):
-		self.name = name
-		self.path = path
-		self.full_path = os.path.join(path, name)
-		self.isdir = isdir
+	def __init__(self, menu, meta, covers_zip=None):
+		print(f'Tile.__init__({meta})')
 		self.menu = menu
-		self.font = font
+		self.path = menu.path
+		self.font = menu.tile_font # FIXME Yuck
+
+		self.name = meta['name']
+		self.isdir = meta['isdir']
+		self.full_path = os.path.join(self.path, self.name)
 
 		log.debug(f'Created {self}')
 
-		# Internal state
+		# State
 		self.x = None
 		self.y = None
 		self.selected = False
+		self.used = True
 		self.quad = None
 
 		# Metadata, will be populated later
@@ -45,6 +48,8 @@ class Tile:
 		#self.title = self.font.text(None, max_width=config.tile.width, lines=config.tile.text_lines, pool=self.render_pool)
 		#self.title.text = self.name if self.isdir else os.path.splitext(self.name)[0]
 		self.info = None
+
+		self.update_cover(covers_zip)
 
 
 	def update_meta(self, meta):
@@ -101,10 +106,10 @@ class Tile:
 			self.x = x
 			self.y = y
 			self.selected = selected
-			self.draw()
+			self.render()
 
 
-	def hide(self):
+	def destroy(self):
 		self.x = None
 		self.y = None
 		self.selected = False
@@ -114,14 +119,17 @@ class Tile:
 			self.quad = None
 
 
-	def draw(self):
+	def render(self):
+		if self.quad is None:
+			self.quad = draw.TexturedQuad(self.x, self.y, config.tile.width, -config.tile.thumb_height, 200)
+
 		if self.cover_data and not self.img_cover:
 			self.img_cover = PIL.Image.open(io.BytesIO(self.cover_data))
 
-		if self.quad is not None:
-			self.quad.destroy()
-
-		self.quad = draw.TexturedQuad(self.x, self.y, config.tile.width, -config.tile.thumb_height, 200, image=self.img_cover, color=(1, 1, 1, 1 if self.selected else 0.5))
+		self.quad.x = self.x
+		self.quad.y = self.y
+		self.quad.update_image(self.img_cover)
+		self.quad.color = (1, 1, 1, 1 if self.selected else 0.5)
 
 
 	def update_pos(self, position, force=False):

@@ -32,11 +32,12 @@ class Menu:
 		self.path = None
 		self.current_idx = 0
 		self.current_offset = 0
-		self.tiles = []
-		self.shown_tiles = set()
+		self.index = []
+		self.tiles = {}
+		self.covers_zip = None
 		self.background = draw.FlatQuad(0, 0, width, height, 0, config.menu.background_color)
 		self.breadcrumbs = []
-		self.bread_text = self.menu_font.text(config.menu.header_hspace, height - config.menu.header_vspace, 101, 'breadcrumbs', anchor='tl')
+		self.bread_text = self.menu_font.text(config.menu.header_hspace, height - config.menu.header_vspace, 101, '', anchor='tl')
 		self.clock_text = self.menu_font.text(width - config.menu.header_hspace, height - config.menu.header_vspace, 101, 'clock', anchor='tr')
 
 		# FIXME: this entire section is yuck
@@ -83,105 +84,135 @@ class Menu:
 
 
 	def forget(self):
-		for t in self.tiles:
-			t.hide()
-		self.tiles = []
+		for t in self.tiles.values():
+			t.destroy()
+		self.tiles = {}
+		self.index = []
+		self.current_idx = 0
+		self.current_offset = 0
+		self.covers_zip = None
 
 
 	def load(self, path):
 		self.forget()
 		log.info(f'Loading {path}')
+		self.path = path
 
-		state_db_name = os.path.join(path, dbs.STATE_DB_NAME)
-		state = dbs.json_read(state_db_name, dbs.STATE_DB_SCHEMA)
-
+		start = time.time()
 		index_db_name = os.path.join(path, dbs.INDEX_DB_NAME)
 		index = dbs.json_read(index_db_name, dbs.INDEX_DB_SCHEMA, default=None)
+		print(f'index_read: {time.time() - start}')
+
 		if index is None:
 			log.warning(f'falling back to scandir()')
 			index = []
 			for isfile, name in sorted((not de.is_dir(), de.name) for de in os.scandir(path)):
 				if not name.startswith('.') and name.endswith(dbs.VIDEO_EXTENSIONS):
 					index.append({'name': name, 'isdir': not isfile})
-		else:
-			index = index['files']
+			self.index = index
+			return
 
-		self.path = path
+		start = time.time()
+		state_db_name = os.path.join(path, dbs.STATE_DB_NAME)
+		state = dbs.json_read(state_db_name, dbs.STATE_DB_SCHEMA)
+		print(f'state_read: {time.time() - start}')
+
+		index = index['files']
 		start = time.time()
 		for entry in index:
-			name = entry['name']
-			isdir = entry['isdir']
-			self.tiles.append(Tile(path, name, isdir, self, self.tile_font))
+			entry.update(state.get(entry['name'], {}))
+		print(f'reorganize: {time.time() - start}')
+		self.index = index
 
-		for tile, entry in zip(self.tiles, index):
-			meta = {**entry, **state.get(tile.name, {})}
-			tile.update_meta(meta)
-
-		self.load_covers()
-
-		self.current_idx = 0
-		self.current_offset = 0
+		# Open cover DB
+		cover_db_name = os.path.join(self.path, '.fabella', 'covers.zip')
+		try:
+			self.covers_zip = zipfile.ZipFile(cover_db_name, 'r')
+		except OSError as e:
+			self.covers_zip = None
+			log.error(f'Parsing cover DB {cover_db_name}: {e}')
 
 		# Find first "watching" video
-		for i, tile in enumerate(self.tiles):
-			if tile.watching:
-				self.current_idx = i
+		for i, tile in enumerate(self.index):
+			if 0.0 < tile.get('position', 0.0) < 1.0:
+				self.jump_tile(i)
 				break
 		else:
-			# Otherwise, find first "unseen" video
-			for i, tile in enumerate(self.tiles):
-				if tile.unseen:
-					self.current_idx = i
+			# Otherwise find the first "unseen" video
+			for i, tile in enumerate(self.index):
+				if tile.get('position', 0.0) == 0.0:
+					self.jump_tile(i)
 					break
 
 		self.draw_tiles()
 
 
-	def load_covers(self):
-		start = time.time()
-		cover_db_name = os.path.join(self.path, '.fabella', 'covers.zip')
-		try:
-			with zipfile.ZipFile(cover_db_name, 'r') as fd:
-				for tile in self.tiles:
-					tile.update_cover(fd)
-		except OSError as e:
-			log.error(f'Parsing cover DB {cover_db_name}: {e}')
-
-
+	# FIXME: are we using this?
 	@property
 	def current(self):
 		return self.tiles[self.current_idx]
 
 
-	def previous_row(self):
-		log.info('Select previous row')
-		if self.current_idx >= self.tile_columns:
-			self.current_idx -= self.tile_columns
-		self.draw_tiles()
+	def jump_tile(self, idx):
+		log.debug(f'Jumping to tile {idx}')
+		self.current_idx = min(max(idx, 0), len(self.index) - 1)
 
+		# Fix offset
+		while self.current_idx // self.tile_columns < self.current_offset:
+			self.current_offset -= 1
 
-	def next_row(self):
-		log.info('Select next row')
-		if self.current_idx // self.tile_columns < (len(self.tiles) - 1) // self.tile_columns:
-			self.current_idx = min(
-				len(self.tiles) - 1,
-				self.current_idx + self.tile_columns
-			)
+		while self.current_idx // self.tile_columns >= (self.current_offset + self.tile_rows):
+			self.current_offset += 1
+
+		if self.current_offset > (len(self.index) - 1) // self.tile_columns + 1 - self.tile_rows:
+			self.current_offset = (len(self.index) - 1) // self.tile_columns + 1 - self.tile_rows
+
+		if self.current_offset < 0:
+			self.current_offset = 0
+
 		self.draw_tiles()
 
 
 	def previous(self):
 		log.info('Select previous')
-		if self.current_idx > 0:
-			self.current_idx -= 1
-		self.draw_tiles()
+		self.jump_tile(self.current_idx - 1)
 
 
 	def next(self):
 		log.info('Select next')
-		if self.current_idx < len(self.tiles) - 1:
-			self.current_idx += 1
-		self.draw_tiles()
+		self.jump_tile(self.current_idx + 1)
+
+
+	def previous_row(self):
+		log.info('Select previous row')
+		if self.current_idx >= self.tile_columns:
+			self.jump_tile(self.current_idx - self.tile_columns)
+
+
+	def next_row(self):
+		log.info('Select next row')
+		if self.current_idx // self.tile_columns < (len(self.index) - 1) // self.tile_columns:
+			self.jump_tile(self.current_idx + self.tile_columns)
+
+
+	def page_up(self):
+		log.info('Select page up')
+		self.jump_tile(self.current_idx - self.tile_columns * self.tile_rows)
+
+
+	def page_down(self):
+		log.info('Select page down')
+		self.jump_tile(self.current_idx + self.tile_columns * self.tile_rows)
+
+
+	def first(self):
+		log.info('Select first tile')
+		self.jump_tile(0)
+
+
+	def last(self):
+		log.info('Select last tile')
+		self.jump_tile(len(self.index))
 
 
 	def toggle_seen(self):
@@ -189,6 +220,7 @@ class Menu:
 
 
 	def toggle_seen_all(self):
+		# FIXME: this needs complete revamp prolly
 		position = 1 if any(t.unseen and not t.isdir for t in self.tiles) else 0
 		state = {}
 		for tile in self.tiles:
@@ -235,50 +267,47 @@ class Menu:
 			log.info("Hit root, not going up.")
 			return
 
-		new = os.path.dirname(self.path)
-		if not new:
-			return
 		previous = os.path.basename(self.path)
-		self.load(new)
-		for i, tile in enumerate(self.tiles):
-			if tile.name == previous:
-				self.current_idx = i
+		self.load(os.path.dirname(self.path))
+
+		# Find the tile that was used to enter the previous path
+		for idx, meta in enumerate(self.index):
+			if meta['name'] == previous:
+				self.jump_tile(idx)
 				break
 
 
 	def draw_tiles(self):
-		# Fix offset
-		while self.current_idx // self.tile_columns < self.current_offset:
-			self.current_offset -= 1
-
-		while self.current_idx // self.tile_columns >= (self.current_offset + self.tile_rows):
-			self.current_offset += 1
-
-		if self.current_offset > (len(self.tiles) - 1) // self.tile_columns + 1 - self.tile_rows:
-			self.current_offset = (len(self.tiles) - 1) // self.tile_columns + 1 - self.tile_rows
-
-		if self.current_offset < 0:
-			self.current_offset = 0
-
-		new_tiles = set()
+		for tile in self.tiles.values():
+			tile.used = False
+		create_time = 0
+		show_time = 0
 		for y in range(self.tile_rows):
 			for x in range(self.tile_columns):
 				idx = (y + self.current_offset) * self.tile_columns + x
+				if idx >= len(self.index):
+					break
+				create_time -= time.time()
 				try:
 					tile = self.tiles[idx]
-				except IndexError:
-					break
+				except KeyError:
+					tile = Tile(self, self.index[idx], self.covers_zip)
+				create_time += time.time()
+				show_time -= time.time()
 				tile.show(
 					self.tile_hstart + x * self.tile_hoffset,
 					self.height - self.tile_vstart - y * self.tile_voffset,
 					idx == self.current_idx
 				)
-				new_tiles.add(tile)
+				show_time += time.time()
+				self.tiles[idx] = tile
+				tile.used = True
+		print(f'create_time: {int(create_time * 1000)}, show_time: {int(show_time * 1000)}')
 
-		for tile in self.shown_tiles - new_tiles:
-			tile.hide()
-
-		self.shown_tiles = new_tiles
+		for idx, tile in dict(self.tiles).items():
+			if not tile.used:
+				tile.destroy()
+				del self.tiles[idx]
 
 		# FIXME: put somewhere else
 		self.clock_text.text = datetime.datetime.now().strftime('%a %H:%M:%S')
