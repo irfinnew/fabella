@@ -38,6 +38,8 @@ class Texture:
 		self.concrete = True
 
 	def update_image(self, img):
+		if img is None:
+			return
 		self.update_raw(img.width, img.height, img.mode, img.tobytes())
 
 	def destroy(self, force=False):
