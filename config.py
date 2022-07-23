@@ -15,7 +15,16 @@ class tile:
 	thumb_dirs = ['covers']
 	thumb_files = ['cover.jpg']
 
+	shadow_blursize = 32
+	shadow_expand = 4
+	shadow_offset = 8
 	shadow_color = (0, 0, 0, 1)
+
+	outline_size = 2
+	outline_color = (0, 0, 0, 1)
+
+	highlight_blursize = 19
+	highlight_expand = 10
 	highlight_color = (0.4, 0.7, 1, 1)
 
 	text_color = (0.6, 0.6, 0.6, 1)

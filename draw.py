@@ -43,10 +43,10 @@ class Texture:
 		self.update_raw(img.width, img.height, img.mode, img.tobytes())
 
 	def destroy(self, force=False):
-		if not force and not self.persistent:
+		if self.persistent and not force:
 			return
 		self.concrete = False
-		gl.glDeleteTexturs([self.tid])
+		gl.glDeleteTextures([self.tid])
 		del self.tid
 		del self.concrete
 		del self.persistent
@@ -58,6 +58,25 @@ class Texture:
 		return str(self)
 
 
+class ExternalTexture:
+	def __init__(self, tid):
+		self.concrete = True
+		self.tid = tid
+
+	def destroy(self, force=False):
+		if not force:
+			return
+		self.concrete = False
+		gl.glDeleteTextures([self.tid])
+		del self.tid
+		del self.concrete
+
+	def __str__(self):
+		return f'<Texture ({self.tid}) external>>'
+
+	def __repr__(self):
+		return str(self)
+
 
 class Quad:
 	def __init__(self, x, y, w, h, z):
@@ -68,6 +87,13 @@ class Quad:
 		self.h = h
 		self.hidden = False
 		quads.add(self)
+
+	@property
+	def pos(self):
+		return (self.x, self.y)
+	@pos.setter
+	def pos(self, newpos):
+		self.x, self.y = newpos
 
 	@property
 	def x1(self):

@@ -93,6 +93,9 @@ class Text:
 		self.quad.w = width if self.quad.w > 0 else -width
 		self.quad.h = height if self.quad.h > 0 else -height
 
+	def destroy(self):
+		self.quad.destroy()
+
 	def __str__(self):
 		return f'<Text{self.font.name} {self.font.size}, {repr(self._text)}>'
 

@@ -7,6 +7,7 @@ import mpv
 import OpenGL.GL as gl
 
 import loghelper
+import draw
 from draw import Quad, FlatQuad, ShadedQuad, TexturedQuad
 
 log = loghelper.get_logger('Video', loghelper.Color.Yellow)
@@ -14,20 +15,17 @@ log = loghelper.get_logger('Video', loghelper.Color.Yellow)
 
 
 class Video:
-	mpv = None
-	context = None
-	current_file = None
-	fbo = None
-	texture = None
-	video_size = (640, 360)
-	duration = 0
-	position = 0
-	position_immune_until = 0
-	rendered = False
-	tile = None
-
-	def __init__(self):
+	def __init__(self, width, height):
 		log.debug('Created instance')
+		self.current_file = None
+		self.video_size = (640, 360)
+		self.duration = 0
+		self.position = 0
+		self.position_immune_until = 0
+		self.rendered = False
+		self.tile = None
+		self.width = width
+		self.height = height
 
 		mpv_logger = loghelper.get_logger('libmpv', loghelper.Color.Green)
 		mpv_levels = {
@@ -73,16 +71,19 @@ class Video:
 		self.fbo = gl.glGenFramebuffers(1)
 		gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, self.fbo)
 
-		self.texture = gl.glGenTextures(1)
-		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
+		self.tid = gl.glGenTextures(1)
+		gl.glBindTexture(gl.GL_TEXTURE_2D, self.tid)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
 		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, *self.video_size, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, None)
-		gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, self.texture, 0)
+		gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, self.tid, 0)
 		assert gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER) == gl.GL_FRAMEBUFFER_COMPLETE
 
 		gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+
+		self.texture = draw.ExternalTexture(self.tid)
+		self.video_quad = draw.TexturedQuad(0, 0, self.width, self.height, 0, texture=self.texture)
 
 	def eof_reached(self, prop, value):
 		if value is False:
@@ -184,8 +185,8 @@ class Video:
 	def render(self, width, height):
 		force_render = False
 		if self.video_size != (width, height):
-			log.info(f'Resizing video texture from {self.video_size} to {(width, height)}')
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
+			log.info(f'Resizing video tid from {self.video_size} to {(width, height)}')
+			gl.glBindTexture(gl.GL_TEXTURE_2D, self.tid)
 			gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, width, height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, None)
 			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 			self.video_size = (width, height)
@@ -204,11 +205,12 @@ class Video:
 			#log.debug('Drawing frame skipped because not rendered')
 			return
 
+		return
 		#log.debug('Drawing frame')
 		video_width, video_height = self.video_size
 
 		# Draw video
-		TexturedQuad((0, 0, window_width, window_height), 0, self.texture)
+		TexturedQuad((0, 0, window_width, window_height), 0, self.tid)
 
 		# Draw position bar + shadow
 		position_bar_height = 3

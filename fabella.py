@@ -9,6 +9,7 @@ import OpenGL.GL as gl
 
 import loghelper
 from window import Window
+from tile import Tile
 from menu import Menu
 from video import Video
 import draw
@@ -23,8 +24,9 @@ log.info('Starting Fabella.')
 
 # FIXME: hardcoded monitor
 window = Window(2, "Fabella")
+Tile.initialize()
 menu = Menu(sys.argv[1], window.width, window.height, enabled=True)
-video = Video()
+video = Video(window.width, window.height)
 
 #### Main loop
 last_time = 0
@@ -164,7 +166,9 @@ while not window.closed():
 		video.draw(window.width, window.height)
 
 		if osd or video.mpv.pause:
-			menu.draw_osd(window.width, window.height, video)
+			pass
+			# FIXME
+			#menu.draw_osd(window.width, window.height, video)
 
 	#if menu.enabled:
 	#	menu.draw(window.width, window.height, transparent=video.rendered)

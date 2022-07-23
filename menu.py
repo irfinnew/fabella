@@ -35,7 +35,7 @@ class Menu:
 		self.index = []
 		self.tiles = {}
 		self.covers_zip = None
-		self.background = draw.FlatQuad(0, 0, width, height, 0, config.menu.background_color)
+		self.background = draw.FlatQuad(0, 0, width, height, 1, config.menu.background_color)
 		self.breadcrumbs = []
 		self.bread_text = self.menu_font.text(config.menu.header_hspace, height - config.menu.header_vspace, 101, '', anchor='tl')
 		self.clock_text = self.menu_font.text(width - config.menu.header_hspace, height - config.menu.header_vspace, 101, 'clock', anchor='tr')
@@ -71,8 +71,10 @@ class Menu:
 
 	def close(self):
 		self.enabled = False
-		for t in tiles:
-			t.hide()
+		for t in self.tiles.values():
+			t.destroy()
+		self.tiles = {}
+		self.background.hidden = True
 
 
 	def open(self, enabled=True):
@@ -80,6 +82,7 @@ class Menu:
 			return self.close()
 
 		self.enabled = True
+		self.background.hidden = False
 		self.draw_tiles()
 
 
