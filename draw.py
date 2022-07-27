@@ -1,9 +1,10 @@
 import operator
 import OpenGL.GL as gl
 
+# Not yet thread safe, only call stuff from main thread
+
 quads = set()
 
-# Only call from main thread
 flat_texture = None
 def initialize():
 	global flat_texture
@@ -11,7 +12,6 @@ def initialize():
 	flat_texture.update_raw(1, 1, 'RGBA', b'\xff' * 4)
 
 
-# Only call from main thread
 def render():
 	# FIXME: maybe make sorting invariant for efficiency?
 	for quad in sorted({q for q in quads if not q.hidden}, key = operator.attrgetter('z')):
@@ -87,13 +87,15 @@ class ExternalTexture:
 
 
 class Quad:
-	def __init__(self, x, y, w, h, z):
+	def __init__(self, x, y, w, h, z, texture=None, image=None, color=None):
 		self.x = x
 		self.y = y
 		self.z = z
 		self.w = w
 		self.h = h
 		self.hidden = False
+		self.texture = Texture(image=image, persistent=False) if texture is None else texture
+		self.color = (1, 1, 1, 1) if color is None else color
 		quads.add(self)
 
 	@property
@@ -119,41 +121,15 @@ class Quad:
 	def y2(self):
 		return max(self.y, self.y + self.h)
 
-	def destroy(self):
-		quads.remove(self)
-		del self.x
-		del self.y
-		del self.w
-		del self.h
-		del self.z
-		del self.hidden
-
-	def __str__(self):
-		return f'<{type(self).__name__} {self.x}x{self.y} +{self.w}+{self.h} @{self.z}>'
-
-	def __repr__(self):
-		return str(self)
-
-
-
-class TexturedQuad(Quad):
-	# Only call from main thread
-	def __init__(self, x, y, w, h, z, texture=None, image=None, color=None):
-		self.texture = Texture(image=image, persistent=False) if texture is None else texture
-		self.color = (1, 1, 1, 1) if color is None else color
-		super().__init__(x, y, w, h, z)
-
-	# Only call from main thread
 	def update_image(self, image):
 		self.texture.update_image(image)
 
-	# Only call from main thread
 	def destroy(self):
+		quads.remove(self)
 		self.texture.destroy()
-		self.texture = None
-		super().destroy()
+		del self.x # trigger AttributeError if we're used still
+		del self.texture  # trigger AttributeError if we're used still
 
-	# Only call from main thread
 	def render(self):
 		if not self.texture.concrete:
 			return
@@ -171,8 +147,14 @@ class TexturedQuad(Quad):
 		gl.glEnd()
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
+	def __str__(self):
+		return f'<{type(self).__name__} {self.x}x{self.y} +{self.w}+{self.h} @{self.z}>'
+
+	def __repr__(self):
+		return str(self)
 
 
-class FlatQuad(TexturedQuad):
+
+class FlatQuad(Quad):
 	def __init__(self, x, y, w, h, z, color):
 		super().__init__(x, y, w, h, z, texture=flat_texture, color=color)

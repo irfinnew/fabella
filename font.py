@@ -20,7 +20,7 @@ class Text:
 		self.update = None
 		self.rendered = False
 		w, h = {'bl': (1, 1), 'br': (-1, 1), 'tl': (1, -1), 'tr': (-1, -1)}[anchor]
-		self.quad = draw.TexturedQuad(x, y, w, h, z)
+		self.quad = draw.Quad(x, y, w, h, z)
 		self.texture = self.quad.texture
 
 		self.font = font

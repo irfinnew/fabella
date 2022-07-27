@@ -3,7 +3,7 @@ import OpenGL.GL as gl
 import PIL.Image, PIL.ImageOps, PIL.ImageFilter
 
 import loghelper
-from draw import TexturedQuad
+import draw
 
 log = loghelper.get_logger('Image', loghelper.Color.BrightBlack)
 
@@ -110,7 +110,7 @@ class Image:
 				y = -y - self.height
 			if x < 0:
 				x = -x - self.width
-			TexturedQuad((x, y, x + self.width, y + self.height), z, self.texture, color=color)
+			draw.Quad((x, y, x + self.width, y + self.height), z, self.texture, color=color)
 
 	def __str__(self):
 		return f'Image({self.name}, {self.width}, {self.height})'

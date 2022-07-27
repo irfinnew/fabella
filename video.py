@@ -8,7 +8,6 @@ import OpenGL.GL as gl
 
 import loghelper
 import draw
-from draw import FlatQuad, TexturedQuad
 
 log = loghelper.get_logger('Video', loghelper.Color.Yellow)
 
@@ -83,7 +82,7 @@ class Video:
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 		self.texture = draw.ExternalTexture(self.tid)
-		self.video_quad = draw.TexturedQuad(0, 0, self.width, self.height, 0, texture=self.texture)
+		self.video_quad = draw.Quad(0, 0, self.width, self.height, 0, texture=self.texture)
 
 	def eof_reached(self, prop, value):
 		if value is False:
@@ -210,7 +209,7 @@ class Video:
 		video_width, video_height = self.video_size
 
 		# Draw video
-		TexturedQuad((0, 0, window_width, window_height), 0, self.tid)
+		draw.Quad((0, 0, window_width, window_height), 0, self.tid)
 
 		# Draw position bar + shadow
 		position_bar_height = 3

@@ -97,7 +97,7 @@ class Tile:
 		self.cover = None
 		self.title = self.font.text(0, 0, 204, self.name, anchor='tl', max_width=config.tile.width, lines=config.tile.text_lines)
 		self.info = None
-		self.shadow = draw.TexturedQuad(0, 0, self.tx_shadow.width, -self.tx_shadow.height, 200, texture=self.tx_shadow, color=config.tile.shadow_color)
+		self.shadow = draw.Quad(0, 0, self.tx_shadow.width, -self.tx_shadow.height, 200, texture=self.tx_shadow, color=config.tile.shadow_color)
 		self.outline = draw.FlatQuad(0, 0, config.tile.width + config.tile.outline_size * 2, -config.tile.thumb_height - config.tile.outline_size * 2, 202, config.tile.outline_color)
 		self.highlight = None
 		self.quad_unseen = None
@@ -161,7 +161,7 @@ class Tile:
 			self.cover.destroy()
 		if cover_data:
 			cover_img = PIL.Image.open(io.BytesIO(cover_data))
-			self.cover = draw.TexturedQuad(0, 0, config.tile.width, -config.tile.thumb_height, 203, image=cover_img)
+			self.cover = draw.Quad(0, 0, config.tile.width, -config.tile.thumb_height, 203, image=cover_img)
 		else:
 			self.cover = draw.FlatQuad(0, 0, config.tile.width, -config.tile.thumb_height, 203, self.tile_color)
 
@@ -211,7 +211,7 @@ class Tile:
 		if quad:
 			quad.pos = (x, y)
 		else:
-			quad = draw.TexturedQuad(x, y, tex.width, -tex.height, z, texture=tex, color=color)
+			quad = draw.Quad(x, y, tex.width, -tex.height, z, texture=tex, color=color)
 			setattr(self, name, quad)
 
 
