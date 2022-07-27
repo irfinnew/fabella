@@ -164,7 +164,7 @@ gl.glClearColor(0.1, 0.1, 0.1, 1)
 
 # Data
 
-N = 13
+N = 43
 TCHOPS = 4
 objects = [
 	0.0, 0.0,				# position
@@ -190,6 +190,15 @@ for i in range(N):
 	objects[idx + 8] = xoff + tsize
 	objects[idx + 9] = yoff + tsize
 
+# Background
+objects[0:15] = [
+	0.0, 0.0,				# position
+	-1.0, -1.0, 1.0, 1.0,	# XY
+	0.0, 0.0, 1.0, 1.0,		# UV
+	0.1, 0.1, 0.1, 1.0,		# color
+	1.0,					# scale
+]
+
 # Main loop
 d = 0.9
 s = 0.2
@@ -197,12 +206,13 @@ frame_count = 0
 frame_time = time.time()
 vtime = 0
 gtime = 0
+window_size = glfw.get_window_size(window)
 while not glfw.window_should_close(window):
 	glfw.wait_events()
 
 	vtime -= time.time()
 	t = time.time() / 10
-	for i in range(N):
+	for i in range(1, N):
 		x = math.sin(t * 2) * d
 		y = math.cos(t) * d
 		idx = i * 15
@@ -215,9 +225,13 @@ while not glfw.window_should_close(window):
 		t += math.pi * 2 / N
 	vtime += time.time()
 
+	newsize = glfw.get_window_size(window)
+
 	gtime -= time.time()
-	gl.glViewport(0, 0, *glfw.get_window_size(window))
-	gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+	if newsize != window_size:
+		window_size = newsize
+		gl.glViewport(0, 0, *window_size)
+	#gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 
 	gl.glUseProgram(shader_program)
 	gl.glUniform1i(texture_uniform, 0)
