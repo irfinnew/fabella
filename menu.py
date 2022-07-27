@@ -302,8 +302,8 @@ class Menu:
 				create_time += time.time()
 				show_time -= time.time()
 				tile.show(
-					(self.tile_hstart + x * self.tile_hoffset,
-					self.height - self.tile_vstart - y * self.tile_voffset - config.tile.thumb_height),
+					(self.tile_hstart + x * self.tile_hoffset - Tile.xoff,
+					self.height - self.tile_vstart - y * self.tile_voffset - config.tile.thumb_height - Tile.yoff),
 					idx == self.current_idx
 				)
 				show_time += time.time()

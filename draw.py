@@ -114,7 +114,8 @@ class Quad:
 		return self.color[3]
 	@opacity.setter
 	def opacity(self, newopa):
-		self.color[3] = newopa
+		#self.color[3] = newopa
+		self.color = self.color[:3] + (newopa,)
 
 	def update_image(self, image):
 		self.texture.update_image(image)

@@ -17,6 +17,9 @@ log = loghelper.get_logger('Tile', loghelper.Color.Cyan)
 
 
 class Tile:
+	xoff = -config.tile.width // 2
+	yoff = -config.tile.thumb_height // 2
+
 	@classmethod
 	def initialize(cls):
 		cfg = config.tile
@@ -95,18 +98,18 @@ class Tile:
 		# Renderables
 		self.cover = None
 		self.title = self.font.text(z=204, text=self.name,
-			x=0, y=-config.tile.text_vspace, anchor='tl',
+			x=self.xoff, y=self.yoff - config.tile.text_vspace, anchor='tl',
 			max_width=config.tile.width, lines=config.tile.text_lines,
 		)
 		self.info = None
 		self.shadow = draw.Quad(z=200,
-			x=-(self.tx_shadow.width - config.tile.width) // 2 + config.tile.shadow_offset,
-			y=-(self.tx_shadow.height - config.tile.thumb_height) // 2 - config.tile.shadow_offset,
+			x=self.xoff - (self.tx_shadow.width - config.tile.width) // 2 + config.tile.shadow_offset,
+			y=self.yoff - (self.tx_shadow.height - config.tile.thumb_height) // 2 - config.tile.shadow_offset,
 			texture=self.tx_shadow, color=config.tile.shadow_color
 		)
 		self.outline = draw.FlatQuad(z=202,
-			x=-config.tile.outline_size,
-			y=-config.tile.outline_size,
+			x=self.xoff - config.tile.outline_size,
+			y=self.yoff - config.tile.outline_size,
 			w=config.tile.width + config.tile.outline_size * 2,
 			h=config.tile.thumb_height + config.tile.outline_size * 2,
 			color=config.tile.outline_color
@@ -144,7 +147,7 @@ class Tile:
 		if 'duration' in meta:
 			self.duration = meta.get('duration', None)
 			if not self.info:
-				self.info = self.font.text(z=204, x=config.tile.width - 4, y=0, anchor='br')
+				self.info = self.font.text(z=204, x=self.xoff + config.tile.width - 4, y=self.yoff, anchor='br')
 			if self.duration is None:
 				self.info.text = '?:??'
 			else:
@@ -173,9 +176,12 @@ class Tile:
 			self.cover.destroy()
 		if cover_data:
 			cover_img = PIL.Image.open(io.BytesIO(cover_data))
-			self.cover = draw.Quad(z=203, image=cover_img)
+			self.cover = draw.Quad(z=203, x=self.xoff, y=self.yoff, image=cover_img)
 		else:
-			self.cover = draw.FlatQuad(z=203, w=config.tile.width, h=config.tile.thumb_height, color=self.tile_color)
+			self.cover = draw.FlatQuad(z=203,
+				x=self.xoff, y=self.yoff, w=config.tile.width, h=config.tile.thumb_height,
+				color=self.tile_color
+			)
 
 
 	def show(self, pos, selected):
@@ -235,27 +241,27 @@ class Tile:
 			self.info.quad.pos = self.pos
 
 		self.maybe(draw.Quad, 'highlight', self.selected, z=201,
-			x=-config.tile.highlight_blursize,
-			y=-config.tile.highlight_blursize,
+			x=self.xoff - config.tile.highlight_blursize,
+			y=self.yoff - config.tile.highlight_blursize,
 			texture=self.tx_highlight, color=config.tile.highlight_color,
 			pos=self.pos,
 		)
 		self.maybe(draw.Quad, 'quad_unseen', self.unseen, z=204,
-			x=config.tile.width - self.tx_unseen.width // 2,
-			y=config.tile.thumb_height - self.tx_unseen.height // 2,
+			x=self.xoff + config.tile.width - self.tx_unseen.width // 2,
+			y=self.yoff + config.tile.thumb_height - self.tx_unseen.height // 2,
 			texture=self.tx_unseen,
 			pos=self.pos,
 		)
 		self.maybe(draw.Quad, 'quad_watching', self.watching, z=204,
-			x=config.tile.width - self.tx_watching.width // 2,
-			y=config.tile.thumb_height - self.tx_watching.height // 2,
+			x=self.xoff + config.tile.width - self.tx_watching.width // 2,
+			y=self.yoff + config.tile.thumb_height - self.tx_watching.height // 2,
 			texture=self.tx_watching,
 			pos=self.pos,
 		)
 		offset = self.unseen * self.tx_unseen.width or self.watching * self.tx_watching.width or 0
 		self.maybe(draw.Quad, 'quad_tagged', self.tagged, z=204,
-			x=config.tile.width - self.tx_tagged.width // 2 - offset,
-			y=config.tile.thumb_height - self.tx_tagged.height // 2,
+			x=self.xoff + config.tile.width - self.tx_tagged.width // 2 - offset,
+			y=self.yoff + config.tile.thumb_height - self.tx_tagged.height // 2,
 			texture=self.tx_tagged,
 			pos=self.pos,
 		)
@@ -263,13 +269,35 @@ class Tile:
 		active = (0 < self.position < 1) and not self.isdir
 		w, h = int(config.tile.width * self.position), config.tile.pos_bar_height
 		self.maybe(draw.FlatQuad, 'quad_posback', active, z=204,
-			x=-1, y=-1, w=w + 2, h=h + 2, pos=self.pos,
+			x=self.xoff - 1, y=self.yoff - 1, w=w + 2, h=h + 2, pos=self.pos,
 			color=config.tile.shadow_color,
 		)
 		self.maybe(draw.FlatQuad, 'quad_posback', active, z=205,
-			w=w, h=h, pos=self.pos,
+			x=self.xoff, y=self.yoff, w=w, h=h, pos=self.pos,
 			color=config.tile.pos_bar_color,
 		)
+
+
+	def animate(self):
+		quads = {
+			self.shadow,
+			self.highlight,
+			self.outline,
+			self.cover,
+			self.title.quad,
+		}
+		if self.quad_unseen:
+			quads.add(self.quad_unseen)
+		if self.quad_watching:
+			quads.add(self.quad_watching)
+		if self.quad_tagged:
+			quads.add(self.quad_tagged)
+
+		scale = (math.sin(time.time()) + 1) / 2
+		for q in quads:
+			q.scale = 1 + scale
+			q.opacity = 1 - scale * 0.9
+
 
 
 	def update_pos(self, position, force=False):
