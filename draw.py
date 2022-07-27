@@ -87,39 +87,34 @@ class ExternalTexture:
 
 
 class Quad:
-	def __init__(self, x, y, w, h, z, texture=None, image=None, color=None):
+	def __init__(self, x=0, y=0, w=None, h=None, z=0, pos=(0, 0), scale=1.0, texture=None, image=None, color=None):
 		self.x = x
 		self.y = y
-		self.z = z
 		self.w = w
 		self.h = h
+		self.z = z
+		self.xpos, self.ypos = pos
+		self.scale = scale
 		self.hidden = False
 		self.texture = Texture(image=image, persistent=False) if texture is None else texture
+		self.w = w or self.texture.width or 0
+		self.h = h or self.texture.height or 0
 		self.color = (1, 1, 1, 1) if color is None else color
 		quads.add(self)
 
 	@property
 	def pos(self):
-		return (self.x, self.y)
+		return (self.xpos, self.ypos)
 	@pos.setter
 	def pos(self, newpos):
-		self.x, self.y = newpos
+		self.xpos, self.ypos = newpos
 
 	@property
-	def x1(self):
-		return min(self.x, self.x + self.w)
-
-	@property
-	def x2(self):
-		return max(self.x, self.x + self.w)
-
-	@property
-	def y1(self):
-		return min(self.y, self.y + self.h)
-
-	@property
-	def y2(self):
-		return max(self.y, self.y + self.h)
+	def opacity(self):
+		return self.color[3]
+	@opacity.setter
+	def opacity(self, newopa):
+		self.color[3] = newopa
 
 	def update_image(self, image):
 		self.texture.update_image(image)
@@ -137,18 +132,18 @@ class Quad:
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture.tid)
 		gl.glBegin(gl.GL_QUADS)
 		gl.glTexCoord2f(0.0, 1.0)
-		gl.glVertex2f(self.x1, self.y1)
+		gl.glVertex2f(self.xpos + self.x * self.scale, self.ypos + self.y * self.scale)
 		gl.glTexCoord2f(1.0, 1.0)
-		gl.glVertex2f(self.x2, self.y1)
+		gl.glVertex2f(self.xpos + (self.x + self.w) * self.scale, self.ypos + self.y * self.scale)
 		gl.glTexCoord2f(1.0, 0.0)
-		gl.glVertex2f(self.x2, self.y2)
+		gl.glVertex2f(self.xpos + (self.x + self.w) * self.scale, self.ypos + (self.y + self.h) * self.scale)
 		gl.glTexCoord2f(0.0, 0.0)
-		gl.glVertex2f(self.x1, self.y2)
+		gl.glVertex2f(self.xpos + self.x * self.scale, self.ypos + (self.y + self.h) * self.scale)
 		gl.glEnd()
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 	def __str__(self):
-		return f'<{type(self).__name__} {self.x}x{self.y} +{self.w}+{self.h} @{self.z}>'
+		return f'<{type(self).__name__} @{self.x},{self.y} #{self.z} x{self.scale} ({self.xd} {self.yd} {self.w} {self.h}>'
 
 	def __repr__(self):
 		return str(self)
@@ -156,5 +151,5 @@ class Quad:
 
 
 class FlatQuad(Quad):
-	def __init__(self, x, y, w, h, z, color):
-		super().__init__(x, y, w, h, z, texture=flat_texture, color=color)
+	def __init__(self, **kwargs):
+		super().__init__(texture=flat_texture, **kwargs)

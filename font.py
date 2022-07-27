@@ -12,15 +12,15 @@ log = loghelper.get_logger('Font', loghelper.Color.BrightBlack)
 
 
 class Text:
-	def __init__(self, font, x, y, z, text, anchor='bl', max_width=None, lines=1):
+	def __init__(self, font, text='', x=0, y=0, z=0, pos=(0, 0), anchor='bl', max_width=None, lines=1):
 		self._text = None
 		self._max_width = None
 		self.width = 0
 		self.height = 0
 		self.update = None
 		self.rendered = False
-		w, h = {'bl': (1, 1), 'br': (-1, 1), 'tl': (1, -1), 'tr': (-1, -1)}[anchor]
-		self.quad = draw.Quad(x, y, w, h, z)
+		self.anchor = anchor
+		self.quad = draw.Quad(x=x, y=y, z=z, pos=pos)
 		self.texture = self.quad.texture
 
 		self.font = font
@@ -90,8 +90,12 @@ class Text:
 		PangoCairo.show_layout(context, layout)
 
 		self.texture.update_raw(width, height, 'BGRA', surface.get_data())
-		self.quad.w = width if self.quad.w > 0 else -width
-		self.quad.h = height if self.quad.h > 0 else -height
+		if self.anchor[1] == 'r':
+			self.quad.x = self.quad.x + self.quad.w - width
+		if self.anchor[0] == 't':
+			self.quad.y = self.quad.y + self.quad.h - height
+		self.quad.w = width
+		self.quad.h = height
 
 	def destroy(self):
 		self.quad.destroy()
@@ -124,8 +128,8 @@ class Font:
 		self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 64, 64)
 		self.context = cairo.Context(self.surface)
 
-	def text(self, x, y, z, text, anchor='bl', max_width=None, lines=1):
-		return Text(self, x, y, z, text, anchor, max_width, lines)
+	def text(self, **kwargs):
+		return Text(self, **kwargs)
 
 	def __str__(self):
 		return f'<Font {self.name} {self.size}, {self.stroke_width}>'

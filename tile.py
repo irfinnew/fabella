@@ -81,8 +81,7 @@ class Tile:
 		log.debug(f'Created {self}')
 
 		# State
-		self.x = None
-		self.y = None
+		self.pos = (None, None)
 		self.selected = False
 		self.used = True
 		self.state_last_update = 0
@@ -95,10 +94,23 @@ class Tile:
 
 		# Renderables
 		self.cover = None
-		self.title = self.font.text(0, 0, 204, self.name, anchor='tl', max_width=config.tile.width, lines=config.tile.text_lines)
+		self.title = self.font.text(z=204, text=self.name,
+			x=0, y=-config.tile.text_vspace, anchor='tl',
+			max_width=config.tile.width, lines=config.tile.text_lines,
+		)
 		self.info = None
-		self.shadow = draw.Quad(0, 0, self.tx_shadow.width, -self.tx_shadow.height, 200, texture=self.tx_shadow, color=config.tile.shadow_color)
-		self.outline = draw.FlatQuad(0, 0, config.tile.width + config.tile.outline_size * 2, -config.tile.thumb_height - config.tile.outline_size * 2, 202, config.tile.outline_color)
+		self.shadow = draw.Quad(z=200,
+			x=-(self.tx_shadow.width - config.tile.width) // 2 + config.tile.shadow_offset,
+			y=-(self.tx_shadow.height - config.tile.thumb_height) // 2 - config.tile.shadow_offset,
+			texture=self.tx_shadow, color=config.tile.shadow_color
+		)
+		self.outline = draw.FlatQuad(z=202,
+			x=-config.tile.outline_size,
+			y=-config.tile.outline_size,
+			w=config.tile.width + config.tile.outline_size * 2,
+			h=config.tile.thumb_height + config.tile.outline_size * 2,
+			color=config.tile.outline_color
+		)
 		self.highlight = None
 		self.quad_unseen = None
 		self.quad_watching = None
@@ -132,7 +144,7 @@ class Tile:
 		if 'duration' in meta:
 			self.duration = meta.get('duration', None)
 			if not self.info:
-				self.info = self.font.text(0, 0, 204, 'foo', anchor='br')
+				self.info = self.font.text(z=204, x=config.tile.width - 4, y=0, anchor='br')
 			if self.duration is None:
 				self.info.text = '?:??'
 			else:
@@ -161,22 +173,20 @@ class Tile:
 			self.cover.destroy()
 		if cover_data:
 			cover_img = PIL.Image.open(io.BytesIO(cover_data))
-			self.cover = draw.Quad(0, 0, config.tile.width, -config.tile.thumb_height, 203, image=cover_img)
+			self.cover = draw.Quad(z=203, image=cover_img)
 		else:
-			self.cover = draw.FlatQuad(0, 0, config.tile.width, -config.tile.thumb_height, 203, self.tile_color)
+			self.cover = draw.FlatQuad(z=203, w=config.tile.width, h=config.tile.thumb_height, color=self.tile_color)
 
 
-	def show(self, x, y, selected):
-		if (x, y, selected) != (self.x, self.y, self.selected):
-			self.x = x
-			self.y = y
+	def show(self, pos, selected):
+		if (pos, selected) != (self.pos, self.selected):
+			self.pos = pos
 			self.selected = selected
 			self.render()
 
 
 	def destroy(self):
-		self.x = None
-		self.y = None
+		self.pos = None
 		self.selected = False
 
 		self.cover.destroy()
@@ -199,7 +209,7 @@ class Tile:
 			self.quad_posback.destroy()
 
 
-	def maybe_texquad(self, name, active, tex, x, y, z, color=(1,1,1,1)):
+	def maybe(self, cls, name, active, **kwargs):
 		quad = getattr(self, name)
 
 		if not active:
@@ -209,52 +219,57 @@ class Tile:
 			return
 
 		if quad:
-			quad.pos = (x, y)
+			for k, v in kwargs.items():
+				setattr(quad, k, v)
 		else:
-			quad = draw.Quad(x, y, tex.width, -tex.height, z, texture=tex, color=color)
-			setattr(self, name, quad)
-
-
-	def maybe_flatquad(self, name, active, x, y, w, h, z, color):
-		quad = getattr(self, name)
-
-		if not active:
-			if quad:
-				quad.destroy()
-				setattr(self, name, None)
-			return
-
-		if quad:
-			quad.pos = (x, y)
-			quad.w = w
-			quad.h = h
-			quad.color = color
-		else:
-			quad = draw.FlatQuad(x, y, w, h, z, color)
+			quad = cls(**kwargs)
 			setattr(self, name, quad)
 
 
 	def render(self):
-		self.shadow.pos = (self.x - config.tile.shadow_blursize + config.tile.shadow_offset, self.y + config.tile.shadow_blursize - config.tile.shadow_offset)
-		self.outline.pos = (self.x - config.tile.outline_size, self.y + config.tile.outline_size)
-		self.cover.pos = (self.x, self.y)
-		self.title.quad.pos = (self.x, self.y - config.tile.thumb_height - config.tile.text_vspace)
+		self.shadow.pos = self.pos
+		self.outline.pos = self.pos
+		self.cover.pos = self.pos
+		self.title.quad.pos = self.pos
 		if self.info:
-			self.info.quad.pos = (self.x + config.tile.width - 4, self.y - config.tile.thumb_height)
+			self.info.quad.pos = self.pos
 
-		self.maybe_texquad('highlight', self.selected, self.tx_highlight, self.x - config.tile.highlight_blursize, self.y + config.tile.highlight_blursize, 201, config.tile.highlight_color)
-
-		self.maybe_texquad('quad_unseen', self.unseen, self.tx_unseen, self.x + config.tile.width - self.tx_unseen.width // 2, self.y + self.tx_unseen.width // 2, 204)
-		self.maybe_texquad('quad_watching', self.watching, self.tx_watching, self.x + config.tile.width - self.tx_watching.width // 2, self.y + self.tx_watching.width // 2, 204)
-		# FIXME: or watching width
-		offset = (self.unseen or self.watching) * self.tx_unseen.width
-		self.maybe_texquad('quad_tagged', self.tagged, self.tx_tagged, self.x + config.tile.width - 24 - offset, self.y + 24, 204)
+		self.maybe(draw.Quad, 'highlight', self.selected, z=201,
+			x=-config.tile.highlight_blursize,
+			y=-config.tile.highlight_blursize,
+			texture=self.tx_highlight, color=config.tile.highlight_color,
+			pos=self.pos,
+		)
+		self.maybe(draw.Quad, 'quad_unseen', self.unseen, z=204,
+			x=config.tile.width - self.tx_unseen.width // 2,
+			y=config.tile.thumb_height - self.tx_unseen.height // 2,
+			texture=self.tx_unseen,
+			pos=self.pos,
+		)
+		self.maybe(draw.Quad, 'quad_watching', self.watching, z=204,
+			x=config.tile.width - self.tx_watching.width // 2,
+			y=config.tile.thumb_height - self.tx_watching.height // 2,
+			texture=self.tx_watching,
+			pos=self.pos,
+		)
+		offset = self.unseen * self.tx_unseen.width or self.watching * self.tx_watching.width or 0
+		self.maybe(draw.Quad, 'quad_tagged', self.tagged, z=204,
+			x=config.tile.width - self.tx_tagged.width // 2 - offset,
+			y=config.tile.thumb_height - self.tx_tagged.height // 2,
+			texture=self.tx_tagged,
+			pos=self.pos,
+		)
 
 		active = (0 < self.position < 1) and not self.isdir
-		x, y = self.x, self.y - config.tile.thumb_height
 		w, h = int(config.tile.width * self.position), config.tile.pos_bar_height
-		self.maybe_flatquad('quad_posbar', active, x, y, w, h, 205, config.tile.pos_bar_color)
-		self.maybe_flatquad('quad_posback', active, x - 1, y - 1, w + 2, h + 2, 204, config.tile.shadow_color)
+		self.maybe(draw.FlatQuad, 'quad_posback', active, z=204,
+			x=-1, y=-1, w=w + 2, h=h + 2, pos=self.pos,
+			color=config.tile.shadow_color,
+		)
+		self.maybe(draw.FlatQuad, 'quad_posback', active, z=205,
+			w=w, h=h, pos=self.pos,
+			color=config.tile.pos_bar_color,
+		)
 
 
 	def update_pos(self, position, force=False):

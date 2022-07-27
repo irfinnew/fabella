@@ -35,10 +35,14 @@ class Menu:
 		self.index = []
 		self.tiles = {}
 		self.covers_zip = None
-		self.background = draw.FlatQuad(0, 0, width, height, 1, config.menu.background_color)
+		self.background = draw.FlatQuad(z=1, w=width, h=height, color=config.menu.background_color)
 		self.breadcrumbs = []
-		self.bread_text = self.menu_font.text(config.menu.header_hspace, height - config.menu.header_vspace, 101, '', anchor='tl')
-		self.clock_text = self.menu_font.text(width - config.menu.header_hspace, height - config.menu.header_vspace, 101, 'clock', anchor='tr')
+		self.bread_text = self.menu_font.text(z=101, text='', anchor='tl',
+			pos=(config.menu.header_hspace, height - config.menu.header_vspace),
+		)
+		self.clock_text = self.menu_font.text(z=101, text='clock', anchor='tr',
+			pos=(width - config.menu.header_hspace, height - config.menu.header_vspace),
+		)
 
 		# FIXME: this entire section is yuck
 		tile_width = config.tile.width
@@ -298,8 +302,8 @@ class Menu:
 				create_time += time.time()
 				show_time -= time.time()
 				tile.show(
-					self.tile_hstart + x * self.tile_hoffset,
-					self.height - self.tile_vstart - y * self.tile_voffset,
+					(self.tile_hstart + x * self.tile_hoffset,
+					self.height - self.tile_vstart - y * self.tile_voffset - config.tile.thumb_height),
 					idx == self.current_idx
 				)
 				show_time += time.time()
