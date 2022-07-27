@@ -7,7 +7,6 @@ import os
 # https://stackoverflow.com/questions/42185728/why-is-glgenvertexarrays-undefined-in-pyopengl-when-using-gtkglarea
 os.environ['PYOPENGL_PLATFORM'] = 'egl'
 
-import numpy as np
 import glfw
 import OpenGL.GL as gl
 import OpenGL.GL.shaders
@@ -16,6 +15,7 @@ import math
 import random
 import PIL.Image
 import ctypes
+import array
 
 
 
@@ -173,7 +173,7 @@ objects = [
 	1.0, 1.0, 1.0, 1.0,		# color
 	1.0,					# scale
 ] * N
-objects = np.array(objects, dtype=np.float32)
+objects = array.array('f', objects)
 for i in range(N):
 	idx = i * 15
 	# Color
@@ -191,13 +191,13 @@ for i in range(N):
 	objects[idx + 9] = yoff + tsize
 
 # Background
-objects[0:15] = [
+objects[0:15] = array.array('f', [
 	0.0, 0.0,				# position
 	-1.0, -1.0, 1.0, 1.0,	# XY
 	0.0, 0.0, 1.0, 1.0,		# UV
 	0.1, 0.1, 0.1, 1.0,		# color
 	1.0,					# scale
-]
+])
 
 # Main loop
 d = 0.9
@@ -240,7 +240,9 @@ while not glfw.window_should_close(window):
 
 	gl.glBindVertexArray(vao)
 	gl.glBindBuffer(gl.GL_ARRAY_BUFFER, vbo)
-	gl.glBufferData(gl.GL_ARRAY_BUFFER, objects.nbytes, objects, gl.GL_STATIC_DRAW)
+	blah = objects.tobytes()
+	gl.glBufferData(gl.GL_ARRAY_BUFFER, len(blah), blah, gl.GL_STATIC_DRAW)
+	#gl.glBufferData(gl.GL_ARRAY_BUFFER, objects.nbytes, objects, gl.GL_STATIC_DRAW)
 	gl.glDrawArrays(gl.GL_POINTS, 0, N)
 
 	gl.glUseProgram(0)
