@@ -8,7 +8,7 @@ import OpenGL.GL as gl
 
 import loghelper
 import draw
-from draw import Quad, FlatQuad, ShadedQuad, TexturedQuad
+from draw import FlatQuad, TexturedQuad
 
 log = loghelper.get_logger('Video', loghelper.Color.Yellow)
 
@@ -220,10 +220,10 @@ class Video:
 		position_bar_color = (0.4, 0.4, 1, 1)  # Blueish
 		#position_bar_color = (0.8, 0.1, 0.1, 1)  # Red
 
-		ShadedQuad(
-			(0, position_bar_height, window_width, position_bar_height + position_shadow_height),
-			1,
-			((0, 0, 0, 1), (0, 0, 0, 1), (0, 0, 0, 0), (0, 0, 0, 0))
-		)
-		FlatQuad((0, 0, window_width                , position_bar_height), 1, (0, 0, 0, 1))
-		FlatQuad((0, 0, window_width * self.position, position_bar_height), 2, position_bar_color)
+		#ShadedQuad(
+		#	(0, position_bar_height, window_width, position_bar_height + position_shadow_height),
+		#	1,
+		#	((0, 0, 0, 1), (0, 0, 0, 1), (0, 0, 0, 0), (0, 0, 0, 0))
+		#)
+		#FlatQuad((0, 0, window_width                , position_bar_height), 1, (0, 0, 0, 1))
+		#FlatQuad((0, 0, window_width * self.position, position_bar_height), 2, position_bar_color)

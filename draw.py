@@ -4,6 +4,14 @@ import OpenGL.GL as gl
 quads = set()
 
 # Only call from main thread
+flat_texture = None
+def initialize():
+	global flat_texture
+	flat_texture = Texture()
+	flat_texture.update_raw(1, 1, 'RGBA', b'\xff' * 4)
+
+
+# Only call from main thread
 def render():
 	# FIXME: maybe make sorting invariant for efficiency?
 	for quad in sorted({q for q in quads if not q.hidden}, key = operator.attrgetter('z')):
@@ -128,43 +136,6 @@ class Quad:
 
 
 
-class FlatQuad(Quad):
-	def __init__(self, x, y, w, h, z, color):
-		self.color = color
-		super().__init__(x, y, w, h, z)
-
-	# Only call from main thread
-	def render(self):
-		gl.glColor4f(*self.color)
-		gl.glBegin(gl.GL_QUADS)
-		gl.glVertex2f(self.x1, self.y1)
-		gl.glVertex2f(self.x2, self.y1)
-		gl.glVertex2f(self.x2, self.y2)
-		gl.glVertex2f(self.x1, self.y2)
-		gl.glEnd()
-
-
-
-class ShadedQuad(Quad):
-	def __init__(self, x, y, w, h, z, colors):
-		self.colors = colors
-		super().__init__(x, y, w, h, z)
-
-	# Only call from main thread
-	def render(self):
-		gl.glBegin(gl.GL_QUADS)
-		gl.glColor4f(*self.colors[0])
-		gl.glVertex2f(self.x1, self.y1)
-		gl.glColor4f(*self.colors[1])
-		gl.glVertex2f(self.x2, self.y1)
-		gl.glColor4f(*self.colors[2])
-		gl.glVertex2f(self.x2, self.y2)
-		gl.glColor4f(*self.colors[3])
-		gl.glVertex2f(self.x1, self.y2)
-		gl.glEnd()
-
-
-
 class TexturedQuad(Quad):
 	# Only call from main thread
 	def __init__(self, x, y, w, h, z, texture=None, image=None, color=None):
@@ -199,3 +170,9 @@ class TexturedQuad(Quad):
 		gl.glVertex2f(self.x1, self.y2)
 		gl.glEnd()
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+
+
+
+class FlatQuad(TexturedQuad):
+	def __init__(self, x, y, w, h, z, color):
+		super().__init__(x, y, w, h, z, texture=flat_texture, color=color)

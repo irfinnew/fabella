@@ -70,7 +70,6 @@ class Tile:
 
 
 	def __init__(self, menu, meta, covers_zip=None):
-		print(f'Tile.__init__({meta})')
 		self.menu = menu
 		self.path = menu.path
 		self.font = menu.tile_font # FIXME Yuck
@@ -231,7 +230,7 @@ class Tile:
 			quad.h = h
 			quad.color = color
 		else:
-			quad = draw.FlatQuad(x, y, w, -h, z, color)
+			quad = draw.FlatQuad(x, y, w, h, z, color)
 			setattr(self, name, quad)
 
 
@@ -252,10 +251,10 @@ class Tile:
 		self.maybe_texquad('quad_tagged', self.tagged, self.tx_tagged, self.x + config.tile.width - 24 - offset, self.y + 24, 204)
 
 		active = (0 < self.position < 1) and not self.isdir
-		x, y = self.x, self.y - config.tile.thumb_height + config.tile.pos_bar_height
+		x, y = self.x, self.y - config.tile.thumb_height
 		w, h = int(config.tile.width * self.position), config.tile.pos_bar_height
 		self.maybe_flatquad('quad_posbar', active, x, y, w, h, 205, config.tile.pos_bar_color)
-		self.maybe_flatquad('quad_posback', active, x - 1, y + 1, w + 2, h + 2, 204, config.tile.shadow_color)
+		self.maybe_flatquad('quad_posback', active, x - 1, y - 1, w + 2, h + 2, 204, config.tile.shadow_color)
 
 
 	def update_pos(self, position, force=False):

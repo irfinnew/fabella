@@ -24,6 +24,7 @@ log.info('Starting Fabella.')
 
 # FIXME: hardcoded monitor
 window = Window(2, "Fabella")
+draw.initialize()
 Tile.initialize()
 menu = Menu(sys.argv[1], window.width, window.height, enabled=True)
 video = Video(window.width, window.height)
