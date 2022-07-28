@@ -104,11 +104,10 @@ class Menu:
 		self.forget()
 		log.info(f'Loading {path}')
 		self.path = path
+		timer = time.time()
 
-		start = time.time()
 		index_db_name = os.path.join(path, dbs.INDEX_DB_NAME)
 		index = dbs.json_read(index_db_name, dbs.INDEX_DB_SCHEMA, default=None)
-		print(f'index_read: {time.time() - start}')
 
 		if index is None:
 			log.warning(f'falling back to scandir()')
@@ -119,16 +118,12 @@ class Menu:
 			self.index = index
 			return
 
-		start = time.time()
 		state_db_name = os.path.join(path, dbs.STATE_DB_NAME)
 		state = dbs.json_read(state_db_name, dbs.STATE_DB_SCHEMA)
-		print(f'state_read: {time.time() - start}')
 
 		index = index['files']
-		start = time.time()
 		for entry in index:
 			entry.update(state.get(entry['name'], {}))
-		print(f'reorganize: {time.time() - start}')
 		self.index = index
 
 		# Open cover DB
@@ -140,18 +135,23 @@ class Menu:
 			log.error(f'Parsing cover DB {cover_db_name}: {e}')
 
 		# Find first "watching" video
+		index = 0
 		for i, tile in enumerate(self.index):
 			if 0.0 < tile.get('position', 0.0) < 1.0:
-				self.jump_tile(i)
+				index = i
 				break
 		else:
 			# Otherwise find the first "unseen" video
 			for i, tile in enumerate(self.index):
 				if tile.get('position', 0.0) == 0.0:
-					self.jump_tile(i)
+					index = i
 					break
 
-		self.draw_tiles()
+		timer = int((time.time() - timer) * 1000)
+		log.info(f'Loaded tiles in {timer}ms')
+
+		# This will also draw
+		self.jump_tile(index)
 
 
 	# FIXME: are we using this?
@@ -285,36 +285,35 @@ class Menu:
 
 
 	def draw_tiles(self):
+		timer = time.time()
+
 		for tile in self.tiles.values():
 			tile.used = False
-		create_time = 0
-		show_time = 0
+
 		for y in range(self.tile_rows):
 			for x in range(self.tile_columns):
 				idx = (y + self.current_offset) * self.tile_columns + x
 				if idx >= len(self.index):
 					break
-				create_time -= time.time()
 				try:
 					tile = self.tiles[idx]
 				except KeyError:
 					tile = Tile(self, self.index[idx], self.covers_zip)
-				create_time += time.time()
-				show_time -= time.time()
 				tile.show(
 					(self.tile_hstart + x * self.tile_hoffset - Tile.xoff,
 					self.height - self.tile_vstart - y * self.tile_voffset - config.tile.thumb_height - Tile.yoff),
 					idx == self.current_idx
 				)
-				show_time += time.time()
 				self.tiles[idx] = tile
 				tile.used = True
-		print(f'create_time: {int(create_time * 1000)}, show_time: {int(show_time * 1000)}')
 
 		for idx, tile in dict(self.tiles).items():
 			if not tile.used:
 				tile.destroy()
 				del self.tiles[idx]
+
+		timer = int((time.time() - timer) * 1000)
+		log.info(f'Drew tiles in {timer}ms')
 
 		# FIXME: put somewhere else
 		self.clock_text.text = datetime.datetime.now().strftime('%a %H:%M:%S')
