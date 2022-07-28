@@ -81,8 +81,9 @@ class Video:
 		gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
-		self.texture = draw.ExternalTexture(self.tid)
-		self.video_quad = draw.Quad(0, 0, self.width, self.height, 0, texture=self.texture)
+		# FIXME: broken for now
+		#self.texture = draw.ExternalTexture(self.tid)
+		#self.video_quad = draw.Quad(0, 0, self.width, self.height, 0, texture=self.texture)
 
 	def eof_reached(self, prop, value):
 		if value is False:

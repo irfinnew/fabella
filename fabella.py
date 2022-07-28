@@ -112,6 +112,8 @@ while not window.closed():
 					video.stop()
 					window.terminate()
 					exit()
+				if key == glfw.KEY_T:
+					draw.SuperTexture.dump()
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
 				if key == glfw.KEY_ESCAPE:
