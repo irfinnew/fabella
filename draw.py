@@ -1,7 +1,7 @@
 import operator
 import OpenGL.GL as gl
 import PIL.Image  # Hmm, just for SuperTexture.dump() ?
-import random
+import math
 
 import loghelper
 
@@ -13,22 +13,37 @@ log = loghelper.get_logger('Draw', loghelper.Color.BrightBlack)
 quads = set()
 
 flat_texture = None
-TSIZE = 4096
-def initialize():
-	SuperTexture.initialize(TSIZE)  # FIXME: properly choose size
+def initialize(width, height):
+	log.info(f'Initialize for {width}x{height}')
+	max_size = gl.glGetInteger(gl.GL_MAX_TEXTURE_SIZE)
+	log.info(f'GL_MAX_TEXTURE_SIZE = {max_size}')
+
+	size = max(width, height)
+	size = 2 ** math.ceil(math.log2(size))
+	size *= 2
+	if size > max_size:
+		log.error(f'Desired texture size {size}x{size} unsupported, using {max_size}x{max_size}!')
+		size = max_size
+
+	SuperTexture.initialize(size)
+
 	global flat_texture
 	flat_texture = Texture()
 	flat_texture.update_raw(1, 1, 'RGBA', b'\xff' * 4)
 
 	# Hack to avoid texture edge bleeding
-	d = 1 / (TSIZE * 2)
+	d = 1 / (size * 2)
 	uv = flat_texture.uv
 	flat_texture.uv = (uv[0] + d, uv[1] + d, uv[2] - d, uv[3] - d)
 
 def render():
 	# FIXME: maybe make sorting invariant for efficiency?
+	SuperTexture.bind()
+	gl.glBegin(gl.GL_QUADS)
 	for quad in sorted({q for q in quads if not q.hidden}, key = operator.attrgetter('z')):
 		quad.render()
+	gl.glEnd()
+	gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 
 
@@ -100,9 +115,6 @@ class SuperTexture:
 
 	@classmethod
 	def dump(cls):
-		print('freelist:')
-		for f in cls.freelist:
-			print(f'    {f}')
 		items = len(cls.freelist)
 		pixels = sum(h * w for (h, w, x, y) in cls.freelist)
 		log.warning(f'Dumping SuperTexture ({items} items, {pixels} pixels on freelist)')
@@ -218,9 +230,7 @@ class Quad:
 		if not self.texture.concrete:
 			return
 		uv = self.texture.uv
-		SuperTexture.bind()
 		gl.glColor4f(*self.color)
-		gl.glBegin(gl.GL_QUADS)
 		gl.glTexCoord2f(uv[0], uv[3])
 		gl.glVertex2f(self.xpos + self.x * self.scale, self.ypos + self.y * self.scale)
 		gl.glTexCoord2f(uv[2], uv[3])
@@ -229,8 +239,6 @@ class Quad:
 		gl.glVertex2f(self.xpos + (self.x + self.w) * self.scale, self.ypos + (self.y + self.h) * self.scale)
 		gl.glTexCoord2f(uv[0], uv[1])
 		gl.glVertex2f(self.xpos + self.x * self.scale, self.ypos + (self.y + self.h) * self.scale)
-		gl.glEnd()
-		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
 	def __str__(self):
 		return f'<{type(self).__name__} @{self.x},{self.y} #{self.z} x{self.scale} ({self.xd} {self.yd} {self.w} {self.h}>'
@@ -243,6 +251,3 @@ class Quad:
 class FlatQuad(Quad):
 	def __init__(self, **kwargs):
 		super().__init__(texture=flat_texture, **kwargs)
-
-	def render(self):
-		super().render()
