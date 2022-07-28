@@ -1,11 +1,15 @@
 #! /usr/bin/env python3
 
-# Requires pyGLFW, PyOpenGL, python-mpv, pillow >= 6.2.0
+import os
+# ^&!@%#^%^$@!#&^$! FIXME
+# Somehow, despite running under Wayland/EGL, PyOpenGL ends up using GLX?
+# Forcing EGL makes the program work.
+# https://stackoverflow.com/questions/42185728/why-is-glgenvertexarrays-undefined-in-pyopengl-when-using-gtkglarea
+os.environ['PYOPENGL_PLATFORM'] = 'egl'
 
 import sys
 import glfw
 import time
-import OpenGL.GL as gl
 
 import loghelper
 from window import Window
@@ -25,7 +29,7 @@ log.info('Starting Fabella.')
 #### Initialization
 # FIXME: hardcoded monitor
 window = Window(2, "Fabella")
-draw.initialize(window.width, window.height)
+draw.State.initialize(window.width, window.height)
 Tile.initialize()
 menu = Menu(sys.argv[1], window.width, window.height, enabled=True)
 video = Video(window.width, window.height)
@@ -138,7 +142,7 @@ while not window.closed():
 						video.mpv.show_text(f'Subtitles {subid}/{sub_count}: {sublang.upper()}\n{subtitle}')
 
 	video.render()
-	draw.render()
+	draw.State.render()
 	window.swap_buffers()
 
 	frame_count += 1

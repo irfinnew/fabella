@@ -1,66 +1,125 @@
 import operator
-import OpenGL, OpenGL.GL as gl
+import OpenGL, OpenGL.GL.shaders, OpenGL.GL as gl
 import PIL.Image  # Hmm, just for SuperTexture.dump() ?
 import math
+import ctypes
+import array
 
 import loghelper
 
 log = loghelper.get_logger('Draw', loghelper.Color.BrightBlack)
-
-
-
 # XXX: Not yet thread safe, only call stuff from main thread
-def initialize(width, height):
-	log.info(f'PyOpenGL version {OpenGL.version.__version__}')
-	log.info(f'Initialize for {width}x{height}')
-
-	# Init OpenGL
-	gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
-	gl.glEnable(gl.GL_BLEND)
-	gl.glEnable(gl.GL_TEXTURE_2D)
-	gl.glMatrixMode(gl.GL_PROJECTION)
-	gl.glLoadIdentity()
-	gl.glOrtho(0, width, 0, height, 0, 1)
-	gl.glMatrixMode(gl.GL_MODELVIEW)
-
-	# Allocate SuperTexture
-	max_size = gl.glGetInteger(gl.GL_MAX_TEXTURE_SIZE)
-	log.info(f'GL_MAX_TEXTURE_SIZE = {max_size}')
-	size = max(width, height)
-	size = 2 ** math.ceil(math.log2(size))
-	size *= 2
-	if size > max_size:
-		log.error(f'Desired texture size {size}x{size} unsupported, using {max_size}x{max_size}!')
-		size = max_size
-	SuperTexture.initialize(size)
-
-	# Allocate video texture.
-	# This NEEDS to be done first, because it has to go in the top left corner.
-	# MPV doesn't support rendering to any other position.
-	Texture.video = Texture()
-	Texture.video.update_raw(width, height, 'RGBA', None)
-
-	# Allocate single white-pixel texture for rendering flats
-	Texture.flat = Texture()
-	Texture.flat.update_raw(1, 1, 'RGBA', b'\xff' * 4)
-	# Hack to avoid texture edge bleeding
-	d = 1 / (size * 2)
-	uv = Texture.flat.uv
-	Texture.flat.uv = (uv[0] + d, uv[1] + d, uv[2] - d, uv[3] - d)
 
 
 
-def render():
-	# MPV seems to mess this up, so we have to re-enable it.
-	gl.glEnable(gl.GL_BLEND)
+class State:
+	width = None
+	height = None
+	shader = None
+	uTexture = None
+	uResolution = None
+	vao = None
+	vbo = None
 
-	# FIXME: maybe make sorting invariant for efficiency?
-	SuperTexture.bind()
-	gl.glBegin(gl.GL_QUADS)
-	for quad in sorted({q for q in Quad.all if not q.hidden}, key = operator.attrgetter('z')):
-		quad.render()
-	gl.glEnd()
-	gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+	def __init__(self):
+		raise NotImplementedError('Instantiation not allowed.')
+
+	@classmethod
+	def initialize(cls, width, height):
+		log.info(f'PyOpenGL version {OpenGL.version.__version__}')
+		log.info(f'Initialize for {width}x{height}')
+		cls.width = width
+		cls.height = height
+
+		# Init OpenGL
+		gl.glEnable(gl.GL_BLEND)
+		gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+
+		# Shaders
+		geometry_shader = gl.shaders.compileShader(GEOMETRY_SHADER, gl.GL_GEOMETRY_SHADER)
+		vertex_shader = gl.shaders.compileShader(VERTEX_SHADER, gl.GL_VERTEX_SHADER)
+		fragment_shader = gl.shaders.compileShader(FRAGMENT_SHADER, gl.GL_FRAGMENT_SHADER)
+		cls.shader = gl.shaders.compileProgram(vertex_shader, fragment_shader)
+		gl.shaders.glAttachShader(cls.shader, geometry_shader)
+		gl.glLinkProgram(cls.shader)
+
+		# Arrays / buffers
+		cls.vao = gl.glGenVertexArrays(1)
+		gl.glBindVertexArray(cls.vao)
+
+		cls.vbo = gl.glGenBuffers(1)
+		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, cls.vbo)
+		gl.glEnableVertexAttribArray(0)
+		gl.glVertexAttribPointer(0, 2, gl.GL_FLOAT, False, 60, ctypes.c_void_p(0))
+		gl.glEnableVertexAttribArray(1)
+		gl.glVertexAttribPointer(1, 4, gl.GL_FLOAT, False, 60, ctypes.c_void_p(8))
+		gl.glEnableVertexAttribArray(2)
+		gl.glVertexAttribPointer(2, 4, gl.GL_FLOAT, False, 60, ctypes.c_void_p(24))
+		gl.glEnableVertexAttribArray(3)
+		gl.glVertexAttribPointer(3, 4, gl.GL_FLOAT, False, 60, ctypes.c_void_p(40))
+		gl.glEnableVertexAttribArray(4)
+		gl.glVertexAttribPointer(4, 1, gl.GL_FLOAT, False, 60, ctypes.c_void_p(56))
+
+		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
+		gl.glBindVertexArray(0)
+
+		# Texture stuff
+		cls.uTexture = gl.glGetUniformLocation(cls.shader, 'texture')
+		cls.uResolution = gl.glGetUniformLocation(cls.shader, 'resolution')
+
+		# Allocate SuperTexture
+		max_size = gl.glGetInteger(gl.GL_MAX_TEXTURE_SIZE)
+		log.info(f'GL_MAX_TEXTURE_SIZE = {max_size}')
+		size = max(width, height)
+		size = 2 ** math.ceil(math.log2(size))
+		size *= 2
+		if size > max_size:
+			log.error(f'Desired texture size {size}x{size} unsupported, using {max_size}x{max_size}!')
+			size = max_size
+		SuperTexture.initialize(size)
+
+		# Allocate video texture.
+		# This NEEDS to be done first, because it has to go in the top left corner.
+		# MPV doesn't support rendering to any other position.
+		Texture.video = Texture()
+		Texture.video.update_raw(width, height, 'RGBA', None)
+
+		# Allocate single white-pixel texture for rendering flats
+		Texture.flat = Texture()
+		Texture.flat.update_raw(1, 1, 'RGBA', b'\xff' * 4)
+		# Hack to avoid texture edge bleeding
+		d = 1 / (size * 2)
+		uv = Texture.flat.uv
+		Texture.flat.uv = (uv[0] + d, uv[1] + d, uv[2] - d, uv[3] - d)
+
+
+	@classmethod
+	def render(cls):
+		# MPV seems to mess this up, so we have to re-enable it.
+		gl.glEnable(gl.GL_BLEND)
+
+		objects = array.array('f', [])
+		for quad in sorted({q for q in Quad.all if not q.hidden}, key = operator.attrgetter('z')):
+			objects.extend(quad.array())
+
+		gl.glClearColor(0.1, 0.1, 0.1, 1)
+		gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+
+		gl.glUseProgram(cls.shader)
+		gl.glUniform1i(cls.uTexture, 0)
+		gl.glUniform2f(cls.uResolution, cls.width / 2, cls.height / 2)
+		gl.glActiveTexture(gl.GL_TEXTURE0)
+		gl.glBindTexture(gl.GL_TEXTURE_2D, SuperTexture.tid)
+
+		gl.glBindVertexArray(cls.vao)
+		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, cls.vbo)
+		blah = objects.tobytes()
+		gl.glBufferData(gl.GL_ARRAY_BUFFER, len(blah), blah, gl.GL_STATIC_DRAW)
+		gl.glDrawArrays(gl.GL_POINTS, 0, len(Quad.all))
+
+		gl.glUseProgram(0)
+		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
+		gl.glBindVertexArray(0)
 
 
 
@@ -231,19 +290,17 @@ class Quad:
 		del self.x # trigger AttributeError if we're used after this
 		del self.texture  # trigger AttributeError if we're used after this
 
-	def render(self):
+	def array(self):
 		if not self.texture.concrete:
-			return
-		uv = self.texture.uv
-		gl.glColor4f(*self.color)
-		gl.glTexCoord2f(uv[0], uv[3])
-		gl.glVertex2f(self.xpos + self.x * self.scale, self.ypos + self.y * self.scale)
-		gl.glTexCoord2f(uv[2], uv[3])
-		gl.glVertex2f(self.xpos + (self.x + self.w) * self.scale, self.ypos + self.y * self.scale)
-		gl.glTexCoord2f(uv[2], uv[1])
-		gl.glVertex2f(self.xpos + (self.x + self.w) * self.scale, self.ypos + (self.y + self.h) * self.scale)
-		gl.glTexCoord2f(uv[0], uv[1])
-		gl.glVertex2f(self.xpos + self.x * self.scale, self.ypos + (self.y + self.h) * self.scale)
+			return array.array('f', [])
+
+		return array.array('f', [
+			self.xpos, self.ypos,
+			self.x, self.y, self.x + self.w, self.y + self.h,
+			*self.texture.uv,
+			*self.color,
+			self.scale
+		])
 
 	def __str__(self):
 		return f'<{type(self).__name__} @{self.x},{self.y} #{self.z} x{self.scale} ({self.xd} {self.yd} {self.w} {self.h}>'
@@ -256,3 +313,92 @@ class Quad:
 class FlatQuad(Quad):
 	def __init__(self, **kwargs):
 		super().__init__(texture=Texture.flat, **kwargs)
+
+
+
+VERTEX_SHADER = """#version 330 core
+uniform vec2 resolution;
+layout (location = 0) in vec2 position;
+layout (location = 1) in vec4 XY;
+layout (location = 2) in vec4 UV;
+layout (location = 3) in vec4 color;
+layout (location = 4) in float scale;
+
+out VDATA {
+	vec4 XY;
+	vec4 UV;
+	vec4 color;
+} vdata;
+
+void main()
+{
+	vdata.XY = vec4(
+		(XY[0] / resolution[0] - 1) * scale,
+		(XY[1] / resolution[1] - 1) * scale,
+		(XY[2] / resolution[0] - 1) * scale,
+		(XY[3] / resolution[1] - 1) * scale
+	);
+	vdata.UV = UV;
+	vdata.color = color;
+	gl_Position = vec4(position[0] / resolution[0], position[1] / resolution[1], 0.0, 1.0);
+}
+"""
+
+
+
+GEOMETRY_SHADER = """#version 330 core
+layout (points) in;
+layout (triangle_strip, max_vertices = 4) out;
+
+in VDATA {
+	vec4 XY;
+	vec4 UV;
+	vec4 color;
+} vdata[];
+
+out vec2 UV;
+out vec4 color;
+
+void main() {
+	vec4 position = gl_in[0].gl_Position;
+
+	color = vdata[0].color;
+
+	// Bottom-left
+	gl_Position = position + vec4(vdata[0].XY[0], vdata[0].XY[1], 0.0, 0.0);
+	UV = vec2(vdata[0].UV[0], vdata[0].UV[3]);
+	EmitVertex();
+
+	// Bottom-right
+	gl_Position = position + vec4(vdata[0].XY[2], vdata[0].XY[1], 0.0, 0.0);
+	UV = vec2(vdata[0].UV[2], vdata[0].UV[3]);
+	EmitVertex();
+
+	// Top-left
+	gl_Position = position + vec4(vdata[0].XY[0], vdata[0].XY[3], 0.0, 0.0);
+	UV = vec2(vdata[0].UV[0], vdata[0].UV[1]);
+	EmitVertex();
+
+	// Top-right
+	gl_Position = position + vec4(vdata[0].XY[2], vdata[0].XY[3], 0.0, 0.0);
+	UV = vec2(vdata[0].UV[2], vdata[0].UV[1]);
+	EmitVertex();
+
+	EndPrimitive();
+}
+"""
+
+
+
+FRAGMENT_SHADER = """#version 330 core
+uniform sampler2D texture;
+in vec2 UV;
+in vec4 color;
+
+out vec4 FragColor;
+
+void main()
+{
+	FragColor = texture2D(texture, UV) * color;
+}
+"""
