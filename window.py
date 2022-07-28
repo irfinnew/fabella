@@ -45,7 +45,7 @@ class Display:
 
 class Window:
 	def __init__(self, display_num, title):
-		log.info(f'GLFW version {glfw.VERSION_MAJOR}.{glfw.VERSION_MINOR}.{glfw.VERSION_REVISION}')
+		log.info(f'pyglfw {glfw.__version__}, using GLFW {glfw.VERSION_MAJOR}.{glfw.VERSION_MINOR}.{glfw.VERSION_REVISION}')
 		if not glfw.init():
 			log.critical('glfw.init() failed')
 			raise 'glfw.init()'
