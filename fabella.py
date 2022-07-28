@@ -150,7 +150,7 @@ while not window.closed():
 				if key == glfw.KEY_DELETE:
 					menu.toggle_tagged()
 
-	video.render(window.width, window.height)
+	video.render()
 
 	# MPV seems to reset some of this stuff, so re-init
 	gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)

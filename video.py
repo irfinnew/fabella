@@ -17,7 +17,6 @@ class Video:
 	def __init__(self, width, height):
 		log.debug('Created instance')
 		self.current_file = None
-		self.video_size = (640, 360)
 		self.duration = 0
 		self.position = 0
 		self.position_immune_until = 0
@@ -67,19 +66,15 @@ class Video:
 		self.mpv.observe_property('eof-reached', self.eof_reached)
 
 		# FIXME
+		self.texture = draw.Texture.video
 		self.fbo = gl.glGenFramebuffers(1)
 		gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, self.fbo)
-
-		self.tid = gl.glGenTextures(1)
-		gl.glBindTexture(gl.GL_TEXTURE_2D, self.tid)
-		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, *self.video_size, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, None)
-		gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, self.tid, 0)
+		#gl.glBindTexture(gl.GL_TEXTURE_2D, draw.SuperTexture.tid)
+		gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, draw.SuperTexture.tid, 0)
 		assert gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER) == gl.GL_FRAMEBUFFER_COMPLETE
-
 		gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
-		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		#gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+		self.quad = draw.Quad(z=0, w=width, h=height, texture=self.texture)
 
 		# FIXME: broken for now
 		#self.texture = draw.ExternalTexture(self.tid)
@@ -182,25 +177,16 @@ class Video:
 			log.warning('Seek error')
 			print(e)
 
-	def render(self, width, height):
-		force_render = False
-		if self.video_size != (width, height):
-			log.info(f'Resizing video tid from {self.video_size} to {(width, height)}')
-			gl.glBindTexture(gl.GL_TEXTURE_2D, self.tid)
-			gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, width, height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, None)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-			self.video_size = (width, height)
-			self.rendered = False
-			force_render = True
-
-		if self.should_render and (self.context.update() or force_render):
+	def render(self):
+		if self.should_render and self.context.update():
 			log.debug('Rendering frame')
 			# FIXME: apparently, we shouldn't call other mpv functions from the same
 			# thread as render(). Find a way to fix that.
-			ret = self.context.render(flip_y=False, opengl_fbo={'w': width, 'h': height, 'fbo': self.fbo})
+			ret = self.context.render(flip_y=False, opengl_fbo={'w': self.width, 'h': self.height, 'fbo': self.fbo})
 			self.rendered = True
 
 	def draw(self, window_width, window_height):
+		return
 		if not self.rendered:
 			#log.debug('Drawing frame skipped because not rendered')
 			return

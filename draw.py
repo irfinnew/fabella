@@ -12,7 +12,6 @@ log = loghelper.get_logger('Draw', loghelper.Color.BrightBlack)
 # XXX: Not yet thread safe, only call stuff from main thread
 quads = set()
 
-flat_texture = None
 def initialize(width, height):
 	log.info(f'Initialize for {width}x{height}')
 	max_size = gl.glGetInteger(gl.GL_MAX_TEXTURE_SIZE)
@@ -27,14 +26,17 @@ def initialize(width, height):
 
 	SuperTexture.initialize(size)
 
-	global flat_texture
-	flat_texture = Texture()
-	flat_texture.update_raw(1, 1, 'RGBA', b'\xff' * 4)
+	# FIXME: Video texture
+	Texture.video = Texture()
+	Texture.video.update_raw(width, height, 'RGBA', None)
 
+	# Single white-pixel texture for rendering flats
+	Texture.flat = Texture()
+	Texture.flat.update_raw(1, 1, 'RGBA', b'\xff' * 4)
 	# Hack to avoid texture edge bleeding
 	d = 1 / (size * 2)
-	uv = flat_texture.uv
-	flat_texture.uv = (uv[0] + d, uv[1] + d, uv[2] - d, uv[3] - d)
+	uv = Texture.flat.uv
+	Texture.flat.uv = (uv[0] + d, uv[1] + d, uv[2] - d, uv[3] - d)
 
 def render():
 	# FIXME: maybe make sorting invariant for efficiency?
@@ -48,7 +50,7 @@ def render():
 
 
 class SuperTexture:
-	alignment = 32
+	alignment = 32  # Seems to be an acceptable trade-off
 	tid = None
 	size = None
 	freelist = None
@@ -126,6 +128,9 @@ class SuperTexture:
 
 
 class Texture:
+	flat = None
+	video = None
+
 	def __init__(self, image=None, persistent=True):
 		self.persistent = persistent
 		self.concrete = False
@@ -250,4 +255,4 @@ class Quad:
 
 class FlatQuad(Quad):
 	def __init__(self, **kwargs):
-		super().__init__(texture=flat_texture, **kwargs)
+		super().__init__(texture=Texture.flat, **kwargs)
