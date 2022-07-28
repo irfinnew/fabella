@@ -22,6 +22,7 @@ log.info('Starting Fabella.')
 
 
 
+#### Initialization
 # FIXME: hardcoded monitor
 window = Window(2, "Fabella")
 draw.initialize(window.width, window.height)
@@ -29,12 +30,16 @@ Tile.initialize()
 menu = Menu(sys.argv[1], window.width, window.height, enabled=True)
 video = Video(window.width, window.height)
 
+
+
 #### Main loop
 last_time = 0
 frame_count = 0
 osd = False
 log.info('Starting main loop')
 while not window.closed():
+	# FIXME: doesn't seem to wait
+	# https://github.com/glfw/glfw/issues/1911
 	window.wait()
 
 	for key, scancode, action, modifiers in window.get_events():
@@ -55,13 +60,6 @@ while not window.closed():
 
 			# Menu keys
 			if menu.enabled:
-				if key == glfw.KEY_ESCAPE:
-					# FIXME Hmm; the idea is right, but the variable definitely needs a better name.
-					if video.should_render:
-						menu.close()
-					else:
-						log.info('No video open; refusing to close menu.')
-					#video.pause(False)
 				if key == glfw.KEY_TAB and modifiers == 0:
 					menu.toggle_seen()
 				if key == glfw.KEY_TAB and modifiers == glfw.MOD_SHIFT:
@@ -90,11 +88,7 @@ while not window.closed():
 					menu.toggle_tagged()
 			else:
 				# Video keys
-				if key == glfw.KEY_ESCAPE:
-					#video.pause(True)  # Dunno
-					menu.open()
-				if key == glfw.KEY_ENTER:
-					#video.seek(-0.01, 'absolute')
+				if key in [glfw.KEY_ESCAPE, glfw.KEY_ENTER]:
 					video.stop()
 					menu.open()
 				if key == glfw.KEY_O:
@@ -143,42 +137,14 @@ while not window.closed():
 
 						video.mpv.show_text(f'Subtitles {subid}/{sub_count}: {sublang.upper()}\n{subtitle}')
 
-
 	video.render()
-
-	# MPV seems to reset some of this stuff, so re-init
-	gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
-	gl.glEnable(gl.GL_BLEND)
-	gl.glEnable(gl.GL_TEXTURE_2D)
-
-	gl.glViewport(0, 0, window.width, window.height)
-	gl.glClearColor(0.0, 0.0, 0.0, 1)
-	gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-	gl.glMatrixMode(gl.GL_PROJECTION)
-	gl.glLoadIdentity()
-	gl.glOrtho(0.0, window.width, 0.0, window.height, 0.0, 1.0)
-	gl.glMatrixMode (gl.GL_MODELVIEW)
-
-	if video.rendered:
-		video.draw(window.width, window.height)
-
-		if osd or video.mpv.pause:
-			pass
-			# FIXME
-			#menu.draw_osd(window.width, window.height, video)
-
-	#if menu.enabled:
-	#	menu.draw(window.width, window.height, transparent=video.rendered)
-
 	draw.render()
-
 	window.swap_buffers()
 
 	frame_count += 1
 	new = time.time()
 	if int(new) > last_time:
 		last_time = int(new)
-		#print(f'{frame_count} fps')
 		log.info(f'Rendering at {frame_count} fps')
 		frame_count = 0
 

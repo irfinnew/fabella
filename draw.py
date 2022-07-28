@@ -10,27 +10,36 @@ log = loghelper.get_logger('Draw', loghelper.Color.BrightBlack)
 
 
 # XXX: Not yet thread safe, only call stuff from main thread
-quads = set()
-
 def initialize(width, height):
 	log.info(f'Initialize for {width}x{height}')
+
+	# Init OpenGL
+	gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+	gl.glEnable(gl.GL_BLEND)
+	gl.glEnable(gl.GL_TEXTURE_2D)
+	gl.glMatrixMode(gl.GL_PROJECTION)
+	gl.glLoadIdentity()
+	gl.glOrtho(0, width, 0, height, 0, 1)
+	gl.glMatrixMode(gl.GL_MODELVIEW)
+
+	# Allocate SuperTexture
 	max_size = gl.glGetInteger(gl.GL_MAX_TEXTURE_SIZE)
 	log.info(f'GL_MAX_TEXTURE_SIZE = {max_size}')
-
 	size = max(width, height)
 	size = 2 ** math.ceil(math.log2(size))
 	size *= 2
 	if size > max_size:
 		log.error(f'Desired texture size {size}x{size} unsupported, using {max_size}x{max_size}!')
 		size = max_size
-
 	SuperTexture.initialize(size)
 
-	# FIXME: Video texture
+	# Allocate video texture.
+	# This NEEDS to be done first, because it has to go in the top left corner.
+	# MPV doesn't support rendering to any other position.
 	Texture.video = Texture()
 	Texture.video.update_raw(width, height, 'RGBA', None)
 
-	# Single white-pixel texture for rendering flats
+	# Allocate single white-pixel texture for rendering flats
 	Texture.flat = Texture()
 	Texture.flat.update_raw(1, 1, 'RGBA', b'\xff' * 4)
 	# Hack to avoid texture edge bleeding
@@ -38,11 +47,16 @@ def initialize(width, height):
 	uv = Texture.flat.uv
 	Texture.flat.uv = (uv[0] + d, uv[1] + d, uv[2] - d, uv[3] - d)
 
+
+
 def render():
+	# MPV seems to mess this up, so we have to re-enable it.
+	gl.glEnable(gl.GL_BLEND)
+
 	# FIXME: maybe make sorting invariant for efficiency?
 	SuperTexture.bind()
 	gl.glBegin(gl.GL_QUADS)
-	for quad in sorted({q for q in quads if not q.hidden}, key = operator.attrgetter('z')):
+	for quad in sorted({q for q in Quad.all if not q.hidden}, key = operator.attrgetter('z')):
 		quad.render()
 	gl.glEnd()
 	gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
@@ -50,14 +64,16 @@ def render():
 
 
 class SuperTexture:
-	alignment = 32  # Seems to be an acceptable trade-off
+	# Small alignment increases fragmentation, large alignment increases waste.
+	# This seems to be a reasonable trade-off.
+	alignment = 32
 	tid = None
 	size = None
 	freelist = None
 	coords = {}
 
 	def __init__(self, size):
-		raise NotImplementedError('not allowed to instantiate')
+		raise NotImplementedError('Instantiation not allowed.')
 
 	@classmethod
 	def initialize(cls, size):
@@ -86,7 +102,7 @@ class SuperTexture:
 				return (fx, fy)
 
 		cls.dump()
-		raise ValueError('SuperTexture out of space!')
+		raise ValueError(f"Couldn't allocate {width}x{height} area in SuperTexture!")
 
 	@classmethod
 	def add(cls, texture):
@@ -171,27 +187,10 @@ class Texture:
 		return str(self)
 
 
-class ExternalTexture:
-	def __init__(self, tid):
-		self.concrete = True
-		self.tid = tid
-
-	def destroy(self, force=False):
-		if not force:
-			return
-		self.concrete = False
-		gl.glDeleteTextures([self.tid])
-		del self.tid
-		del self.concrete
-
-	def __str__(self):
-		return f'<Texture ({self.tid}) external>>'
-
-	def __repr__(self):
-		return str(self)
-
 
 class Quad:
+	all = set()
+
 	def __init__(self, x=0, y=0, w=None, h=None, z=0, pos=(0, 0), scale=1.0, texture=None, image=None, color=None):
 		self.x = x
 		self.y = y
@@ -205,7 +204,7 @@ class Quad:
 		self.w = w or self.texture.width or 0
 		self.h = h or self.texture.height or 0
 		self.color = (1, 1, 1, 1) if color is None else color
-		quads.add(self)
+		self.all.add(self)
 
 	@property
 	def pos(self):
@@ -226,10 +225,10 @@ class Quad:
 		self.texture.update_image(image)
 
 	def destroy(self):
-		quads.remove(self)
+		self.all.remove(self)
 		self.texture.destroy()
-		del self.x # trigger AttributeError if we're used still
-		del self.texture  # trigger AttributeError if we're used still
+		del self.x # trigger AttributeError if we're used after this
+		del self.texture  # trigger AttributeError if we're used after this
 
 	def render(self):
 		if not self.texture.concrete:

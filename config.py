@@ -36,3 +36,11 @@ class menu:
 	text_size = 36
 	header_hspace = 64
 	header_vspace = 32
+
+class video:
+	position_bar_height = 3
+	position_shadow_height = 5
+	position_bar_color = (0.4, 0.4, 1, 1)  # Blueish
+	#position_bar_color = (0.8, 0.1, 0.1, 1)  # Reddish
+	position_shadow_top_color = (0, 0, 0, 0.25)
+	position_shadow_bottom_color = (0, 0, 0, 1)
