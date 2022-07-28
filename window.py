@@ -93,13 +93,13 @@ class Window:
 			self.fullscreen = not self.fullscreen
 		else:
 			self.fullscreen = bool(fullscreen)
-			
+
 		if self.fullscreen:
 			log.info('Entering fullscreen')
-			glfw.set_window_monitor(self.window, self.monitor, 0, 0, (self.width, self.height), glfw.DONT_CARE)
+			glfw.set_window_monitor(self.window, self.monitor, 0, 0, self.width, self.height, glfw.DONT_CARE)
 		else:
 			log.info('Leaving fullscreen')
-			glfw.set_window_monitor(self.window, None, 0, 0, (self.width, self.height), glfw.DONT_CARE)
+			glfw.set_window_monitor(self.window, None, 0, 0, self.width, self.height, glfw.DONT_CARE)
 
 	def on_keypress(self, window, key, scancode, action, modifiers):
 		log.info(f'Keypress key={key}, scancode={scancode}, action={action}, modifiers={modifiers}')
