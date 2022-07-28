@@ -333,10 +333,10 @@ out VDATA {
 void main()
 {
 	vdata.XY = vec4(
-		(XY[0] / resolution[0] - 1) * scale,
-		(XY[1] / resolution[1] - 1) * scale,
-		(XY[2] / resolution[0] - 1) * scale,
-		(XY[3] / resolution[1] - 1) * scale
+		XY[0] / resolution[0] * scale - 1,
+		XY[1] / resolution[1] * scale - 1,
+		XY[2] / resolution[0] * scale - 1,
+		XY[3] / resolution[1] * scale - 1
 	);
 	vdata.UV = UV;
 	vdata.color = color;
