@@ -142,6 +142,10 @@ while not window.closed():
 						video.mpv.show_text(f'Subtitles {subid}/{sub_count}: {sublang.upper()}\n{subtitle}')
 
 	video.render()
+	try:
+		menu.current.animate()
+	except KeyError:
+		pass
 	draw.State.render()
 	window.swap_buffers()
 
