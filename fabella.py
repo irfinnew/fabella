@@ -37,16 +37,59 @@ log.info('Starting main loop')
 while not window.closed():
 	window.wait()
 
-	if not menu.enabled:
-		for key, scancode, action, modifiers in window.get_events():
-			if action in [glfw.PRESS, glfw.REPEAT]:
-				log.info(f'Parsing key {key} in video mode')
-				if key == glfw.KEY_Q and modifiers == glfw.MOD_CONTROL:
-					log.info('Quitting.')
-					menu.forget()
-					video.stop()
-					window.terminate()
-					exit()
+	for key, scancode, action, modifiers in window.get_events():
+		if action in [glfw.PRESS, glfw.REPEAT]:
+			log.info(f'Parsing key {key} in {"menu" if menu.enabled else "video"} mode')
+
+			# Global keys
+			if key == glfw.KEY_Q and modifiers == glfw.MOD_CONTROL:
+				log.info('Quitting.')
+				menu.forget()
+				video.stop()
+				window.terminate()
+				exit()
+			if key == glfw.KEY_F:
+				window.set_fullscreen()
+			if key == glfw.KEY_T:
+				draw.SuperTexture.dump()
+
+			# Menu keys
+			if menu.enabled:
+				if key == glfw.KEY_ESCAPE:
+					# FIXME Hmm; the idea is right, but the variable definitely needs a better name.
+					if video.should_render:
+						menu.close()
+					else:
+						log.info('No video open; refusing to close menu.')
+					#video.pause(False)
+				if key == glfw.KEY_TAB and modifiers == 0:
+					menu.toggle_seen()
+				if key == glfw.KEY_TAB and modifiers == glfw.MOD_SHIFT:
+					menu.toggle_seen_all()
+				if key in [glfw.KEY_ENTER, glfw.KEY_SPACE]:
+					menu.enter(video)
+				if key == glfw.KEY_BACKSPACE:
+					menu.back()
+				if key in [glfw.KEY_UP, glfw.KEY_K]:
+					menu.previous_row()
+				if key in [glfw.KEY_DOWN, glfw.KEY_J]:
+					menu.next_row()
+				if key in [glfw.KEY_RIGHT, glfw.KEY_L]:
+					menu.next()
+				if key in [glfw.KEY_LEFT, glfw.KEY_H]:
+					menu.previous()
+				if key == glfw.KEY_PAGE_UP:
+					menu.page_up()
+				if key == glfw.KEY_PAGE_DOWN:
+					menu.page_down()
+				if key == glfw.KEY_HOME:
+					menu.first()
+				if key == glfw.KEY_END:
+					menu.last()
+				if key == glfw.KEY_DELETE:
+					menu.toggle_tagged()
+			else:
+				# Video keys
 				if key == glfw.KEY_ESCAPE:
 					#video.pause(True)  # Dunno
 					menu.open()
@@ -54,8 +97,6 @@ while not window.closed():
 					#video.seek(-0.01, 'absolute')
 					video.stop()
 					menu.open()
-				if key == glfw.KEY_F:
-					window.set_fullscreen()
 				if key == glfw.KEY_O:
 					log.info('Cycling OSD')
 					#video.mpv['osd-level'] ^= 2
@@ -102,53 +143,6 @@ while not window.closed():
 
 						video.mpv.show_text(f'Subtitles {subid}/{sub_count}: {sublang.upper()}\n{subtitle}')
 
-	if menu.enabled:
-		for key, scancode, action, modifiers in window.get_events():
-			if action in [glfw.PRESS, glfw.REPEAT]:
-				log.info(f'Parsing key {key} in menu mode')
-				if key == glfw.KEY_Q and modifiers == glfw.MOD_CONTROL:
-					log.info('Quitting.')
-					menu.forget()
-					video.stop()
-					window.terminate()
-					exit()
-				if key == glfw.KEY_T:
-					draw.SuperTexture.dump()
-				if key == glfw.KEY_F:
-					window.set_fullscreen()
-				if key == glfw.KEY_ESCAPE:
-					# FIXME Hmm; the idea is right, but the variable definitely needs a better name.
-					if video.should_render:
-						menu.close()
-					else:
-						log.info('No video open; refusing to close menu.')
-					#video.pause(False)
-				if key == glfw.KEY_TAB and modifiers == 0:
-					menu.toggle_seen()
-				if key == glfw.KEY_TAB and modifiers == glfw.MOD_SHIFT:
-					menu.toggle_seen_all()
-				if key in [glfw.KEY_ENTER, glfw.KEY_SPACE]:
-					menu.enter(video)
-				if key == glfw.KEY_BACKSPACE:
-					menu.back()
-				if key in [glfw.KEY_UP, glfw.KEY_K]:
-					menu.previous_row()
-				if key in [glfw.KEY_DOWN, glfw.KEY_J]:
-					menu.next_row()
-				if key in [glfw.KEY_RIGHT, glfw.KEY_L]:
-					menu.next()
-				if key in [glfw.KEY_LEFT, glfw.KEY_H]:
-					menu.previous()
-				if key == glfw.KEY_PAGE_UP:
-					menu.page_up()
-				if key == glfw.KEY_PAGE_DOWN:
-					menu.page_down()
-				if key == glfw.KEY_HOME:
-					menu.first()
-				if key == glfw.KEY_END:
-					menu.last()
-				if key == glfw.KEY_DELETE:
-					menu.toggle_tagged()
 
 	video.render()
 
