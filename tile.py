@@ -272,7 +272,7 @@ class Tile:
 			x=self.xoff - 1, y=self.yoff - 1, w=w + 2, h=h + 2, pos=self.pos,
 			color=config.tile.shadow_color,
 		)
-		self.maybe(draw.FlatQuad, 'quad_posback', active, z=205,
+		self.maybe(draw.FlatQuad, 'quad_posbar', active, z=205,
 			x=self.xoff, y=self.yoff, w=w, h=h, pos=self.pos,
 			color=config.tile.pos_bar_color,
 		)
