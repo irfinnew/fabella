@@ -11,6 +11,7 @@ import draw
 log = loghelper.get_logger('Font', loghelper.Color.BrightBlack)
 
 
+
 class Text:
 	def __init__(self, font, text='', x=0, y=0, z=0, pos=(0, 0), anchor='bl', max_width=None, lines=1):
 		self._text = None
@@ -114,6 +115,8 @@ class Font:
 	stroke_width = 0
 
 	def __init__(self, fontname, size, stroke_width=None):
+		# FIXME: not happy with this here
+		log.info(f'Pycairo version {cairo.version}')
 		log.info(f'Creating instance for {fontname} {size}')
 		self.name = fontname
 		self.size = size

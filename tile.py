@@ -22,6 +22,8 @@ class Tile:
 
 	@classmethod
 	def initialize(cls):
+		# FIXME: wrong place I think
+		log.info(f'PIL / Pillow version {PIL.__version__}')
 		cfg = config.tile
 
 		# Shadow

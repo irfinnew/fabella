@@ -16,6 +16,10 @@ log = loghelper.get_logger('Video', loghelper.Color.Yellow)
 
 class Video:
 	def __init__(self, width, height):
+		try:
+			log.info(f'libmpv version {mpv.MPV_VERSION[0]}.{mpv.MPV_VERSION[1]}')
+		except AttributeError:
+			log.warning('libmpv version unknown! Old python-mpv?')
 		log.debug('Created instance')
 		self.current_file = None
 		self.duration = 0

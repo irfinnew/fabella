@@ -1,5 +1,5 @@
 import operator
-import OpenGL.GL as gl
+import OpenGL, OpenGL.GL as gl
 import PIL.Image  # Hmm, just for SuperTexture.dump() ?
 import math
 
@@ -11,6 +11,7 @@ log = loghelper.get_logger('Draw', loghelper.Color.BrightBlack)
 
 # XXX: Not yet thread safe, only call stuff from main thread
 def initialize(width, height):
+	log.info(f'PyOpenGL version {OpenGL.version.__version__}')
 	log.info(f'Initialize for {width}x{height}')
 
 	# Init OpenGL
