@@ -278,29 +278,6 @@ class Tile:
 		)
 
 
-	def animate(self):
-		return
-		quads = {
-			self.shadow,
-			self.highlight,
-			self.outline,
-			self.cover,
-			self.title.quad,
-		}
-		if self.quad_unseen:
-			quads.add(self.quad_unseen)
-		if self.quad_watching:
-			quads.add(self.quad_watching)
-		if self.quad_tagged:
-			quads.add(self.quad_tagged)
-
-		scale = (math.sin(time.time()) + 1) / 2
-		for q in quads:
-			q.scale = 1 + scale
-			q.opacity = 1 - scale * 0.9
-
-
-
 	def update_pos(self, position, force=False):
 		log.debug(f'{self} update_pos({position}, {force})')
 		old_pos = self.position

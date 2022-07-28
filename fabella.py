@@ -176,7 +176,6 @@ while not window.closed():
 	#if menu.enabled:
 	#	menu.draw(window.width, window.height, transparent=video.rendered)
 
-	menu.current.animate()
 	draw.render()
 
 	window.swap_buffers()
