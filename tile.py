@@ -5,12 +5,12 @@ import math
 import uuid
 import OpenGL.GL as gl
 import functools
+import PIL.Image, PIL.ImageFilter
 
 import dbs
 import config
 import loghelper
 import draw
-import PIL.Image, PIL.ImageFilter
 
 log = loghelper.get_logger('Tile', loghelper.Color.Cyan)
 
@@ -279,6 +279,7 @@ class Tile:
 
 
 	def animate(self):
+		return
 		quads = {
 			self.shadow,
 			self.highlight,
