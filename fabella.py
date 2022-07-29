@@ -141,10 +141,7 @@ while not window.closed():
 
 	video.render()
 	menu.tick()
-	try:
-		menu.current.animate()
-	except KeyError:
-		pass
+	draw.Animation.animate_all()
 	draw.State.render()
 	if draw.State.swap_needed:
 		window.swap_buffers()

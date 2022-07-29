@@ -4,8 +4,10 @@ import PIL.Image  # Hmm, just for SuperTexture.dump() ?
 import math
 import ctypes
 import array
+import time
 
 import loghelper
+import window
 
 log = loghelper.get_logger('Draw', loghelper.Color.BrightBlack)
 # XXX: Not yet thread safe, only call stuff from main thread
@@ -273,6 +275,7 @@ class Quad:
 	all = set()
 
 	def __init__(self, x=0, y=0, w=None, h=None, z=0, pos=(0, 0), scale=1.0, texture=None, image=None, color=None):
+		self.destroyed = False
 		self.x = x
 		self.y = y
 		self.w = w
@@ -291,6 +294,8 @@ class Quad:
 	# FIXME: yuck
 	def __setattr__(self, k, v):
 		super().__setattr__(k, v)
+		if self.destroyed:
+			return
 		if k in {'z', 'hidden'}:
 			State.rebuild_buffer = True
 		else:
@@ -303,6 +308,20 @@ class Quad:
 	def opacity(self, newopa):
 		#self.color[3] = newopa
 		self.color = self.color[:3] + (newopa,)
+
+	@property
+	def xpos(self):
+		return self.pos[0]
+	@xpos.setter
+	def xpos(self, new):
+		self.pos = (new,) + self.pos[1:]
+
+	@property
+	def ypos(self):
+		return self.pos[1]
+	@ypos.setter
+	def ypos(self, new):
+		self.pos = self.pos[:1] + (new,)
 
 	def update_raw(self, width, height, mode, pixels):
 		uv = self.texture.uv
@@ -325,6 +344,7 @@ class Quad:
 		del self.x # trigger AttributeError if we're used after this
 		del self.texture  # trigger AttributeError if we're used after this
 		State.rebuild_buffer = True
+		self.destroyed = True
 
 	def array(self):
 		if not self.texture.concrete:
@@ -363,15 +383,52 @@ class Group:
 		self._quads -= set(quads)
 
 	def destroy(self):
-		for quad in self._quads:
-			quad.destroy()
+		for quad in set(self._quads):
+			if quad.destroyed:
+				self.remove(quad)
+			else:
+				quad.destroy()
 
 	def __setattr__(self, k, v):
 		if k[0] == '_':
 			super().__setattr__(k, v)
 		else:
-			for quad in self._quads:
-				setattr(quad, k, v)
+			for quad in set(self._quads):
+				if quad.destroyed:
+					self.remove(quad)
+				else:
+					setattr(quad, k, v)
+
+
+
+class Animation:
+	all = set()
+
+	def __init__(self, quad=None, duration=1.0, after=None, **kwargs):
+		self.quad = quad
+		self.duration = duration
+		self.start = time.time()
+		self.params = kwargs
+		self.after = after
+		Animation.all.add(self)
+
+	def animate(self, t):
+		x = min((t - self.start) / self.duration, 1)
+		for k, (s, e) in self.params.items():
+			v = s * (1 - x) + e * x
+			setattr(self.quad, k, v)
+		if x == 1:
+			Animation.all.remove(self)
+			if self.after:
+				self.after()
+
+	@classmethod
+	def animate_all(cls):
+		if cls.all:
+			t = time.time()
+			for a in set(cls.all):
+				a.animate(t)
+			window.wakeup()
 
 
 

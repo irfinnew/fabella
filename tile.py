@@ -190,9 +190,22 @@ class Tile:
 		if (pos, selected) != (self.pos, self.selected):
 			self.pos = pos
 			self.selected = selected
-			self.selected_time = time.time()
+			self.selected_time = time.time() # FIXME
 			self.render()
 
+		if selected:
+			quads = draw.Group(self.shadow, self.highlight, self.outline, self.cover, self.title.quad)
+			quads.add(self.quad_unseen, self.quad_watching, self.quad_tagged)
+			if self.info:
+				quads.add(self.info.quad)
+			draw.Animation(quads, duration=0.3, opacity=(0.4, 1), scale=(1.2, 1))
+
+	def animate_blowup(self, xpos, ypos):
+		quads = draw.Group(self.shadow, self.highlight, self.outline, self.cover, self.title.quad)
+		quads.add(self.quad_unseen, self.quad_watching, self.quad_tagged, self.quad_posback, self.quad_posbar)
+		if self.info:
+			quads.add(self.info.quad)
+		draw.Animation(quads, duration=0.5, opacity=(1, 0), scale=(1, 6), xpos=(self.pos[0], xpos), ypos=(self.pos[1], ypos), after=self.destroy)
 
 	def destroy(self):
 		self.pos = None
@@ -279,22 +292,6 @@ class Tile:
 			x=self.xoff, y=self.yoff, w=w, h=h, pos=self.pos,
 			color=config.tile.pos_bar_color,
 		)
-
-
-	def animate(self):
-		duration = 0.3
-		current = time.time()
-		if current - self.selected_time > duration:
-			return
-
-		quads = draw.Group(self.shadow, self.highlight, self.outline, self.cover, self.title.quad)
-		quads.add(self.quad_unseen, self.quad_watching, self.quad_tagged)
-		if self.info:
-			quads.add(self.info.quad)
-
-		scale = (math.cos((current - self.selected_time) / duration * math.pi) + 1) / 2
-		quads.scale = 1 + scale * 5
-		quads.opacity = 1 - scale
 
 
 	def update_pos(self, position, force=False):

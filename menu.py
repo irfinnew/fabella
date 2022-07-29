@@ -78,11 +78,15 @@ class Menu:
 
 
 	def close(self):
+		if not self.enabled:
+			return
+
 		self.enabled = False
 		for t in self.tiles.values():
 			t.destroy()
 		self.tiles = {}
-		self.background.hidden = True
+		#self.background.hidden = True
+		draw.Animation(self.background, duration=1, opacity=(1, 0))
 		self.bread_text.quad.hidden = True
 		self.clock_text.quad.hidden = True
 
@@ -91,8 +95,12 @@ class Menu:
 		if not enabled:
 			return self.close()
 
+		if self.enabled:
+			return
+
 		self.enabled = True
-		self.background.hidden = False
+		#self.background.hidden = False
+		draw.Animation(self.background, duration=1, opacity=(0, 1))
 		self.bread_text.quad.hidden = False
 		self.clock_text.quad.hidden = False
 		self.draw_tiles()
@@ -270,6 +278,9 @@ class Menu:
 		else:
 			log.info('Already playing this video, just maybe unpause')
 			video.pause(False)
+		# FIXME: hack
+		the_tile = self.tiles.pop(self.current_idx)
+		the_tile.animate_blowup(self.width / 2, self.height / 2)
 		self.close()
 
 
