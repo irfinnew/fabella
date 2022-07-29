@@ -16,8 +16,6 @@ class State:
 	width = None
 	height = None
 	shader = None
-	uTexture = None
-	uResolution = None
 	vao = None
 	vbo = None
 	buffer = None
@@ -67,9 +65,12 @@ class State:
 		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
 		gl.glBindVertexArray(0)
 
-		# Texture stuff
-		cls.uTexture = gl.glGetUniformLocation(cls.shader, 'texture')
-		cls.uResolution = gl.glGetUniformLocation(cls.shader, 'resolution')
+		# Set uniforms
+		uTexture = gl.glGetUniformLocation(cls.shader, 'texture')
+		uResolution = gl.glGetUniformLocation(cls.shader, 'resolution')
+		gl.glUseProgram(cls.shader)
+		gl.glUniform1i(uTexture, 0)
+		gl.glUniform2f(uResolution, cls.width / 2, cls.height / 2)
 
 		# Allocate SuperTexture
 		max_size = gl.glGetInteger(gl.GL_MAX_TEXTURE_SIZE)
@@ -115,24 +116,20 @@ class State:
 			cls.buffer[idx:idx+15] = quad.array()
 		cls.dirty_quads.clear()
 
-		gl.glClearColor(0.1, 0.1, 0.1, 1)
-		gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-
 		gl.glUseProgram(cls.shader)
-		gl.glUniform1i(cls.uTexture, 0)
-		gl.glUniform2f(cls.uResolution, cls.width / 2, cls.height / 2)
 		gl.glActiveTexture(gl.GL_TEXTURE0)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, SuperTexture.tid)
 
 		gl.glBindVertexArray(cls.vao)
 		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, cls.vbo)
-		blah = cls.buffer.tobytes()
-		gl.glBufferData(gl.GL_ARRAY_BUFFER, len(blah), blah, gl.GL_STATIC_DRAW)
+		buffer = cls.buffer.tobytes()
+		gl.glBufferData(gl.GL_ARRAY_BUFFER, len(buffer), buffer, gl.GL_STATIC_DRAW)
 		gl.glDrawArrays(gl.GL_POINTS, 0, len(Quad.all))
 
-		gl.glUseProgram(0)
-		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
-		gl.glBindVertexArray(0)
+		# Seems like unbinding this stuff isn't necessary, so save the CPU cycles
+		#gl.glUseProgram(0)
+		#gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
+		#gl.glBindVertexArray(0)
 
 
 
