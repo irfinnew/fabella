@@ -57,12 +57,10 @@ class Display:
 
 class Window:
 	def __init__(self, display_num, title):
-		log.info(f'pyglfw {glfw.__version__}, using GLFW {glfw.VERSION_MAJOR}.{glfw.VERSION_MINOR}.{glfw.VERSION_REVISION}')
+		log.info(f'pyglfw version {glfw.__version__}, using GLFW version {glfw.VERSION_MAJOR}.{glfw.VERSION_MINOR}.{glfw.VERSION_REVISION}')
 		if not glfw.init():
 			log.critical('glfw.init() failed')
 			raise 'glfw.init()'
-
-		glfw.swap_interval(1)
 
 		glfw.window_hint(glfw.DECORATED, False)
 		glfw.window_hint(glfw.AUTO_ICONIFY, False)
@@ -95,6 +93,7 @@ class Window:
 		log.info(f'Created instance of {self.width}x{self.height}: "{title}"')
 
 		glfw.make_context_current(self.window)
+		glfw.swap_interval(1)
 		glfw.set_key_callback(self.window, self.on_keypress)
 
 		log.debug('Hiding mouse cursor')

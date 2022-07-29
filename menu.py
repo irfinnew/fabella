@@ -74,7 +74,7 @@ class Menu:
 
 
 	def tick(self):
-		self.clock_text.text = datetime.datetime.now().strftime('%a %H:%M:%S.%f')[:-5]
+		self.clock_text.text = datetime.datetime.now().strftime('%a %H:%M:%S')
 
 
 	def close(self):
