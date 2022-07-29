@@ -333,6 +333,7 @@ class Tile:
 			self.position = 1 if seen else 0
 
 		self.write_state_update()
+		self.render()
 
 
 	def toggle_tagged(self):
@@ -341,6 +342,7 @@ class Tile:
 
 		self.tagged = not self.tagged
 		self.write_state_update({'tagged': self.tagged})
+		self.render()
 
 
 	def __str__(self):
