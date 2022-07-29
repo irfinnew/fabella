@@ -116,7 +116,9 @@ class Window:
 
 	def wait(self):
 		#log.debug('glfw.wait_events()')
-		glfw.wait_events()
+		# FIXME: doesn't seem to wait if swap_buffers is called every iteration
+		# https://github.com/glfw/glfw/issues/1911
+		glfw.wait_events_timeout(1)
 
 	def swap_buffers(self):
 		#log.debug('glfw.swap_buffers()')

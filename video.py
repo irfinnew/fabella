@@ -63,6 +63,7 @@ class Video:
 			wl_display=ctypes.c_void_p(glfw.get_wayland_display()),
 			opengl_init_params={'get_proc_address': mpv.OpenGlCbGetProcAddrFn(lambda _, name: glfw.get_proc_address(name.decode('utf8')))},
 		)
+		self.context.update_cb = self.frame_ready
 		self.mpv.observe_property('width', self.size_changed)
 		self.mpv.observe_property('height', self.size_changed)
 		self.mpv.observe_property('percent-pos', self.position_changed)
@@ -84,6 +85,11 @@ class Video:
 			w=width, h=config.video.position_bar_height + config.video.position_shadow_height)
 		self.quad_posbar = draw.FlatQuad(z=2, color=config.video.position_bar_color,
 			w=0, h=config.video.position_bar_height)
+
+
+	def frame_ready(self):
+		# Wake up main loop, so self.render() will get called
+		glfw.post_empty_event()
 
 
 	def eof_reached(self, prop, value):
@@ -193,6 +199,7 @@ class Video:
 			# FIXME: apparently, we shouldn't call other mpv functions from the same
 			# thread as render(). Find a way to fix that.
 			ret = self.context.render(flip_y=False, opengl_fbo={'w': self.width, 'h': self.height, 'fbo': self.fbo})
+			self.texture.force_redraw()
 
 			# FIXME: not sure if this is the proper place for this...
 			new_pos = int(self.width * self.position)

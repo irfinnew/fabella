@@ -21,6 +21,7 @@ class State:
 	buffer = None
 	rebuild_buffer = False
 	dirty_quads = set()
+	redraw_needed = False
 	swap_needed = False
 
 	def __init__(self):
@@ -100,21 +101,30 @@ class State:
 
 	@classmethod
 	def render(cls):
-		# MPV seems to mess this up, so we have to re-enable it.
-		gl.glEnable(gl.GL_BLEND)
-
 		if cls.rebuild_buffer:
+			log.debug('Rebuilding OpenGL data buffer')
 			cls.buffer = array.array('f', [])
 			for i, quad in enumerate(sorted({q for q in Quad.all if not q.hidden}, key = operator.attrgetter('z'))):
 				cls.buffer.extend(quad.array())
 				quad.buffer_index = i
 			cls.rebuild_buffer = False
 			cls.dirty_quads.clear()
+			cls.redraw_needed = True
 
-		for quad in cls.dirty_quads:
-			idx = quad.buffer_index * 15
-			cls.buffer[idx:idx+15] = quad.array()
-		cls.dirty_quads.clear()
+		if cls.dirty_quads:
+			log.debug('Updating OpenGL data buffer')
+			for quad in cls.dirty_quads:
+				idx = quad.buffer_index * 15
+				cls.buffer[idx:idx+15] = quad.array()
+			cls.dirty_quads.clear()
+			cls.redraw_needed = True
+
+		if not cls.redraw_needed:
+			cls.swap_needed = False
+			return
+
+		# MPV seems to mess this up, so we have to re-enable it.
+		gl.glEnable(gl.GL_BLEND)
 
 		gl.glUseProgram(cls.shader)
 		gl.glActiveTexture(gl.GL_TEXTURE0)
@@ -130,6 +140,9 @@ class State:
 		#gl.glUseProgram(0)
 		#gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
 		#gl.glBindVertexArray(0)
+
+		cls.redraw_needed = False
+		cls.swap_needed = True
 
 
 
@@ -196,11 +209,6 @@ class SuperTexture:
 		gl.glBindTexture(gl.GL_TEXTURE_2D, cls.tid)
 		gl.glTexSubImage2D(gl.GL_TEXTURE_2D, 0, *coords, format, gl.GL_UNSIGNED_BYTE, pixels)
 
-	# Bind texture for rendering... FIXME: is this needed?
-	@classmethod
-	def bind(cls):
-		gl.glBindTexture(gl.GL_TEXTURE_2D, cls.tid)
-
 	@classmethod
 	def dump(cls):
 		items = len(cls.freelist)
@@ -241,6 +249,9 @@ class Texture:
 	def update_image(self, img):
 		if img is not None:
 			self.update_raw(img.width, img.height, img.mode, img.tobytes())
+
+	def force_redraw(self):
+		State.redraw_needed = True
 
 	def destroy(self, force=False):
 		if self.persistent and not force:
@@ -285,7 +296,6 @@ class Quad:
 		else:
 			State.dirty_quads.add(self)
 
-	# FIXME: hmm...
 	@property
 	def opacity(self):
 		return self.color[3]
@@ -294,12 +304,20 @@ class Quad:
 		#self.color[3] = newopa
 		self.color = self.color[:3] + (newopa,)
 
+	def update_raw(self, width, height, mode, pixels):
+		uv = self.texture.uv
+		self.texture.update_raw(width, height, mode, pixels)
+		if uv != self.texture.uv:
+			State.dirty_quads.add(self)
+		else:
+			State.redraw_needed = True
+
 	def update_image(self, image):
 		self.texture.update_image(image)
-		State.dirty_quads.add(self)
-
-	def force_dirty(self):
-		State.dirty_quads.add(self)
+		if uv != self.texture.uv:
+			State.dirty_quads.add(self)
+		else:
+			State.redraw_needed = True
 
 	def destroy(self):
 		self.all.remove(self)

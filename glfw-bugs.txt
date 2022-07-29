@@ -1,6 +1,9 @@
+ - since glfw 3.3.8 (or pyglfw update?), glfw.wait_events() blocks completely
+ - glfw.post_empty_event() doesn't seem to do anything (might be pyglfw issue)
  - glfw.wait_events() doesn't wait, but returns immediately
- - glfw.swap_buffers() blocks completely when window is minimized
  - window minimizes if fullscreen window loses focus or un-fullscreens
+    - (this seems to only happen when glfw.swap_buffers() was called)
+ - glfw.swap_buffers() blocks completely when window is minimized
  - primary monitor is incorrect
  - should be a way to maximize to the _current_ monitor
  - creating a 1920x1080 window becomes maximized; it shouldn't

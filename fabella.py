@@ -42,8 +42,6 @@ frame_count = 0
 osd = False
 log.info('Starting main loop')
 while not window.closed():
-	# FIXME: doesn't seem to wait
-	# https://github.com/glfw/glfw/issues/1911
 	window.wait()
 
 	for key, scancode, action, modifiers in window.get_events():
@@ -147,7 +145,8 @@ while not window.closed():
 	except KeyError:
 		pass
 	draw.State.render()
-	window.swap_buffers()
+	if draw.State.swap_needed:
+		window.swap_buffers()
 
 	frame_count += 1
 	new = time.time()
