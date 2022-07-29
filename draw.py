@@ -20,6 +20,10 @@ class State:
 	uResolution = None
 	vao = None
 	vbo = None
+	buffer = None
+	rebuild_buffer = False
+	dirty_quads = set()
+	swap_needed = False
 
 	def __init__(self):
 		raise NotImplementedError('Instantiation not allowed.')
@@ -98,9 +102,18 @@ class State:
 		# MPV seems to mess this up, so we have to re-enable it.
 		gl.glEnable(gl.GL_BLEND)
 
-		objects = array.array('f', [])
-		for quad in sorted({q for q in Quad.all if not q.hidden}, key = operator.attrgetter('z')):
-			objects.extend(quad.array())
+		if cls.rebuild_buffer:
+			cls.buffer = array.array('f', [])
+			for i, quad in enumerate(sorted({q for q in Quad.all if not q.hidden}, key = operator.attrgetter('z'))):
+				cls.buffer.extend(quad.array())
+				quad.buffer_index = i
+			cls.rebuild_buffer = False
+			cls.dirty_quads.clear()
+
+		for quad in cls.dirty_quads:
+			idx = quad.buffer_index * 15
+			cls.buffer[idx:idx+15] = quad.array()
+		cls.dirty_quads.clear()
 
 		gl.glClearColor(0.1, 0.1, 0.1, 1)
 		gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
@@ -113,7 +126,7 @@ class State:
 
 		gl.glBindVertexArray(cls.vao)
 		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, cls.vbo)
-		blah = objects.tobytes()
+		blah = cls.buffer.tobytes()
 		gl.glBufferData(gl.GL_ARRAY_BUFFER, len(blah), blah, gl.GL_STATIC_DRAW)
 		gl.glDrawArrays(gl.GL_POINTS, 0, len(Quad.all))
 
@@ -257,7 +270,7 @@ class Quad:
 		self.w = w
 		self.h = h
 		self.z = z
-		self.xpos, self.ypos = pos
+		self.pos = pos
 		self.scale = scale
 		self.hidden = False
 		self.texture = Texture(image=image, persistent=False) if texture is None else texture
@@ -265,14 +278,17 @@ class Quad:
 		self.h = h or self.texture.height or 0
 		self.color = (1, 1, 1, 1) if color is None else color
 		self.all.add(self)
+		State.rebuild_buffer = True
 
-	@property
-	def pos(self):
-		return (self.xpos, self.ypos)
-	@pos.setter
-	def pos(self, newpos):
-		self.xpos, self.ypos = newpos
+	# FIXME: yuck
+	def __setattr__(self, k, v):
+		super().__setattr__(k, v)
+		if k == 'z':
+			State.rebuild_buffer = True
+		else:
+			State.dirty_quads.add(self)
 
+	# FIXME: hmm...
 	@property
 	def opacity(self):
 		return self.color[3]
@@ -283,19 +299,24 @@ class Quad:
 
 	def update_image(self, image):
 		self.texture.update_image(image)
+		State.dirty_quads.add(self)
+
+	def force_dirty(self):
+		State.dirty_quads.add(self)
 
 	def destroy(self):
 		self.all.remove(self)
 		self.texture.destroy()
 		del self.x # trigger AttributeError if we're used after this
 		del self.texture  # trigger AttributeError if we're used after this
+		State.rebuild_buffer = True
 
 	def array(self):
 		if not self.texture.concrete:
 			return array.array('f', [])
 
 		return array.array('f', [
-			self.xpos, self.ypos,
+			*self.pos,
 			self.x, self.y, self.x + self.w, self.y + self.h,
 			*self.texture.uv,
 			*self.color,
@@ -303,7 +324,7 @@ class Quad:
 		])
 
 	def __str__(self):
-		return f'<{type(self).__name__} @{self.x},{self.y} #{self.z} x{self.scale} ({self.xd} {self.yd} {self.w} {self.h}>'
+		return f'<{type(self).__name__} @{self.pos[0]},{self.pos[1]} #{self.z} x{self.scale} ({self.x} {self.y} {self.w} {self.h})>'
 
 	def __repr__(self):
 		return str(self)
