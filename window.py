@@ -7,6 +7,17 @@ log = loghelper.get_logger('Window', loghelper.Color.Blue)
 
 
 
+def get_wayland_display():
+	return glfw.get_wayland_display()
+
+def get_proc_address(name):
+	return glfw.get_proc_address(name)
+
+def wakeup():
+	glfw.post_empty_event()
+
+
+
 class Display:
 	def __init__(self, monitor):
 		self.monitor = monitor

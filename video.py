@@ -1,6 +1,5 @@
 # https://github.com/mpv-player/mpv/blob/master/libmpv/render_gl.h#L91
 
-import glfw  # FIXME: abstract out
 import ctypes
 import time
 import mpv
@@ -9,6 +8,7 @@ import OpenGL.GL as gl
 import loghelper
 import config
 import draw
+import window
 
 log = loghelper.get_logger('Video', loghelper.Color.Yellow)
 
@@ -60,8 +60,8 @@ class Video:
 		self.context = mpv.MpvRenderContext(
 			self.mpv,
 			'opengl',
-			wl_display=ctypes.c_void_p(glfw.get_wayland_display()),
-			opengl_init_params={'get_proc_address': mpv.OpenGlCbGetProcAddrFn(lambda _, name: glfw.get_proc_address(name.decode('utf8')))},
+			wl_display=ctypes.c_void_p(window.get_wayland_display()),
+			opengl_init_params={'get_proc_address': mpv.OpenGlCbGetProcAddrFn(lambda _, name: window.get_proc_address(name.decode('utf8')))},
 		)
 		self.context.update_cb = self.frame_ready
 		self.mpv.observe_property('width', self.size_changed)
@@ -89,7 +89,7 @@ class Video:
 
 	def frame_ready(self):
 		# Wake up main loop, so self.render() will get called
-		glfw.post_empty_event()
+		window.wakeup()
 
 
 	def eof_reached(self, prop, value):
