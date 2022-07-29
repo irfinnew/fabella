@@ -50,6 +50,8 @@ class Window:
 			log.critical('glfw.init() failed')
 			raise 'glfw.init()'
 
+		glfw.swap_interval(1)
+
 		glfw.window_hint(glfw.DECORATED, False)
 		glfw.window_hint(glfw.AUTO_ICONIFY, False)
 		glfw.window_hint(glfw.FOCUSED, True)
