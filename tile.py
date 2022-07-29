@@ -190,6 +190,7 @@ class Tile:
 		if (pos, selected) != (self.pos, self.selected):
 			self.pos = pos
 			self.selected = selected
+			self.selected_time = time.time()
 			self.render()
 
 
@@ -281,14 +282,19 @@ class Tile:
 
 
 	def animate(self):
+		duration = 0.3
+		current = time.time()
+		if current - self.selected_time > duration:
+			return
+
 		quads = draw.Group(self.shadow, self.highlight, self.outline, self.cover, self.title.quad)
 		quads.add(self.quad_unseen, self.quad_watching, self.quad_tagged)
 		if self.info:
 			quads.add(self.info.quad)
 
-		scale = (math.sin(time.time()) + 1) / 2
-		quads.scale = 1 + scale * 0.2
-		quads.opacity = 1 - scale * 0.5
+		scale = (math.cos((current - self.selected_time) / duration * math.pi) + 1) / 2
+		quads.scale = 1 + scale * 5
+		quads.opacity = 1 - scale
 
 
 	def update_pos(self, position, force=False):
