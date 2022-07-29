@@ -352,6 +352,29 @@ class FlatQuad(Quad):
 
 
 
+class Group:
+	def __init__(self, *quads):
+		self._quads = set(q for q in quads if q)
+
+	def add(self, *quads):
+		self._quads |= set(q for q in quads if q)
+
+	def remove(self, *quads):
+		self._quads -= set(quads)
+
+	def destroy(self):
+		for quad in self._quads:
+			quad.destroy()
+
+	def __setattr__(self, k, v):
+		if k[0] == '_':
+			super().__setattr__(k, v)
+		else:
+			for quad in self._quads:
+				setattr(quad, k, v)
+
+
+
 VERTEX_SHADER = """#version 330 core
 uniform vec2 resolution;
 layout (location = 0) in vec2 position;
