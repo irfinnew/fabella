@@ -73,12 +73,18 @@ class Menu:
 		self.open(enabled)
 
 
+	def tick(self):
+		self.clock_text.text = datetime.datetime.now().strftime('%a %H:%M:%S.%f')[:-5]
+
+
 	def close(self):
 		self.enabled = False
 		for t in self.tiles.values():
 			t.destroy()
 		self.tiles = {}
 		self.background.hidden = True
+		self.bread_text.quad.hidden = True
+		self.clock_text.quad.hidden = True
 
 
 	def open(self, enabled=True):
@@ -87,6 +93,8 @@ class Menu:
 
 		self.enabled = True
 		self.background.hidden = False
+		self.bread_text.quad.hidden = False
+		self.clock_text.quad.hidden = False
 		self.draw_tiles()
 
 
@@ -314,6 +322,3 @@ class Menu:
 
 		timer = int((time.time() - timer) * 1000)
 		log.info(f'Drew tiles in {timer}ms')
-
-		# FIXME: put somewhere else
-		self.clock_text.text = datetime.datetime.now().strftime('%a %H:%M:%S')

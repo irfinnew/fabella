@@ -291,7 +291,7 @@ class Quad:
 	# FIXME: yuck
 	def __setattr__(self, k, v):
 		super().__setattr__(k, v)
-		if k == 'z':
+		if k in {'z', 'hidden'}:
 			State.rebuild_buffer = True
 		else:
 			State.dirty_quads.add(self)

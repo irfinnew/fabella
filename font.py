@@ -22,7 +22,6 @@ class Text:
 		self.rendered = False
 		self.anchor = anchor
 		self.quad = draw.Quad(x=x, y=y, z=z, pos=pos)
-		self.texture = self.quad.texture
 
 		self.font = font
 		self.lines = lines
@@ -90,13 +89,14 @@ class Text:
 		context.move_to(border, border)
 		PangoCairo.show_layout(context, layout)
 
-		self.texture.update_raw(width, height, 'BGRA', surface.get_data())
-		if self.anchor[1] == 'r':
-			self.quad.x = self.quad.x + self.quad.w - width
-		if self.anchor[0] == 't':
-			self.quad.y = self.quad.y + self.quad.h - height
-		self.quad.w = width
-		self.quad.h = height
+		self.quad.update_raw(width, height, 'BGRA', surface.get_data())
+		if (self.quad.w, self.quad.h) != (width, height):
+			if self.anchor[1] == 'r':
+				self.quad.x = self.quad.x + self.quad.w - width
+			if self.anchor[0] == 't':
+				self.quad.y = self.quad.y + self.quad.h - height
+			self.quad.w = width
+			self.quad.h = height
 
 	def destroy(self):
 		self.quad.destroy()

@@ -140,6 +140,7 @@ while not window.closed():
 						video.mpv.show_text(f'Subtitles {subid}/{sub_count}: {sublang.upper()}\n{subtitle}')
 
 	video.render()
+	menu.tick()
 	try:
 		menu.current.animate()
 	except KeyError:
