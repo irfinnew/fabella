@@ -55,15 +55,16 @@ class State:
 		cls.vbo = gl.glGenBuffers(1)
 		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, cls.vbo)
 		gl.glEnableVertexAttribArray(0)
-		gl.glVertexAttribPointer(0, 2, gl.GL_FLOAT, False, 60, ctypes.c_void_p(0))
+		stride = 15 * 4  # 15 floats
+		gl.glVertexAttribPointer(0, 2, gl.GL_FLOAT, False, stride, ctypes.c_void_p(0))
 		gl.glEnableVertexAttribArray(1)
-		gl.glVertexAttribPointer(1, 4, gl.GL_FLOAT, False, 60, ctypes.c_void_p(8))
+		gl.glVertexAttribPointer(1, 4, gl.GL_FLOAT, False, stride, ctypes.c_void_p(8))
 		gl.glEnableVertexAttribArray(2)
-		gl.glVertexAttribPointer(2, 4, gl.GL_FLOAT, False, 60, ctypes.c_void_p(24))
+		gl.glVertexAttribPointer(2, 4, gl.GL_FLOAT, False, stride, ctypes.c_void_p(24))
 		gl.glEnableVertexAttribArray(3)
-		gl.glVertexAttribPointer(3, 4, gl.GL_FLOAT, False, 60, ctypes.c_void_p(40))
+		gl.glVertexAttribPointer(3, 4, gl.GL_FLOAT, False, stride, ctypes.c_void_p(40))
 		gl.glEnableVertexAttribArray(4)
-		gl.glVertexAttribPointer(4, 1, gl.GL_FLOAT, False, 60, ctypes.c_void_p(56))
+		gl.glVertexAttribPointer(4, 1, gl.GL_FLOAT, False, stride, ctypes.c_void_p(56))
 
 		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
 		gl.glBindVertexArray(0)
@@ -106,8 +107,8 @@ class State:
 		if cls.rebuild_buffer:
 			log.debug('Rebuilding OpenGL data buffer')
 			cls.buffer = array.array('f', [])
-			for i, quad in enumerate(sorted({q for q in Quad.all if not q.hidden}, key = operator.attrgetter('z'))):
-				cls.buffer.extend(quad.array())
+			for i, quad in enumerate(sorted({q for q in Quad.all if not q.hidden}, key=operator.attrgetter('z'))):
+				cls.buffer.extend(quad.buffer())
 				quad.buffer_index = i
 			cls.rebuild_buffer = False
 			cls.dirty_quads.clear()
@@ -116,8 +117,10 @@ class State:
 		if cls.dirty_quads:
 			log.debug('Updating OpenGL data buffer')
 			for quad in cls.dirty_quads:
-				idx = quad.buffer_index * 15
-				cls.buffer[idx:idx+15] = quad.array()
+				qb = array.array('f', quad.buffer())
+				qbl = len(qb)
+				idx = quad.buffer_index * qbl
+				cls.buffer[idx:idx+qbl] = qb
 			cls.dirty_quads.clear()
 			cls.redraw_needed = True
 
@@ -278,8 +281,6 @@ class Quad:
 		self.destroyed = False
 		self.x = x
 		self.y = y
-		self.w = w
-		self.h = h
 		self.z = z
 		self.pos = pos
 		self.scale = scale
@@ -306,7 +307,6 @@ class Quad:
 		return self.color[3]
 	@opacity.setter
 	def opacity(self, newopa):
-		#self.color[3] = newopa
 		self.color = self.color[:3] + (newopa,)
 
 	@property
@@ -346,17 +346,14 @@ class Quad:
 		State.rebuild_buffer = True
 		self.destroyed = True
 
-	def array(self):
-		if not self.texture.concrete:
-			return array.array('f', [])
-
-		return array.array('f', [
+	def buffer(self):
+		return [
 			*self.pos,
 			self.x, self.y, self.x + self.w, self.y + self.h,
 			*self.texture.uv,
 			*self.color,
 			self.scale
-		])
+		]
 
 	def __str__(self):
 		return f'<{type(self).__name__} @{self.pos[0]},{self.pos[1]} #{self.z} x{self.scale} ({self.x} {self.y} {self.w} {self.h})>'
