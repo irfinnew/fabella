@@ -404,15 +404,18 @@ class Group:
 class Animation:
 	all = set()
 
-	def __init__(self, quad=None, duration=1.0, after=None, **kwargs):
+	def __init__(self, quad=None, duration=1.0, delay=0.0, after=None, **kwargs):
 		self.quad = quad
 		self.duration = duration
-		self.start = time.time()
+		self.start = time.time() + delay
 		self.params = kwargs
 		self.after = after
 		Animation.all.add(self)
 
 	def animate(self, t):
+		if t < self.start:
+			return
+
 		x = min((t - self.start) / self.duration, 1)
 		for k, (s, e) in self.params.items():
 			v = s * (1 - x) + e * x

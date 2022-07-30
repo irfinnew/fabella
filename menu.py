@@ -86,7 +86,7 @@ class Menu:
 			t.destroy()
 		self.tiles = {}
 		#self.background.hidden = True
-		draw.Animation(self.background, duration=1, opacity=(1, 0))
+		draw.Animation(self.background, duration=1.0, delay=0.25, opacity=(1, 0))
 		self.bread_text.quad.hidden = True
 		self.clock_text.quad.hidden = True
 
