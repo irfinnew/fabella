@@ -90,7 +90,7 @@ class State:
 		# This NEEDS to be done first, because it has to go in the top left corner.
 		# MPV doesn't support rendering to any other position.
 		Texture.video = Texture()
-		Texture.video.update_raw(width, height, 'RGBA', None)
+		Texture.video.update_raw(width, height, 'RGBA', b'\x00\x00\x00\xff' * width * height)
 
 		# Allocate single white-pixel texture for rendering flats
 		Texture.flat = Texture()
