@@ -7,3 +7,4 @@
  - primary monitor is incorrect
  - should be a way to maximize to the _current_ monitor
  - creating a 1920x1080 window becomes maximized; it shouldn't
+ - pyglfw 2.2.0 uses about 10% CPU for animated rendering, 2.5.4 25%?

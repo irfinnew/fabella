@@ -1,4 +1,8 @@
- - Use upstream python-mpv (why did I even use a local copy? I'm sure I had a reason...)
+ - create quad group for tiles
+ - don't destroy tiles on video play, just hide; fix "playing" update for tiles
+ - fix OSD
+ - Use upstream python-mpv (0.5.2 is broken for x11_display, see issue 169; 1.0.1 requires newer mpv)
+ - Use upstream enzyme? (this version is patched for attachment support)
  - Fix sometimes-crash on seek (probably because MPV thread stuff)
  - Fix GLFW bugs
  - Split out file I/O etc to its own thread

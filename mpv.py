@@ -1,3 +1,4 @@
+# python-mpv v0.5.2, but patched for https://github.com/jaseg/python-mpv/issues/169
 # -*- coding: utf-8 -*-
 # vim: ts=4 sw=4 et
 #

@@ -7,10 +7,7 @@
 import os
 import io
 import time
-import math
 import uuid
-import OpenGL.GL as gl
-import functools
 import PIL.Image, PIL.ImageFilter
 
 import dbs
@@ -196,7 +193,6 @@ class Tile:
 		if (pos, selected) != (self.pos, self.selected):
 			self.pos = pos
 			self.selected = selected
-			self.selected_time = time.time() # FIXME
 			self.render()
 
 		if selected:

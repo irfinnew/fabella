@@ -4,7 +4,7 @@
 # Licensed under GPL v2.0, or (at your option) any later version.
 # (SPDX GPL-2.0-or-later) See LICENSE file for details.
 
-import os  # FIXME
+import os
 import datetime
 import time
 import uuid
@@ -16,8 +16,6 @@ import dbs
 import draw
 from tile import Tile
 from font import Font
-from worker import Pool
-from image import ImgLib
 
 
 
