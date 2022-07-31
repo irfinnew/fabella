@@ -42,10 +42,10 @@ class Menu:
 		self.background = draw.FlatQuad(z=100, w=width, h=height, color=config.menu.background_color)
 		self.breadcrumbs = []
 		self.bread_text = self.menu_font.text(z=101, text='', anchor='tl',
-			pos=(config.menu.header_hspace, height - config.menu.header_vspace),
+			x=config.menu.header_hspace, y=height - config.menu.header_vspace,
 		)
 		self.clock_text = self.menu_font.text(z=101, text='clock', anchor='tr',
-			pos=(width - config.menu.header_hspace, height - config.menu.header_vspace),
+			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace,
 		)
 
 		# FIXME: this entire section is yuck
@@ -89,10 +89,9 @@ class Menu:
 		for t in self.tiles.values():
 			t.destroy()
 		self.tiles = {}
-		#self.background.hidden = True
-		draw.Animation(self.background, duration=1.0, delay=0.25, opacity=(1, 0))
-		self.bread_text.quad.hidden = True
-		self.clock_text.quad.hidden = True
+		draw.Animation(self.background, duration=1.0, delay=0.25, opacity=(1, 0), hide=True)
+		draw.Animation(self.bread_text.quad, duration=1.0, xpos=(0, -self.width), hide=True)
+		draw.Animation(self.clock_text.quad, duration=1.0, xpos=(0, self.width), hide=True)
 
 
 	def open(self, enabled=True):
@@ -103,10 +102,9 @@ class Menu:
 			return
 
 		self.enabled = True
-		#self.background.hidden = False
 		draw.Animation(self.background, duration=1, opacity=(0, 1))
-		self.bread_text.quad.hidden = False
-		self.clock_text.quad.hidden = False
+		draw.Animation(self.bread_text.quad, duration=1.0, xpos=(-self.width, 0))
+		draw.Animation(self.clock_text.quad, duration=1.0, xpos=(self.width, 0))
 		self.draw_tiles()
 
 

@@ -123,17 +123,18 @@ class State:
 		if cls.dirty_quads:
 			log.debug('Updating OpenGL data buffer')
 			for quad in cls.dirty_quads:
-				qb = array.array('f', quad.buffer())
-				qbl = len(qb)
-				idx = quad.buffer_index * qbl
-				cls.buffer[idx:idx+qbl] = qb
+				if not quad.hidden:
+					qb = array.array('f', quad.buffer())
+					qbl = len(qb)
+					idx = quad.buffer_index * qbl
+					cls.buffer[idx:idx+qbl] = qb
 			cls.dirty_quads.clear()
 			cls.redraw_needed = True
 
 		if not cls.redraw_needed:
 			cls.swap_needed = False
 			return
-		print(f'Drawing {len(Quad.all)} quads')
+		print(f'Drawing {len(cls.buffer) // 15} quads')
 
 		# MPV seems to mess this up, so we have to re-enable it.
 		gl.glEnable(gl.GL_BLEND)
@@ -301,12 +302,13 @@ class Quad:
 		if group:
 			group.add(self)
 
-	# FIXME: yuck
+	# FIXME: yuck; maybe make property protocol?
 	def __setattr__(self, k, v):
 		super().__setattr__(k, v)
 		if self.destroyed:
 			return
 		if k in {'z', 'hidden'}:
+			# FIXME: this rebuilds the buffer even if property is written with same value...
 			State.rebuild_buffer = True
 		else:
 			State.dirty_quads.add(self)
@@ -410,24 +412,32 @@ class Group:
 class Animation:
 	all = set()
 
-	def __init__(self, quad=None, duration=1.0, delay=0.0, after=None, **kwargs):
+	def __init__(self, quad=None, duration=1.0, delay=0.0, after=None, hide=False, **kwargs):
 		self.quad = quad
 		self.duration = duration
 		self.start = time.time() + delay
 		self.params = kwargs
 		self.after = after
+		self.hide = hide
+		self.started = False
 		Animation.all.add(self)
 
 	def animate(self, t):
 		if t < self.start:
 			return
 
+		if not self.started:
+			self.quad.hidden = False
+
 		x = min((t - self.start) / self.duration, 1)
 		for k, (s, e) in self.params.items():
 			v = s * (1 - x) + e * x
 			setattr(self.quad, k, v)
+
 		if x == 1:
 			Animation.all.remove(self)
+			if self.hide:
+				self.quad.hidden = True
 			if self.after:
 				self.after()
 
