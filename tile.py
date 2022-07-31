@@ -103,7 +103,7 @@ class Tile:
 		# Renderables
 		self.quads = draw.Group()
 		self.cover = None
-		self.title = self.font.text(z=204, group=self.quads, text=self.name,
+		self.title = self.font.text(z=204, group=self.quads, text=self.name, color=config.tile.text_color,
 			x=self.xoff, y=self.yoff - config.tile.text_vspace, anchor='tl',
 			max_width=config.tile.width, lines=config.tile.text_lines,
 		)
@@ -153,7 +153,8 @@ class Tile:
 		if 'duration' in meta:
 			self.duration = meta.get('duration', None)
 			if not self.info:
-				self.info = self.font.text(z=204, group=self.quads, x=self.xoff + config.tile.width - 4, y=self.yoff, anchor='br')
+				self.info = self.font.text(z=204, group=self.quads, color=config.tile.text_color,
+					x=self.xoff + config.tile.width - 4, y=self.yoff, anchor='br')
 			if self.duration is None:
 				self.info.text = '?:??'
 			else:
@@ -229,49 +230,44 @@ class Tile:
 
 
 	def render(self):
-		self.shadow.pos = self.pos
-		self.outline.pos = self.pos
-		self.cover.pos = self.pos
-		self.title.quad.pos = self.pos
-		if self.info:
-			self.info.quad.pos = self.pos
-
 		self.maybe(draw.Quad, 'highlight', self.selected, z=201,
 			x=self.xoff - config.tile.highlight_blursize,
 			y=self.yoff - config.tile.highlight_blursize,
 			texture=self.tx_highlight, color=config.tile.highlight_color,
-			pos=self.pos,
 		)
 		self.maybe(draw.Quad, 'quad_unseen', self.unseen, z=204,
 			x=self.xoff + config.tile.width - self.tx_unseen.width // 2,
 			y=self.yoff + config.tile.thumb_height - self.tx_unseen.height // 2,
 			texture=self.tx_unseen,
-			pos=self.pos,
 		)
 		self.maybe(draw.Quad, 'quad_watching', self.watching, z=204,
 			x=self.xoff + config.tile.width - self.tx_watching.width // 2,
 			y=self.yoff + config.tile.thumb_height - self.tx_watching.height // 2,
 			texture=self.tx_watching,
-			pos=self.pos,
 		)
 		offset = self.unseen * self.tx_unseen.width or self.watching * self.tx_watching.width or 0
 		self.maybe(draw.Quad, 'quad_tagged', self.tagged, z=204,
 			x=self.xoff + config.tile.width - self.tx_tagged.width // 2 - offset,
 			y=self.yoff + config.tile.thumb_height - self.tx_tagged.height // 2,
 			texture=self.tx_tagged,
-			pos=self.pos,
 		)
 
 		active = (0 < self.position < 1) and not self.isdir
 		w, h = int(config.tile.width * self.position), config.tile.pos_bar_height
 		self.maybe(draw.FlatQuad, 'quad_posback', active, z=204,
-			x=self.xoff - 1, y=self.yoff - 1, w=w + 2, h=h + 2, pos=self.pos,
+			x=self.xoff - 1, y=self.yoff - 1, w=w + 2, h=h + 2,
 			color=config.tile.shadow_color,
 		)
 		self.maybe(draw.FlatQuad, 'quad_posbar', active, z=205,
-			x=self.xoff, y=self.yoff, w=w, h=h, pos=self.pos,
+			x=self.xoff, y=self.yoff, w=w, h=h,
 			color=config.tile.pos_bar_color,
 		)
+
+		self.title.quad.color = config.tile.text_hl_color if self.selected else config.tile.text_color
+		if self.info:
+			self.info.quad.color = config.tile.text_hl_color if self.selected else config.tile.text_color
+
+		self.quads.pos = self.pos
 
 
 	def update_pos(self, position, force=False):
