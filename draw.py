@@ -383,6 +383,11 @@ class FlatQuad(Quad):
 class Group:
 	def __init__(self, *quads):
 		self._quads = set(q for q in quads if q)
+		self._destroyed = False
+
+	@property
+	def destroyed(self):
+		return self._destroyed
 
 	def add(self, *quads):
 		self._quads |= set(q for q in quads if q)
@@ -395,6 +400,7 @@ class Group:
 			self.remove(quad)
 
 	def destroy(self):
+		self._destroyed = True
 		self.remove_destroyed()
 		for quad in set(self._quads):
 			quad.destroy()

@@ -84,28 +84,30 @@ class Menu:
 	def close(self):
 		if not self.enabled:
 			return
-
 		self.enabled = False
-		for t in self.tiles.values():
-			t.destroy()
-		self.tiles = {}
+
+		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(1, 0), hide=True)
 		draw.Animation(self.background, duration=1.0, delay=0.25, opacity=(1, 0), hide=True)
-		draw.Animation(self.bread_text.quad, duration=1.0, xpos=(0, -self.width), hide=True)
-		draw.Animation(self.clock_text.quad, duration=1.0, xpos=(0, self.width), hide=True)
+		draw.Animation(self.bread_text.quad, duration=0.5, xpos=(0, -self.width), hide=True)
+		draw.Animation(self.clock_text.quad, duration=0.5, xpos=(0, self.width), hide=True)
 
 
 	def open(self, enabled=True):
 		if not enabled:
 			return self.close()
-
 		if self.enabled:
 			return
-
 		self.enabled = True
-		draw.Animation(self.background, duration=1, opacity=(0, 1))
-		draw.Animation(self.bread_text.quad, duration=1.0, xpos=(-self.width, 0))
-		draw.Animation(self.clock_text.quad, duration=1.0, xpos=(self.width, 0))
+
+		if self.tiles:
+			# FIXME: hack to force redraw on tile, so playing emblem / posbar is shown
+			self.current.show((0, 0), False)
 		self.draw_tiles()
+
+		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(0, 1))
+		draw.Animation(self.background, duration=0.5, opacity=(0, 1))
+		draw.Animation(self.bread_text.quad, duration=0.5, xpos=(-self.width, 0))
+		draw.Animation(self.clock_text.quad, duration=0.5, xpos=(self.width, 0))
 
 
 	def forget(self):
@@ -172,7 +174,6 @@ class Menu:
 		self.jump_tile(index)
 
 
-	# FIXME: are we using this?
 	@property
 	def current(self):
 		return self.tiles[self.current_idx]
@@ -280,9 +281,10 @@ class Menu:
 		else:
 			log.info('Already playing this video, just maybe unpause')
 			video.pause(False)
-		# FIXME: hack
-		the_tile = self.tiles.pop(self.current_idx)
-		the_tile.animate_blowup(self.width / 2, self.height / 2)
+		# FIXME: this seems to work, but why?
+		# It should interfere with the close() animation, AND scale shouldn't get reset...
+		cur = self.current
+		draw.Animation(cur.quads, duration=0.5, opacity=(1, 0), scale=(1, 6), xpos=(cur.pos[0], self.width // 2), ypos=(cur.pos[1], self.height // 2), hide=True)
 		self.close()
 
 

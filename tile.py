@@ -201,10 +201,6 @@ class Tile:
 			draw.Animation(self.quads, duration=0.3, opacity=(0.4, 1), scale=(1.2, 1))
 
 
-	def animate_blowup(self, xpos, ypos):
-		draw.Animation(self.quads, duration=0.5, opacity=(1, 0), scale=(1, 6), xpos=(self.pos[0], xpos), ypos=(self.pos[1], ypos), after=self.destroy)
-
-
 	def destroy(self):
 		self.pos = None
 		self.selected = False
