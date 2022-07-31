@@ -133,6 +133,7 @@ class State:
 		if not cls.redraw_needed:
 			cls.swap_needed = False
 			return
+		print(f'Drawing {len(Quad.all)} quads')
 
 		# MPV seems to mess this up, so we have to re-enable it.
 		gl.glEnable(gl.GL_BLEND)
@@ -283,7 +284,7 @@ class Texture:
 class Quad:
 	all = set()
 
-	def __init__(self, x=0, y=0, w=None, h=None, z=0, pos=(0, 0), scale=1.0, texture=None, image=None, color=None):
+	def __init__(self, x=0, y=0, w=None, h=None, z=0, pos=(0, 0), scale=1.0, texture=None, image=None, color=None, group=None):
 		self.destroyed = False
 		self.x = x
 		self.y = y
@@ -297,6 +298,8 @@ class Quad:
 		self.color = (1, 1, 1, 1) if color is None else color
 		self.all.add(self)
 		State.rebuild_buffer = True
+		if group:
+			group.add(self)
 
 	# FIXME: yuck
 	def __setattr__(self, k, v):
@@ -385,22 +388,22 @@ class Group:
 	def remove(self, *quads):
 		self._quads -= set(quads)
 
+	def remove_destroyed(self):
+		for quad in {q for q in self._quads if q.destroyed}:
+			self.remove(quad)
+
 	def destroy(self):
+		self.remove_destroyed()
 		for quad in set(self._quads):
-			if quad.destroyed:
-				self.remove(quad)
-			else:
-				quad.destroy()
+			quad.destroy()
 
 	def __setattr__(self, k, v):
 		if k[0] == '_':
 			super().__setattr__(k, v)
 		else:
+			self.remove_destroyed()
 			for quad in set(self._quads):
-				if quad.destroyed:
-					self.remove(quad)
-				else:
-					setattr(quad, k, v)
+				setattr(quad, k, v)
 
 
 

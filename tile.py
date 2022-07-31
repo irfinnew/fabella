@@ -101,18 +101,19 @@ class Tile:
 		self.tagged = False
 
 		# Renderables
+		self.quads = draw.Group()
 		self.cover = None
-		self.title = self.font.text(z=204, text=self.name,
+		self.title = self.font.text(z=204, group=self.quads, text=self.name,
 			x=self.xoff, y=self.yoff - config.tile.text_vspace, anchor='tl',
 			max_width=config.tile.width, lines=config.tile.text_lines,
 		)
 		self.info = None
-		self.shadow = draw.Quad(z=200,
+		self.shadow = draw.Quad(z=200, group=self.quads,
 			x=self.xoff - (self.tx_shadow.width - config.tile.width) // 2 + config.tile.shadow_offset,
 			y=self.yoff - (self.tx_shadow.height - config.tile.thumb_height) // 2 - config.tile.shadow_offset,
 			texture=self.tx_shadow, color=config.tile.shadow_color
 		)
-		self.outline = draw.FlatQuad(z=202,
+		self.outline = draw.FlatQuad(z=202, group=self.quads,
 			x=self.xoff - config.tile.outline_size,
 			y=self.yoff - config.tile.outline_size,
 			w=config.tile.width + config.tile.outline_size * 2,
@@ -152,7 +153,7 @@ class Tile:
 		if 'duration' in meta:
 			self.duration = meta.get('duration', None)
 			if not self.info:
-				self.info = self.font.text(z=204, x=self.xoff + config.tile.width - 4, y=self.yoff, anchor='br')
+				self.info = self.font.text(z=204, group=self.quads, x=self.xoff + config.tile.width - 4, y=self.yoff, anchor='br')
 			if self.duration is None:
 				self.info.text = '?:??'
 			else:
@@ -181,9 +182,9 @@ class Tile:
 			self.cover.destroy()
 		if cover_data:
 			cover_img = PIL.Image.open(io.BytesIO(cover_data))
-			self.cover = draw.Quad(z=203, x=self.xoff, y=self.yoff, image=cover_img)
+			self.cover = draw.Quad(z=203, group=self.quads, x=self.xoff, y=self.yoff, image=cover_img)
 		else:
-			self.cover = draw.FlatQuad(z=203,
+			self.cover = draw.FlatQuad(z=203, group=self.quads,
 				x=self.xoff, y=self.yoff, w=config.tile.width, h=config.tile.thumb_height,
 				color=self.tile_color
 			)
@@ -196,41 +197,17 @@ class Tile:
 			self.render()
 
 		if selected:
-			quads = draw.Group(self.shadow, self.highlight, self.outline, self.cover, self.title.quad)
-			quads.add(self.quad_unseen, self.quad_watching, self.quad_tagged)
-			if self.info:
-				quads.add(self.info.quad)
-			draw.Animation(quads, duration=0.3, opacity=(0.4, 1), scale=(1.2, 1))
+			draw.Animation(self.quads, duration=0.3, opacity=(0.4, 1), scale=(1.2, 1))
+
 
 	def animate_blowup(self, xpos, ypos):
-		quads = draw.Group(self.shadow, self.highlight, self.outline, self.cover, self.title.quad)
-		quads.add(self.quad_unseen, self.quad_watching, self.quad_tagged, self.quad_posback, self.quad_posbar)
-		if self.info:
-			quads.add(self.info.quad)
-		draw.Animation(quads, duration=0.5, opacity=(1, 0), scale=(1, 6), xpos=(self.pos[0], xpos), ypos=(self.pos[1], ypos), after=self.destroy)
+		draw.Animation(self.quads, duration=0.5, opacity=(1, 0), scale=(1, 6), xpos=(self.pos[0], xpos), ypos=(self.pos[1], ypos), after=self.destroy)
+
 
 	def destroy(self):
 		self.pos = None
 		self.selected = False
-
-		self.cover.destroy()
-		self.title.destroy()
-		self.shadow.destroy()
-		self.outline.destroy()
-		if self.info:
-			self.info.destroy()
-		if self.highlight:
-			self.highlight.destroy()
-		if self.quad_unseen:
-			self.quad_unseen.destroy()
-		if self.quad_watching:
-			self.quad_watching.destroy()
-		if self.quad_tagged:
-			self.quad_tagged.destroy()
-		if self.quad_posbar:
-			self.quad_posbar.destroy()
-		if self.quad_posback:
-			self.quad_posback.destroy()
+		self.quads.destroy()
 
 
 	def maybe(self, cls, name, active, **kwargs):
@@ -239,6 +216,7 @@ class Tile:
 		if not active:
 			if quad:
 				quad.destroy()
+				self.quads.remove(quad)
 				setattr(self, name, None)
 			return
 
@@ -246,7 +224,7 @@ class Tile:
 			for k, v in kwargs.items():
 				setattr(quad, k, v)
 		else:
-			quad = cls(**kwargs)
+			quad = cls(**kwargs, group=self.quads)
 			setattr(self, name, quad)
 
 

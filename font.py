@@ -19,7 +19,7 @@ log = loghelper.get_logger('Font', loghelper.Color.BrightBlack)
 
 
 class Text:
-	def __init__(self, font, text='', x=0, y=0, z=0, pos=(0, 0), anchor='bl', max_width=None, lines=1):
+	def __init__(self, font, text='', x=0, y=0, z=0, pos=(0, 0), anchor='bl', max_width=None, lines=1, group=None):
 		self._text = None
 		self._max_width = None
 		self.width = 0
@@ -27,7 +27,7 @@ class Text:
 		self.update = None
 		self.rendered = False
 		self.anchor = anchor
-		self.quad = draw.Quad(x=x, y=y, z=z, pos=pos)
+		self.quad = draw.Quad(x=x, y=y, z=z, pos=pos, group=group)
 
 		self.font = font
 		self.lines = lines
