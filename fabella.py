@@ -1,10 +1,14 @@
 #! /usr/bin/env python3
+# Fabella - Simple, elegant video library and player.
+#
+# Copyright 2020-2021 Marcel Moreaux.
+# Licensed under GPL v2.0, or (at your option) any later version.
+# (SPDX GPL-2.0-or-later) See LICENSE file for details.
 
-import os
-# ^&!@%#^%^$@!#&^$! FIXME
-# Somehow, despite running under Wayland/EGL, PyOpenGL ends up using GLX?
+# Ugh. Somehow, despite running under Wayland/EGL, PyOpenGL ends up using GLX?
 # Forcing EGL makes the program work.
 # https://stackoverflow.com/questions/42185728/why-is-glgenvertexarrays-undefined-in-pyopengl-when-using-gtkglarea
+import os
 os.environ['PYOPENGL_PLATFORM'] = 'egl'
 
 import sys

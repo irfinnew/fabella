@@ -1,3 +1,4 @@
+ - Use upstream python-mpv (why did I even use a local copy? I'm sure I had a reason...)
  - Fix sometimes-crash on seek (probably because MPV thread stuff)
  - Fix GLFW bugs
  - Split out file I/O etc to its own thread
