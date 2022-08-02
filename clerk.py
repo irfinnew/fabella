@@ -44,6 +44,11 @@ log = loghelper.get_logger('Clerk', loghelper.Color.Red)
 logging.getLogger('enzyme').setLevel(logging.CRITICAL)
 log.info('Starting Clerk.')
 
+try:
+	import setproctitle
+	setproctitle.setproctitle(' '.join(['clerk'] + sys.argv[1:]))
+except ModuleNotFoundError:
+	log.warning("Couldn't load setproctitle module, so not changing process name")
 
 
 def run_command(command):

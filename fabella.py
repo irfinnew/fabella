@@ -24,6 +24,14 @@ log.info('Starting Fabella.')
 
 
 
+try:
+	import setproctitle
+	setproctitle.setproctitle(' '.join(['fabella'] + sys.argv[1:]))
+except ModuleNotFoundError:
+	log.warning("Couldn't load setproctitle module, so not changing process name")
+
+
+
 window = Window(1920, 1080, "Fabella")
 menu = Menu(sys.argv[1], enabled=True)
 video = Video()
