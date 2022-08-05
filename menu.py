@@ -40,6 +40,7 @@ class Menu:
 		self.tiles = {}
 		self.covers_zip = None
 		self.background = draw.FlatQuad(z=100, w=width, h=height, color=config.menu.background_color)
+		#self.dim = draw.FlatQuad(z=1000, w=width, h=height, color=(0, 0, 0, 0.5))
 		self.breadcrumbs = []
 		self.bread_text = self.menu_font.text(z=101, text='', anchor='tl',
 			x=config.menu.header_hspace, y=height - config.menu.header_vspace,
