@@ -34,6 +34,7 @@ class Menu:
 		self.height = height
 		self.enabled = False
 		self.osd = False
+		self.dark_mode = False
 		self.root = path
 		self.path = None
 		self.current_idx = 0
@@ -42,7 +43,10 @@ class Menu:
 		self.tiles = {}
 		self.covers_zip = None
 		self.background = draw.FlatQuad(z=100, w=width, h=height, color=config.menu.background_color)
-		#self.dim = draw.FlatQuad(z=1000, w=width, h=height, color=(0, 0, 0, 0.5))
+		self.dark_mode_quad = draw.FlatQuad(z=1000, w=width, h=height, color=(0, 0, 0, 1 - config.ui.dark_mode_brightness))
+		self.dark_mode_text = self.menu_font.text(z=102, text='🌒', anchor='tr',
+			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace,
+		)
 		self.breadcrumbs = []
 		self.bread_text = self.menu_font.text(z=101, text='', anchor='tl',
 			x=config.menu.header_hspace, y=height - config.menu.header_vspace,
@@ -86,6 +90,7 @@ class Menu:
 
 		self.load(path)
 		self.open(enabled)
+		self.show_dark_mode()
 
 
 	def tick(self, video):
@@ -113,7 +118,7 @@ class Menu:
 
 		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(1, 0), hide=True)
 		draw.Animation(self.background, duration=1.0, delay=0.25, opacity=(1, 0), hide=True)
-		self.draw_osd()
+		self.show_osd()
 
 
 	def open(self, enabled=True):
@@ -130,7 +135,7 @@ class Menu:
 
 		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(0, 1))
 		draw.Animation(self.background, duration=0.5, opacity=(0, 1))
-		self.draw_osd()
+		self.show_osd()
 
 
 	def forget(self):
@@ -363,7 +368,10 @@ class Menu:
 		log.info(f'Drew tiles in {timer}ms')
 
 
-	def draw_osd(self):
+	def show_osd(self, enabled=None):
+		if enabled is not None:
+			self.osd = enabled
+
 		if self.osd or self.enabled:
 			# show basic OSD
 			if self.bread_text.quad.hidden:
@@ -389,3 +397,20 @@ class Menu:
 				draw.Animation(self.osd_name_text.quad, duration=0.5, xpos=(0, -self.width), hide=True)
 			if not self.osd_duration_text.quad.hidden:
 				draw.Animation(self.osd_duration_text.quad, duration=0.5, xpos=(0, self.width), hide=True)
+
+
+	def show_dark_mode(self, enabled=None):
+		# FIXME: dark mode icon obscures clock...
+		if enabled is not None:
+			self.dark_mode = enabled
+
+		if self.dark_mode:
+			if self.dark_mode_quad.hidden:
+				draw.Animation(self.dark_mode_quad, duration=0.5, opacity=(0, 1 - config.ui.dark_mode_brightness))
+			if self.dark_mode_text.quad.hidden:
+				draw.Animation(self.dark_mode_text.quad, duration=0.5, opacity=(0, 1 - config.ui.dark_mode_brightness))
+		else:
+			if not self.dark_mode_quad.hidden:
+				draw.Animation(self.dark_mode_quad, duration=0.5, opacity=(1 - config.ui.dark_mode_brightness, 0), hide=True)
+			if not self.dark_mode_text.quad.hidden:
+				draw.Animation(self.dark_mode_text.quad, duration=0.5, opacity=(1 - config.ui.dark_mode_brightness, 0), hide=True)

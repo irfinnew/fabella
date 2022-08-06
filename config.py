@@ -52,3 +52,6 @@ class video:
 	#position_bar_color = (0.8, 0.1, 0.1, 1)  # Reddish
 	position_shadow_top_color = (0, 0, 0, 0.25)
 	position_shadow_bottom_color = (0, 0, 0, 1)
+
+class ui:
+	dark_mode_brightness = 0.4

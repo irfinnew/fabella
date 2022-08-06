@@ -62,6 +62,9 @@ while not window.closed():
 				window.set_fullscreen()
 			if key == glfw.KEY_T:
 				draw.SuperTexture.dump()
+			if key == glfw.KEY_D:
+				log.info('Cycling dark mode')
+				menu.show_dark_mode(not menu.dark_mode)
 
 			# Menu keys
 			if menu.enabled:
@@ -99,8 +102,7 @@ while not window.closed():
 				if key == glfw.KEY_O:
 					log.info('Cycling OSD')
 					#video.mpv['osd-level'] ^= 2
-					menu.osd = not menu.osd
-					menu.draw_osd()
+					menu.show_osd(not menu.osd)
 				if key == glfw.KEY_SPACE:
 					video.pause()
 				if key == glfw.KEY_RIGHT:
