@@ -181,7 +181,8 @@ class Tile:
 			self.cover.destroy()
 		if cover_data:
 			cover_img = PIL.Image.open(io.BytesIO(cover_data))
-			#cover_img = PIL.ImageOps.fit(cover_img, (config.tile.width, config.tile.thumb_height))
+			# FIXME: This is fairly expensive, even if not resize is actually needed...
+			cover_img = PIL.ImageOps.fit(cover_img, (config.tile.width, config.tile.thumb_height))
 			self.cover = draw.Quad(z=203, group=self.quads, x=self.xoff, y=self.yoff, image=cover_img)
 		else:
 			self.cover = draw.FlatQuad(z=203, group=self.quads,
