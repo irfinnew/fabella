@@ -43,7 +43,6 @@ video = Video(window.width, window.height)
 #### Main loop
 last_time = 0
 frame_count = 0
-osd = False
 log.info('Starting main loop')
 while not window.closed():
 	window.wait()
@@ -100,7 +99,8 @@ while not window.closed():
 				if key == glfw.KEY_O:
 					log.info('Cycling OSD')
 					#video.mpv['osd-level'] ^= 2
-					osd = not osd
+					menu.osd = not menu.osd
+					menu.draw_osd()
 				if key == glfw.KEY_SPACE:
 					video.pause()
 				if key == glfw.KEY_RIGHT:
@@ -144,7 +144,7 @@ while not window.closed():
 						video.mpv.show_text(f'Subtitles {subid}/{sub_count}: {sublang.upper()}\n{subtitle}')
 
 	video.render()
-	menu.tick()
+	menu.tick(video)
 	draw.Animation.animate_all()
 	draw.State.render()
 	if draw.State.swap_needed:

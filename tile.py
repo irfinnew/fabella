@@ -14,6 +14,7 @@ import dbs
 import config
 import loghelper
 import draw
+import util
 
 log = loghelper.get_logger('Tile', loghelper.Color.Cyan)
 
@@ -25,7 +26,7 @@ class Tile:
 
 	@classmethod
 	def initialize(cls):
-		# FIXME: wrong place I think
+		# FIXME: wrong place for this I think
 		log.info(f'PIL / Pillow version {PIL.__version__}')
 		cfg = config.tile
 
@@ -158,10 +159,7 @@ class Tile:
 			if self.duration is None:
 				self.info.text = '?:??'
 			else:
-				duration = int(self.duration)
-				hours = duration // 3600
-				minutes = (duration % 3600) // 60
-				self.info.text = f'{hours}:{minutes:>02}'
+				self.info.text = util.duration_format(int(self.duration), seconds=False)
 
 		if 'position' in meta:
 			self.position = meta['position']

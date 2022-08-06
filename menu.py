@@ -14,6 +14,7 @@ import loghelper
 import config
 import dbs
 import draw
+import util
 from tile import Tile
 from font import Font
 
@@ -32,6 +33,7 @@ class Menu:
 		self.width = width
 		self.height = height
 		self.enabled = False
+		self.osd = False
 		self.root = path
 		self.path = None
 		self.current_idx = 0
@@ -47,6 +49,14 @@ class Menu:
 		)
 		self.clock_text = self.menu_font.text(z=101, text='clock', anchor='tr',
 			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace,
+		)
+		# FIXME: Figure out better value for y
+		self.osd_name_text = self.menu_font.text(z=101, text='LOSD', anchor='tl', lines=4,
+			x=config.menu.header_hspace, y=height - config.menu.header_vspace * 2 - self.bread_text.quad.h,
+		)
+		# FIXME: Figure out better value for y
+		self.osd_duration_text = self.menu_font.text(z=101, text='ROSD', anchor='tr',
+			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace * 2 - self.bread_text.quad.h,
 		)
 
 		# FIXME: this entire section is yuck
@@ -78,8 +88,22 @@ class Menu:
 		self.open(enabled)
 
 
-	def tick(self):
+	def tick(self, video):
 		self.clock_text.text = datetime.datetime.now().strftime('%a %H:%M:%S')
+
+		# FIXME: Hmm, kinda gross we need the video object here
+		duration_text = '⏸️   ' if video.mpv.pause else '▶️  '
+		if video.position is None or video.duration is None:
+			duration_text += '?:??'
+		else:
+			position = int(video.position * video.duration)
+			position = util.duration_format(position, seconds=True)
+			duration = int(video.duration)
+			duration = util.duration_format(duration, seconds=True)
+			duration_text += f'{position}  ∕  {duration}'
+		self.osd_duration_text.text = duration_text
+		# Ugh.
+		self.osd_name_text.max_width = self.width - self.osd_duration_text.quad.w - config.menu.header_hspace * 3
 
 
 	def close(self):
@@ -89,8 +113,7 @@ class Menu:
 
 		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(1, 0), hide=True)
 		draw.Animation(self.background, duration=1.0, delay=0.25, opacity=(1, 0), hide=True)
-		draw.Animation(self.bread_text.quad, duration=0.5, xpos=(0, -self.width), hide=True)
-		draw.Animation(self.clock_text.quad, duration=0.5, xpos=(0, self.width), hide=True)
+		self.draw_osd()
 
 
 	def open(self, enabled=True):
@@ -107,8 +130,7 @@ class Menu:
 
 		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(0, 1))
 		draw.Animation(self.background, duration=0.5, opacity=(0, 1))
-		draw.Animation(self.bread_text.quad, duration=0.5, xpos=(-self.width, 0))
-		draw.Animation(self.clock_text.quad, duration=0.5, xpos=(self.width, 0))
+		self.draw_osd()
 
 
 	def forget(self):
@@ -282,6 +304,7 @@ class Menu:
 		else:
 			log.info('Already playing this video, just maybe unpause')
 			video.pause(False)
+		self.osd_name_text.text = tile.name
 		# FIXME: this seems to work, but why?
 		# It should interfere with the close() animation, AND scale shouldn't get reset...
 		cur = self.current
@@ -338,3 +361,31 @@ class Menu:
 
 		timer = int((time.time() - timer) * 1000)
 		log.info(f'Drew tiles in {timer}ms')
+
+
+	def draw_osd(self):
+		if self.osd or self.enabled:
+			# show basic OSD
+			if self.bread_text.quad.hidden:
+				draw.Animation(self.bread_text.quad, duration=0.5, xpos=(-self.width, 0))
+			if self.clock_text.quad.hidden:
+				draw.Animation(self.clock_text.quad, duration=0.5, xpos=(self.width, 0))
+		else:
+			# hide basic OSD
+			if not self.bread_text.quad.hidden:
+				draw.Animation(self.bread_text.quad, duration=0.5, xpos=(0, -self.width), hide=True)
+			if not self.clock_text.quad.hidden:
+				draw.Animation(self.clock_text.quad, duration=0.5, xpos=(0, self.width), hide=True)
+
+		if self.osd and not self.enabled:
+			# show extended OSD
+			if self.osd_name_text.quad.hidden:
+				draw.Animation(self.osd_name_text.quad, duration=0.5, xpos=(-self.width, 0))
+			if self.osd_duration_text.quad.hidden:
+				draw.Animation(self.osd_duration_text.quad, duration=0.5, xpos=(self.width, 0))
+		else:
+			# hide extended OSD
+			if not self.osd_name_text.quad.hidden:
+				draw.Animation(self.osd_name_text.quad, duration=0.5, xpos=(0, -self.width), hide=True)
+			if not self.osd_duration_text.quad.hidden:
+				draw.Animation(self.osd_duration_text.quad, duration=0.5, xpos=(0, self.width), hide=True)

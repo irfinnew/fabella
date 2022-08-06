@@ -1,4 +1,3 @@
- - fix OSD
  - Use upstream python-mpv (0.5.2 is broken for x11_display, see issue 169; 1.0.1 requires newer mpv)
  - Use upstream enzyme? (this version is patched for attachment support)
  - Fix sometimes-crash on seek (probably because MPV thread stuff)
@@ -15,3 +14,5 @@
  - Perhaps display multiple seasons in one menu? Separated by a text header?
  - Copy better thumbnail generation from mkv-gencover
  - Have clerk preserve state across renames
+ - Have a look at performance, in particular drawing tiles (defer image/font rendering to render threads?)
+ - Text objects that are hidden shouldn't render when their text is updated

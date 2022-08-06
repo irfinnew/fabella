@@ -134,7 +134,6 @@ class State:
 		if not cls.redraw_needed:
 			cls.swap_needed = False
 			return
-		print(f'Drawing {len(cls.buffer) // 15} quads')
 
 		# MPV seems to mess this up, so we have to re-enable it.
 		gl.glEnable(gl.GL_BLEND)
