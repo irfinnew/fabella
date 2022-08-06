@@ -435,6 +435,8 @@ class Animation:
 			self.quad.hidden = False
 
 		x = min((t - self.start) / self.duration, 1)
+		# ease in/out cubic
+		x = 4 * x ** 3 if x < 0.5 else 1 - 4 * (1 - x) ** 3
 		for k, (s, e) in self.params.items():
 			v = s * (1 - x) + e * x
 			setattr(self.quad, k, v)

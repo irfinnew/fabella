@@ -118,6 +118,7 @@ class Menu:
 
 		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(1, 0), hide=True)
 		draw.Animation(self.background, duration=1.0, delay=0.25, opacity=(1, 0), hide=True)
+		#draw.Animation(self.background, duration=1.0, delay=0.25, ypos=(0, -self.height), hide=True)
 		self.show_osd()
 
 
@@ -135,6 +136,7 @@ class Menu:
 
 		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(0, 1))
 		draw.Animation(self.background, duration=0.5, opacity=(0, 1))
+		#draw.Animation(self.background, duration=1.0, ypos=(-self.height, 0))
 		self.show_osd()
 
 
@@ -375,28 +377,28 @@ class Menu:
 		if self.osd or self.enabled:
 			# show basic OSD
 			if self.bread_text.quad.hidden:
-				draw.Animation(self.bread_text.quad, duration=0.5, xpos=(-self.width, 0))
+				draw.Animation(self.bread_text.quad, duration=0.5, xpos=(-self.bread_text.quad.w - config.menu.header_hspace, 0))
 			if self.clock_text.quad.hidden:
-				draw.Animation(self.clock_text.quad, duration=0.5, xpos=(self.width, 0))
+				draw.Animation(self.clock_text.quad, duration=0.5, xpos=(self.clock_text.quad.w + config.menu.header_hspace, 0))
 		else:
 			# hide basic OSD
 			if not self.bread_text.quad.hidden:
-				draw.Animation(self.bread_text.quad, duration=0.5, xpos=(0, -self.width), hide=True)
+				draw.Animation(self.bread_text.quad, duration=0.5, xpos=(0, -self.bread_text.quad.w - config.menu.header_hspace), hide=True)
 			if not self.clock_text.quad.hidden:
-				draw.Animation(self.clock_text.quad, duration=0.5, xpos=(0, self.width), hide=True)
+				draw.Animation(self.clock_text.quad, duration=0.5, xpos=(0, self.clock_text.quad.w + config.menu.header_hspace), hide=True)
 
 		if self.osd and not self.enabled:
 			# show extended OSD
 			if self.osd_name_text.quad.hidden:
-				draw.Animation(self.osd_name_text.quad, duration=0.5, xpos=(-self.width, 0))
+				draw.Animation(self.osd_name_text.quad, duration=0.5, xpos=(-self.osd_name_text.quad.w - config.menu.header_hspace, 0))
 			if self.osd_duration_text.quad.hidden:
-				draw.Animation(self.osd_duration_text.quad, duration=0.5, xpos=(self.width, 0))
+				draw.Animation(self.osd_duration_text.quad, duration=0.5, xpos=(self.osd_duration_text.quad.w + config.menu.header_hspace, 0))
 		else:
 			# hide extended OSD
 			if not self.osd_name_text.quad.hidden:
-				draw.Animation(self.osd_name_text.quad, duration=0.5, xpos=(0, -self.width), hide=True)
+				draw.Animation(self.osd_name_text.quad, duration=0.5, xpos=(0, -self.osd_name_text.quad.w - config.menu.header_hspace), hide=True)
 			if not self.osd_duration_text.quad.hidden:
-				draw.Animation(self.osd_duration_text.quad, duration=0.5, xpos=(0, self.width), hide=True)
+				draw.Animation(self.osd_duration_text.quad, duration=0.5, xpos=(0, self.osd_duration_text.quad.w + config.menu.header_hspace), hide=True)
 
 
 	def show_dark_mode(self, enabled=None):
