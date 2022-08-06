@@ -7,8 +7,6 @@
  - Add configuration file
  - Add background
  - Menu animations
- - OpenGL error checking
- - Improve drawing effiency (remove OpenGL immediate mode)
  - Abstract out glfw key events
  - Videos with non-square pixels are poorly supported; video playback is letterboxed; thumbnails get squashed (IT crowd)
  - Perhaps display multiple seasons in one menu? Separated by a text header?
