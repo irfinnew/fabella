@@ -97,7 +97,7 @@ class Menu:
 		self.clock_text.text = datetime.datetime.now().strftime('%a %H:%M:%S')
 
 		# FIXME: Hmm, kinda gross we need the video object here
-		duration_text = '⏸️   ' if video.mpv.pause else '▶️  '
+		duration_text = '⏸️   ' if video.paused else '▶️  '
 		if video.position is None or video.duration is None:
 			duration_text += '?:??'
 		else:
@@ -370,11 +370,11 @@ class Menu:
 		log.info(f'Drew tiles in {timer}ms')
 
 
-	def show_osd(self, enabled=None):
+	def show_osd(self, enabled=None, force=False):
 		if enabled is not None:
 			self.osd = enabled
 
-		if self.osd or self.enabled:
+		if (self.osd or self.enabled) or force:
 			# show basic OSD
 			if self.bread_text.quad.hidden:
 				draw.Animation(self.bread_text.quad, duration=0.5, xpos=(-self.bread_text.quad.w - config.menu.header_hspace, 0))
@@ -387,7 +387,7 @@ class Menu:
 			if not self.clock_text.quad.hidden:
 				draw.Animation(self.clock_text.quad, duration=0.5, xpos=(0, self.clock_text.quad.w + config.menu.header_hspace), hide=True)
 
-		if self.osd and not self.enabled:
+		if (self.osd and not self.enabled) or force:
 			# show extended OSD
 			if self.osd_name_text.quad.hidden:
 				draw.Animation(self.osd_name_text.quad, duration=0.5, xpos=(-self.osd_name_text.quad.w - config.menu.header_hspace, 0))

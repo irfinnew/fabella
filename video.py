@@ -152,6 +152,11 @@ class Video:
 			self.mpv.pause = pause
 
 
+	@property
+	def paused(self):
+		return self.mpv.pause
+
+
 	def start(self, filename, position=0, menu=None, tile=None):
 		if self.current_file:
 			self.stop()

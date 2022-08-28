@@ -105,6 +105,7 @@ while not window.closed():
 					menu.show_osd(not menu.osd)
 				if key == glfw.KEY_SPACE:
 					video.pause()
+					menu.show_osd(force=video.paused)
 				if key == glfw.KEY_RIGHT:
 					video.seek(5)
 				if key == glfw.KEY_LEFT:
