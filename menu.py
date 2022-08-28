@@ -43,7 +43,9 @@ class Menu:
 		self.tiles = {}
 		self.covers_zip = None
 		self.background = draw.FlatQuad(z=100, w=width, h=height, color=config.menu.background_color)
-		self.osd_background_quad = draw.FlatQuad(z=101, w=width, h=-200, pos=(0, height), color=(0, 0, 0, 0), hidden=True)
+		self.osd_background_quad = draw.Quad(z=101, w=width, h=-200, pos=(0, height), color=(0, 0, 0, 0), hidden=True)
+		self.osd_background_quad.update_raw(2, 2, 'RGBA', b'\xff\xff\xff\x00' * 2 + b'\xff\xff\xff\xff' * 2)
+		self.osd_background_quad.texture.inset_halftexel() # Ugh
 		self.dark_mode_quad = draw.FlatQuad(z=1000, w=width, h=height, color=(0, 0, 0, 1 - config.ui.dark_mode_brightness), hidden=True)
 		self.dark_mode_text = self.menu_font.text(z=999, text='🌒', anchor='tr',
 			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace,
@@ -392,9 +394,9 @@ class Menu:
 			# show extended OSD
 			if self.osd_background_quad.hidden:
 				# FIXME: figure out better height?
-				self.osd_background_quad.h = -(config.menu.header_vspace * 3 + self.bread_text.quad.h + self.osd_name_text.quad.h)
+				self.osd_background_quad.h = -int((config.menu.header_vspace * 3 + self.bread_text.quad.h + self.osd_name_text.quad.h) * 1.5)
 				# FIXME: hardcoded opacity
-				draw.Animation(self.osd_background_quad, duration=0.5, opacity=(0, 0.5))
+				draw.Animation(self.osd_background_quad, duration=0.5, opacity=(0, 0.7))
 			if self.osd_name_text.quad.hidden:
 				draw.Animation(self.osd_name_text.quad, duration=0.5, xpos=(-self.osd_name_text.quad.w - config.menu.header_hspace, 0))
 			if self.osd_duration_text.quad.hidden:
@@ -403,7 +405,7 @@ class Menu:
 			# hide extended OSD
 			if not self.osd_background_quad.hidden:
 				# FIXME: hardcoded opacity
-				draw.Animation(self.osd_background_quad, duration=0.5, opacity=(0.5, 0), hide=True)
+				draw.Animation(self.osd_background_quad, duration=0.5, opacity=(0.7, 0), hide=True)
 			if not self.osd_name_text.quad.hidden:
 				draw.Animation(self.osd_name_text.quad, duration=0.5, xpos=(0, -self.osd_name_text.quad.w - config.menu.header_hspace), hide=True)
 			if not self.osd_duration_text.quad.hidden:

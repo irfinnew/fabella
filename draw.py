@@ -102,10 +102,7 @@ class State:
 		# Allocate single white-pixel texture for rendering flats
 		Texture.flat = Texture()
 		Texture.flat.update_raw(1, 1, 'RGBA', b'\xff' * 4)
-		# Hack to avoid texture edge bleeding
-		d = 1 / (size * 2)
-		uv = Texture.flat.uv
-		Texture.flat.uv = (uv[0] + d, uv[1] + d, uv[2] - d, uv[3] - d)
+		Texture.flat.inset_halftexel()
 
 
 	@classmethod
@@ -261,6 +258,11 @@ class Texture:
 	def update_image(self, img):
 		if img is not None:
 			self.update_raw(img.width, img.height, img.mode, img.tobytes())
+
+	# Hack to avoid texture edge bleeding on very small textures
+	def inset_halftexel(self):
+		d = 1 / (SuperTexture.size * 2)
+		self.uv = (self.uv[0] + d, self.uv[1] + d, self.uv[2] - d, self.uv[3] - d)
 
 	def force_redraw(self):
 		State.redraw_needed = True
