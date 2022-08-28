@@ -43,23 +43,24 @@ class Menu:
 		self.tiles = {}
 		self.covers_zip = None
 		self.background = draw.FlatQuad(z=100, w=width, h=height, color=config.menu.background_color)
-		self.dark_mode_quad = draw.FlatQuad(z=1000, w=width, h=height, color=(0, 0, 0, 1 - config.ui.dark_mode_brightness))
-		self.dark_mode_text = self.menu_font.text(z=102, text='🌒', anchor='tr',
+		self.osd_background_quad = draw.FlatQuad(z=101, w=width, h=-200, pos=(0, height), color=(0, 0, 0, 0), hidden=True)
+		self.dark_mode_quad = draw.FlatQuad(z=1000, w=width, h=height, color=(0, 0, 0, 1 - config.ui.dark_mode_brightness), hidden=True)
+		self.dark_mode_text = self.menu_font.text(z=999, text='🌒', anchor='tr',
 			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace,
 		)
 		self.breadcrumbs = []
-		self.bread_text = self.menu_font.text(z=101, text='', anchor='tl',
+		self.bread_text = self.menu_font.text(z=102, text='', anchor='tl',
 			x=config.menu.header_hspace, y=height - config.menu.header_vspace,
 		)
-		self.clock_text = self.menu_font.text(z=101, text='clock', anchor='tr',
+		self.clock_text = self.menu_font.text(z=102, text='clock', anchor='tr',
 			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace,
 		)
 		# FIXME: Figure out better value for y
-		self.osd_name_text = self.menu_font.text(z=101, text='LOSD', anchor='tl', lines=4,
+		self.osd_name_text = self.menu_font.text(z=102, text='LOSD', anchor='tl', lines=4,
 			x=config.menu.header_hspace, y=height - config.menu.header_vspace * 2 - self.bread_text.quad.h,
 		)
 		# FIXME: Figure out better value for y
-		self.osd_duration_text = self.menu_font.text(z=101, text='ROSD', anchor='tr',
+		self.osd_duration_text = self.menu_font.text(z=102, text='ROSD', anchor='tr',
 			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace * 2 - self.bread_text.quad.h,
 		)
 
@@ -97,7 +98,7 @@ class Menu:
 		self.clock_text.text = datetime.datetime.now().strftime('%a %H:%M:%S')
 
 		# FIXME: Hmm, kinda gross we need the video object here
-		duration_text = '⏸️   ' if video.paused else '▶️  '
+		duration_text = '⏸️  ' if video.paused else '▶️  '
 		if video.position is None or video.duration is None:
 			duration_text += '?:??'
 		else:
@@ -389,12 +390,20 @@ class Menu:
 
 		if (self.osd and not self.enabled) or force:
 			# show extended OSD
+			if self.osd_background_quad.hidden:
+				# FIXME: figure out better height?
+				self.osd_background_quad.h = -(config.menu.header_vspace * 3 + self.bread_text.quad.h + self.osd_name_text.quad.h)
+				# FIXME: hardcoded opacity
+				draw.Animation(self.osd_background_quad, duration=0.5, opacity=(0, 0.5))
 			if self.osd_name_text.quad.hidden:
 				draw.Animation(self.osd_name_text.quad, duration=0.5, xpos=(-self.osd_name_text.quad.w - config.menu.header_hspace, 0))
 			if self.osd_duration_text.quad.hidden:
 				draw.Animation(self.osd_duration_text.quad, duration=0.5, xpos=(self.osd_duration_text.quad.w + config.menu.header_hspace, 0))
 		else:
 			# hide extended OSD
+			if not self.osd_background_quad.hidden:
+				# FIXME: hardcoded opacity
+				draw.Animation(self.osd_background_quad, duration=0.5, opacity=(0.5, 0), hide=True)
 			if not self.osd_name_text.quad.hidden:
 				draw.Animation(self.osd_name_text.quad, duration=0.5, xpos=(0, -self.osd_name_text.quad.w - config.menu.header_hspace), hide=True)
 			if not self.osd_duration_text.quad.hidden:

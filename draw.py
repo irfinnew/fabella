@@ -284,14 +284,14 @@ class Texture:
 class Quad:
 	all = set()
 
-	def __init__(self, x=0, y=0, w=None, h=None, z=0, pos=(0, 0), scale=1.0, texture=None, image=None, color=None, group=None):
+	def __init__(self, x=0, y=0, w=None, h=None, z=0, pos=(0, 0), scale=1.0, texture=None, image=None, color=None, hidden=False, group=None):
 		self.destroyed = False
 		self.x = x
 		self.y = y
 		self.z = z
 		self.pos = pos
 		self.scale = scale
-		self.hidden = False
+		self.hidden = hidden
 		self.texture = Texture(image=image, persistent=False) if texture is None else texture
 		self.w = w or self.texture.width or 0
 		self.h = h or self.texture.height or 0
