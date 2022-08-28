@@ -29,6 +29,13 @@ log = loghelper.get_logger('Fabella', loghelper.Color.Red)
 log.info('Starting Fabella.')
 
 
+#### Process name
+try:
+	import setproctitle
+	setproctitle.setproctitle(' '.join(['fabella'] + sys.argv[1:]))
+except ModuleNotFoundError:
+	log.warning("Couldn't load setproctitle module; not changing process name")
+
 
 #### Initialization
 # FIXME: hardcoded monitor
@@ -37,7 +44,6 @@ draw.State.initialize(window.width, window.height)
 Tile.initialize()
 menu = Menu(sys.argv[1], window.width, window.height, enabled=True)
 video = Video(window.width, window.height)
-
 
 
 #### Main loop

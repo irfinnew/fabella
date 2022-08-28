@@ -4,3 +4,4 @@ pillow
 pycairo
 PyGObject
 python-mpv
+setproctitle
