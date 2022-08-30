@@ -456,7 +456,8 @@ class Animation:
 			t = time.time()
 			for a in set(cls.all):
 				a.animate(t)
-			window.wakeup()
+			# Doing this makes glfw wait events not work properly, dropping rendering to ~30fps and stuttering ???
+			#window.wakeup()
 
 
 
