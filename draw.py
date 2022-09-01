@@ -8,12 +8,16 @@ import operator
 import OpenGL, OpenGL.GL.shaders, OpenGL.GL as gl
 import PIL.Image  # Hmm, just for SuperTexture.dump() ?
 import math
+import queue
 import ctypes
 import array
 import time
+import io
+import os
 
 import loghelper
 import window
+import worker
 
 log = loghelper.get_logger('Draw', loghelper.Color.BrightBlack)
 # XXX: Not yet thread safe, only call stuff from main thread
@@ -36,11 +40,15 @@ class State:
 		raise NotImplementedError('Instantiation not allowed.')
 
 	@classmethod
-	def initialize(cls, width, height):
+	def initialize(cls, width, height, threads=None):
 		log.info(f'PyOpenGL version {OpenGL.version.__version__}')
 		log.info(f'Initialize for {width}x{height}')
 		cls.width = width
 		cls.height = height
+
+		if threads is None:
+			threads = max(1, len(os.sched_getaffinity(0)) - 1)
+		cls.render_pool = worker.Pool('Render', threads=threads)
 
 		# Init OpenGL
 		gl.glEnable(gl.GL_BLEND)
@@ -107,6 +115,8 @@ class State:
 
 	@classmethod
 	def render(cls):
+		Update.finalize_all()
+
 		if cls.rebuild_buffer:
 			log.debug('Rebuilding OpenGL data buffer')
 			cls.buffer = array.array('f', [])
@@ -336,6 +346,8 @@ class Quad:
 		self.pos = self.pos[:1] + (new,)
 
 	def update_raw(self, width, height, mode, pixels):
+		if self.texture is Texture.flat:
+			self.texture = Texture(None, persistent=False)
 		uv = self.texture.uv
 		self.texture.update_raw(width, height, mode, pixels)
 		if uv != self.texture.uv:
@@ -351,12 +363,12 @@ class Quad:
 			State.redraw_needed = True
 
 	def destroy(self):
+		self.destroyed = True
 		self.all.remove(self)
 		self.texture.destroy()
 		del self.x # trigger AttributeError if we're used after this
 		del self.texture  # trigger AttributeError if we're used after this
 		State.rebuild_buffer = True
-		self.destroyed = True
 
 	def buffer(self):
 		return [
@@ -378,6 +390,77 @@ class Quad:
 class FlatQuad(Quad):
 	def __init__(self, **kwargs):
 		super().__init__(texture=Texture.flat, **kwargs)
+
+
+
+
+class Update:
+	done = queue.Queue()
+
+	def finalize(self):
+		if self.quad.destroyed:
+			return
+		self.quad.update_raw(self.width, self.height, self.mode, self.pixels)
+		if self.color is not None:
+			self.quad.color = self.color
+
+	@classmethod
+	def finalize_all(cls):
+		try:
+			while True:
+				cls.done.get_nowait().finalize()
+		except queue.Empty:
+			pass
+
+
+
+class UpdateImg(Update):
+	def __init__(self, quad, data, fit=None, color=None):
+		self.quad = quad
+		self.data = data
+		self.fit = fit
+		self.color = color
+		State.render_pool.schedule(self.do)
+
+	def do(self):
+		img = PIL.Image.open(io.BytesIO(self.data))
+		if self.fit:
+			if (img.width, img.height) != self.fit:
+				img = PIL.ImageOps.fit(img, fit)
+		self.width = img.width
+		self.height = img.height
+		self.mode = img.mode
+		self.pixels = img.tobytes()
+
+		self.done.put(self)
+		window.wakeup()
+
+
+
+class UpdateText(Update):
+	def __init__(self, quad, text):
+		self.quad = quad
+		self.text = text
+		self.color = None
+		State.render_pool.schedule(self.do)
+
+	def do(self):
+		width, height, mode, pixels = self.text.render()
+		self.width = width
+		self.height = height
+		self.mode = mode
+		self.pixels = pixels
+
+		if (self.quad.w, self.quad.h) != (width, height):
+			if self.text.anchor[1] == 'r':
+				self.quad.x = self.quad.x + self.quad.w - width
+			if self.text.anchor[0] == 't':
+				self.quad.y = self.quad.y + self.quad.h - height
+			self.quad.w = width
+			self.quad.h = height
+
+		self.done.put(self)
+		window.wakeup()
 
 
 
