@@ -54,4 +54,4 @@ class video:
 	position_shadow_bottom_color = (0, 0, 0, 1)
 
 class ui:
-	dark_mode_brightness = 0.4
+	dark_mode_brightness = 0.45
