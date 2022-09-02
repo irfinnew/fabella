@@ -58,10 +58,10 @@ class Menu:
 			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace,
 		)
 		self.osd_name_text = self.menu_font.text(z=102, text='LOSD', anchor='tl', lines=4,
-			x=config.menu.header_hspace, y=height - config.menu.header_vspace * 2 - self.menu_font.height,
+			x=config.menu.header_hspace, y=height - config.menu.header_vspace * 2 - self.menu_font.height(1),
 		)
 		self.osd_duration_text = self.menu_font.text(z=102, text='ROSD', anchor='tr',
-			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace * 2 - self.menu_font.height,
+			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace * 2 - self.menu_font.height(1),
 		)
 
 		# FIXME: this entire section is yuck
@@ -69,7 +69,7 @@ class Menu:
 		tile_hspace = config.tile.min_hspace
 		tile_htotal = tile_width + tile_hspace
 
-		tile_height = config.tile.thumb_height + config.tile.text_vspace + self.tile_font.height * config.tile.text_lines
+		tile_height = config.tile.thumb_height + config.tile.text_vspace + self.tile_font.height(config.tile.text_lines)
 		tile_vspace = config.tile.min_vspace
 		tile_vtotal = tile_height + tile_vspace
 
@@ -79,13 +79,13 @@ class Menu:
 		self.tile_hstart = tile_hoffset
 		self.tile_hoffset = tile_htotal
 
-		height -= config.menu.header_vspace + self.menu_font.height
+		height -= config.menu.header_vspace + self.menu_font.height(1)
 		tile_rows = max(height // tile_vtotal, 1)
 		tile_voffset = (height - tile_rows * tile_vtotal) // 2 + tile_vspace
 
 		self.tile_rows = tile_rows
 		self.tile_vstart = tile_voffset
-		self.tile_vstart = config.menu.header_vspace + self.menu_font.height + (height - tile_rows * tile_vtotal) // 2 + tile_vspace
+		self.tile_vstart = config.menu.header_vspace + self.menu_font.height(1) + (height - tile_rows * tile_vtotal) // 2 + tile_vspace
 		self.tile_voffset = tile_vtotal
 		# FIXME: end yuck
 
@@ -419,9 +419,9 @@ class Menu:
 			if self.dark_mode_quad.hidden:
 				draw.Animation(self.dark_mode_quad, duration=0.5, opacity=(0, 1 - config.ui.dark_mode_brightness))
 			if self.dark_mode_text.quad.hidden:
-				draw.Animation(self.dark_mode_text.quad, duration=0.5, opacity=(0, 1 - config.ui.dark_mode_brightness))
+				draw.Animation(self.dark_mode_text.quad, duration=0.5, opacity=(0, 1))
 		else:
 			if not self.dark_mode_quad.hidden:
 				draw.Animation(self.dark_mode_quad, duration=0.5, opacity=(1 - config.ui.dark_mode_brightness, 0), hide=True)
 			if not self.dark_mode_text.quad.hidden:
-				draw.Animation(self.dark_mode_text.quad, duration=0.5, opacity=(1 - config.ui.dark_mode_brightness, 0), hide=True)
+				draw.Animation(self.dark_mode_text.quad, duration=0.5, opacity=(1, 0), hide=True)

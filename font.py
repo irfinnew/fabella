@@ -58,8 +58,7 @@ class Text:
 
 		log.debug(f'Rendering text: "{self._text}"')
 
-		# It seems to be necessary to give the text a bit of borizontal padding
-		# to account for the stroke
+		# We need to pad the surface a bit to account for the stroke width
 		border = self.font.stroke_width
 		layout = PangoCairo.create_layout(self.font.context)
 		layout.set_font_description(self.font.font_desc)
@@ -74,7 +73,7 @@ class Text:
 
 		# Create actual surface
 		width, height = layout.get_size()
-		height = height // Pango.SCALE
+		height = height // Pango.SCALE + border * 2
 		if self._max_width:
 			width = self._max_width
 		else:
@@ -90,7 +89,7 @@ class Text:
 
 		# Outline
 		context.set_source_rgb(0, 0, 0)
-		context.move_to(border, 0)
+		context.move_to(border, border)
 		PangoCairo.layout_path(context, layout)
 		context.set_line_width(self.font.stroke_width * 2)
 		context.set_line_join(cairo.LINE_JOIN_ROUND)
@@ -99,7 +98,7 @@ class Text:
 
 		# Fill
 		context.set_source_rgb(1, 1, 1)
-		context.move_to(border, 0)
+		context.move_to(border, border)
 		PangoCairo.show_layout(context, layout)
 
 		return (width, height, 'BGRA', surface.get_data())
@@ -134,13 +133,16 @@ class Font:
 		self.font_desc = self.font.describe()
 		log.info(f'{self.desc}: Loaded font: {self.font_desc.to_string()}')
 
-		self.height = round(self.font.get_metrics().height / Pango.SCALE)
+		self.line_height = self.font.get_metrics().height / Pango.SCALE
 		log.info(f'{self.desc}: Font height: {self.height}px')
 
 		# Surface and context will be re-used for every Text instance to create
 		# a Pango layout from, just to lay out the text.
 		self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 64, 64)
 		self.context = cairo.Context(self.surface)
+
+	def height(self, lines=1):
+		return round(self.line_height * lines) + self.stroke_width
 
 	def text(self, **kwargs):
 		return Text(self, **kwargs)
