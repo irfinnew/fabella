@@ -67,17 +67,19 @@ class State:
 
 		cls.vbo = gl.glGenBuffers(1)
 		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, cls.vbo)
-		gl.glEnableVertexAttribArray(0)
-		stride = 15 * 4  # 15 floats
+		stride = 16 * 4  # 16 floats
+		gl.glEnableVertexAttribArray(0)  # position
 		gl.glVertexAttribPointer(0, 2, gl.GL_FLOAT, False, stride, ctypes.c_void_p(0))
-		gl.glEnableVertexAttribArray(1)
+		gl.glEnableVertexAttribArray(1)  # XY
 		gl.glVertexAttribPointer(1, 4, gl.GL_FLOAT, False, stride, ctypes.c_void_p(8))
-		gl.glEnableVertexAttribArray(2)
+		gl.glEnableVertexAttribArray(2)  # UV
 		gl.glVertexAttribPointer(2, 4, gl.GL_FLOAT, False, stride, ctypes.c_void_p(24))
-		gl.glEnableVertexAttribArray(3)
+		gl.glEnableVertexAttribArray(3)  # color
 		gl.glVertexAttribPointer(3, 4, gl.GL_FLOAT, False, stride, ctypes.c_void_p(40))
-		gl.glEnableVertexAttribArray(4)
+		gl.glEnableVertexAttribArray(4)  # scale
 		gl.glVertexAttribPointer(4, 1, gl.GL_FLOAT, False, stride, ctypes.c_void_p(56))
+		gl.glEnableVertexAttribArray(5)  # hidden
+		gl.glVertexAttribPointer(5, 1, gl.GL_FLOAT, False, stride, ctypes.c_void_p(60))
 
 		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
 		gl.glBindVertexArray(0)
@@ -119,7 +121,7 @@ class State:
 		if cls.rebuild_buffer:
 			log.debug('Rebuilding OpenGL data buffer')
 			cls.buffer = array.array('f', [])
-			for i, quad in enumerate(sorted({q for q in Quad.all if not q.hidden}, key=operator.attrgetter('z'))):
+			for i, quad in enumerate(sorted(Quad.all, key=operator.attrgetter('z'))):
 				cls.buffer.extend(quad.buffer())
 				quad.buffer_index = i
 			cls.rebuild_buffer = False
@@ -129,11 +131,10 @@ class State:
 		if cls.dirty_quads:
 			log.debug('Updating OpenGL data buffer')
 			for quad in cls.dirty_quads:
-				if not quad.hidden:
-					qb = array.array('f', quad.buffer())
-					qbl = len(qb)
-					idx = quad.buffer_index * qbl
-					cls.buffer[idx:idx+qbl] = qb
+				qb = array.array('f', quad.buffer())
+				qbl = len(qb)
+				idx = quad.buffer_index * qbl
+				cls.buffer[idx:idx+qbl] = qb
 			cls.dirty_quads.clear()
 			cls.redraw_needed = True
 
@@ -152,7 +153,7 @@ class State:
 		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, cls.vbo)
 		buffer = cls.buffer.tobytes()
 		gl.glBufferData(gl.GL_ARRAY_BUFFER, len(buffer), buffer, gl.GL_STATIC_DRAW)
-		gl.glDrawArrays(gl.GL_POINTS, 0, len(Quad.all))
+		gl.glDrawArrays(gl.GL_POINTS, 0, len(cls.buffer) // 15)
 
 		# Seems like unbinding this stuff isn't necessary, so save the CPU cycles
 		#gl.glUseProgram(0)
@@ -375,7 +376,8 @@ class Quad:
 			self.x, self.y, self.x + self.w, self.y + self.h,
 			*self.texture.uv,
 			*self.color,
-			self.scale
+			self.scale,
+			float(self.hidden),
 		]
 
 	def __str__(self):
@@ -550,6 +552,7 @@ layout (location = 1) in vec4 XY;
 layout (location = 2) in vec4 UV;
 layout (location = 3) in vec4 color;
 layout (location = 4) in float scale;
+layout (location = 5) in float hidden;
 
 out VDATA {
 	vec4 XY;
@@ -567,6 +570,10 @@ void main()
 	);
 	vdata.UV = UV;
 	vdata.color = color;
+
+	if (hidden > 0.5)
+		vdata.color.a = 0.0;
+
 	gl_Position = vec4(position[0] / resolution[0], position[1] / resolution[1], 0.0, 1.0);
 }
 """
@@ -590,6 +597,9 @@ void main() {
 	vec4 position = gl_in[0].gl_Position;
 
 	color = vdata[0].color;
+
+	if (color.a == 0.0)
+		return;
 
 	// Bottom-left
 	gl_Position = position + vec4(vdata[0].XY[0], vdata[0].XY[1], 0.0, 0.0);
