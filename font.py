@@ -58,9 +58,11 @@ class Text:
 
 		log.debug(f'Rendering text: "{self._text}"')
 
+		# It seems to be necessary to give the text a bit of borizontal padding
+		# to account for the stroke
 		border = self.font.stroke_width
 		layout = PangoCairo.create_layout(self.font.context)
-		layout.set_font_description(self.font.face)
+		layout.set_font_description(self.font.font_desc)
 		layout.set_wrap(Pango.WrapMode.WORD_CHAR)
 		layout.set_ellipsize(Pango.EllipsizeMode.END)
 		layout.set_text(self._text, -1)
@@ -72,7 +74,7 @@ class Text:
 
 		# Create actual surface
 		width, height = layout.get_size()
-		height = height // Pango.SCALE + border * 2
+		height = height // Pango.SCALE
 		if self._max_width:
 			width = self._max_width
 		else:
@@ -81,9 +83,14 @@ class Text:
 		surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
 		context = cairo.Context(surface)
 
+		# Useful for debugging
+		#context.set_source_rgb(1, 0, 0)
+		#context.rectangle(0, 0, width, height)
+		#context.fill()
+
 		# Outline
 		context.set_source_rgb(0, 0, 0)
-		context.move_to(border, border)
+		context.move_to(border, 0)
 		PangoCairo.layout_path(context, layout)
 		context.set_line_width(self.font.stroke_width * 2)
 		context.set_line_join(cairo.LINE_JOIN_ROUND)
@@ -92,7 +99,7 @@ class Text:
 
 		# Fill
 		context.set_source_rgb(1, 1, 1)
-		context.move_to(border, border)
+		context.move_to(border, 0)
 		PangoCairo.show_layout(context, layout)
 
 		return (width, height, 'BGRA', surface.get_data())
@@ -101,29 +108,34 @@ class Text:
 		self.quad.destroy()
 
 	def __str__(self):
-		return f'<Text{self.font.name} {self.font.size}, {repr(self._text)}>'
+		return f'<Text {self.font.desc}, {repr(self._text)}>'
 
 	def __repr__(self):
 		return self.__str__()
 
 
 class Font:
-	face = None
-	name = None
-	size = None
-	stroke_width = 0
-
 	def __init__(self, fontname, size, stroke_width=None):
-		# FIXME: not happy with this here
-		log.info(f'Pycairo version {cairo.version}')
-		log.info(f'Creating instance for {fontname} {size}')
 		self.name = fontname
 		self.size = size
+		self.desc = f'{fontname} {size}'
+
+		log.info(f'{self.desc}: Initializing Font renderer')
+		log.info(f'{self.desc}: Pycairo version {cairo.version}')
 		if stroke_width is None:
 			self.stroke_width = 1 + round(size / 9)
 		else:
 			self.stroke_width = stroke_width
-		self.face = Pango.font_description_from_string(f'{fontname} {size}')
+		log.info(f'{self.desc}: Stroke width: {self.stroke_width}')
+
+		font_desc = Pango.font_description_from_string(f'{fontname} {size}')
+		fontmap = PangoCairo.font_map_get_default()
+		self.font = fontmap.load_font(fontmap.create_context(), font_desc)
+		self.font_desc = self.font.describe()
+		log.info(f'{self.desc}: Loaded font: {self.font_desc.to_string()}')
+
+		self.height = round(self.font.get_metrics().height / Pango.SCALE)
+		log.info(f'{self.desc}: Font height: {self.height}px')
 
 		# Surface and context will be re-used for every Text instance to create
 		# a Pango layout from, just to lay out the text.
@@ -134,7 +146,7 @@ class Font:
 		return Text(self, **kwargs)
 
 	def __str__(self):
-		return f'<Font {self.name} {self.size}, {self.stroke_width}>'
+		return f'<Font {self.desc}, {self.stroke_width}>'
 
 	def __repr__(self):
 		return str(self)
