@@ -7,6 +7,7 @@
 import queue
 import threading
 import traceback
+import os
 
 import loghelper
 
@@ -68,6 +69,7 @@ class Worker:
 				log.error(f'Unhandled exception on thread {self.pool.name} while executing job {job}')
 				for line in traceback.format_exc().splitlines():
 					log.error(line)
+				os._exit(1)
 
 			self.queue.task_done()
 
