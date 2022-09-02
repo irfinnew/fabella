@@ -426,7 +426,7 @@ class UpdateImg(Update):
 		img = PIL.Image.open(io.BytesIO(self.data))
 		if self.fit:
 			if (img.width, img.height) != self.fit:
-				img = PIL.ImageOps.fit(img, fit)
+				img = PIL.ImageOps.fit(img, self.fit)
 		self.width = img.width
 		self.height = img.height
 		self.mode = img.mode
