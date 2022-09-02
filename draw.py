@@ -18,6 +18,7 @@ import os
 import loghelper
 import window
 import worker
+import util
 
 log = loghelper.get_logger('Draw', loghelper.Color.BrightBlack)
 # XXX: Not yet thread safe, only call stuff from main thread
@@ -40,15 +41,13 @@ class State:
 		raise NotImplementedError('Instantiation not allowed.')
 
 	@classmethod
-	def initialize(cls, width, height, threads=None):
+	def initialize(cls, width, height):
 		log.info(f'PyOpenGL version {OpenGL.version.__version__}')
 		log.info(f'Initialize for {width}x{height}')
 		cls.width = width
 		cls.height = height
 
-		if threads is None:
-			threads = max(1, len(os.sched_getaffinity(0)) - 1)
-		cls.render_pool = worker.Pool('Render', threads=threads)
+		cls.render_pool = worker.Pool('Render', threads=util.render_thread_count())
 
 		# Init OpenGL
 		gl.glEnable(gl.GL_BLEND)
