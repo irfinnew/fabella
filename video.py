@@ -53,6 +53,13 @@ class Video:
 		self.menu = None
 		# FIXME: should come from configuration, at least partially
 		log.warning('FIXME: setting MPV options')
+
+		# time interpolation for smoother video. Needs research.
+		# https://github.com/mpv-player/mpv/wiki/Interpolation
+		#self.mpv['video-sync'] = 'display-resample'
+		#self.mpv['interpolation'] = 'yes'
+		#self.mpv['override-display-fps'] = 59
+
 		self.mpv['hwdec'] = 'auto'
 		self.mpv['osd-duration'] = 1000
 		self.mpv['osd-level'] = 1
