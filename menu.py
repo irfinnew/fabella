@@ -107,7 +107,11 @@ class Menu:
 
 
 	def tick(self, video):
-		self.clock_text.text = datetime.datetime.now().strftime('%a %H:%M:%S')
+		# FIXME: hurgh.
+		meh = datetime.datetime.now().strftime('%a %H:%M:%S')
+		if self.dark_mode:
+			meh += '        '
+		self.clock_text.text = meh
 
 		# FIXME: Hmm, kinda gross we need the video object here
 		duration_text = '⏸️  ' if video.paused else '▶️  '
