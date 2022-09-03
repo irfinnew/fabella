@@ -502,9 +502,15 @@ class Group:
 
 class Animation:
 	all = set()
+	EASES = {  # Cubic easement functions
+		'in': lambda x: x ** 3,
+		'out': lambda x: 1 - (1 - x) ** 3,
+		'both': lambda x: 4 * x ** 3 if x < 0.5 else 1 - 4 * (1 - x) ** 3,
+	}
 
-	def __init__(self, quad=None, duration=1.0, delay=0.0, after=None, hide=False, **kwargs):
+	def __init__(self, quad=None, ease='both', duration=1.0, delay=0.0, after=None, hide=False, **kwargs):
 		self.quad = quad
+		self.ease = self.EASES[ease]
 		self.duration = duration
 		self.start = time.time() + delay
 		self.params = kwargs
@@ -520,9 +526,7 @@ class Animation:
 		if not self.started:
 			self.quad.hidden = False
 
-		x = min((t - self.start) / self.duration, 1)
-		# ease in/out cubic
-		x = 4 * x ** 3 if x < 0.5 else 1 - 4 * (1 - x) ** 3
+		x = self.ease(min((t - self.start) / self.duration, 1))
 		for k, (s, e) in self.params.items():
 			v = s * (1 - x) + e * x
 			setattr(self.quad, k, v)
