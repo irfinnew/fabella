@@ -107,8 +107,8 @@ while not window.closed():
 					menu.open()
 				if key == glfw.KEY_O:
 					log.info('Cycling OSD')
-					#video.mpv['osd-level'] ^= 2
-					menu.show_osd(not menu.osd)
+					if not video.paused:
+						menu.show_osd(not menu.osd)
 				if key == glfw.KEY_SPACE:
 					video.pause()
 					menu.show_osd(force=video.paused)

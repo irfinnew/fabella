@@ -549,6 +549,29 @@ class Animation:
 
 
 
+class Animatable:
+	def __init__(self, quad, duration=0.3, initial=False, ease='single', **kwargs):
+		self.quad = quad
+		self.duration = duration
+		self.ease = ease
+		self.params_on = kwargs
+		self.params_off = {k: (u, v) for k, (v, u) in kwargs.items()}
+
+		self.state = initial
+		for k, v in self.params_on.items():
+			setattr(quad, k, v[self.state])
+
+	def show(self, state):
+		if state == self.state:
+			return
+
+		self.state = state
+		params = self.params_on if self.state else self.params_off
+		ease = 'both' if self.ease == 'both' else ['in', 'out'][self.state]
+		Animation(self.quad, duration=self.duration, ease=ease, **params)
+
+
+
 VERTEX_SHADER = """#version 330 core
 uniform vec2 resolution;
 layout (location = 0) in vec2 position;

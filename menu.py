@@ -43,13 +43,16 @@ class Menu:
 		self.tiles = {}
 		self.covers_zip = None
 		self.background = draw.FlatQuad(z=100, w=width, h=height, color=config.menu.background_color)
-		self.osd_background_quad = draw.Quad(z=101, w=width, h=-200, pos=(0, height), color=(0, 0, 0, 0), hidden=True)
-		self.osd_background_quad.update_raw(2, 2, 'RGBA', b'\xff\xff\xff\x00' * 2 + b'\xff\xff\xff\xff' * 2)
-		self.osd_background_quad.texture.inset_halftexel() # Ugh
+
+		# Dark mode stuff
 		self.dark_mode_quad = draw.FlatQuad(z=1000, w=width, h=height, color=(0, 0, 0, 1 - config.ui.dark_mode_brightness), hidden=True)
 		self.dark_mode_text = self.menu_font.text(z=999, text='🌒', anchor='tr',
 			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace,
 		)
+		self.dark_mode_bg_thing = draw.Animatable(self.dark_mode_quad, opacity=(0, 1 - config.ui.dark_mode_brightness))
+		self.dark_mode_icon_thing = draw.Animatable(self.dark_mode_text.quad, opacity=(0, 1))
+
+		# OSD stuff
 		self.breadcrumbs = []
 		self.bread_text = self.menu_font.text(z=102, text='', anchor='tl',
 			x=config.menu.header_hspace, y=height - config.menu.header_vspace,
@@ -63,6 +66,15 @@ class Menu:
 		self.osd_duration_text = self.menu_font.text(z=102, text='ROSD', anchor='tr',
 			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace * 2 - self.menu_font.height(1),
 		)
+		self.osd_background_quad = draw.Quad(z=101, w=width, h=-200, pos=(0, height), color=(0, 0, 0, 0), hidden=True)
+		self.osd_background_quad.update_raw(2, 2, 'RGBA', b'\xff\xff\xff\x00' * 2 + b'\xff\xff\xff\xff' * 2)
+		self.osd_background_quad.texture.inset_halftexel() # Ugh
+
+		self.osd_bread_thing = draw.Animatable(self.bread_text.quad, xpos=(-self.width, 0))
+		self.osd_clock_thing = draw.Animatable(self.clock_text.quad, xpos=(self.width, 0))
+		self.osd_name_thing = draw.Animatable(self.osd_name_text.quad, xpos=(-self.width, 0))
+		self.osd_duration_thing = draw.Animatable(self.osd_duration_text.quad, xpos=(self.width, 0))
+		self.osd_background_thing = draw.Animatable(self.osd_background_quad, opacity=(0, 1))
 
 		# FIXME: this entire section is yuck
 		tile_width = config.tile.width
@@ -375,39 +387,14 @@ class Menu:
 		if enabled is not None:
 			self.osd = enabled
 
-		if (self.osd or self.enabled) or force:
-			# show basic OSD
-			if self.bread_text.quad.hidden:
-				draw.Animation(self.bread_text.quad, ease='out', duration=0.5, xpos=(-self.width, 0))
-			if self.clock_text.quad.hidden:
-				draw.Animation(self.clock_text.quad, ease='out', duration=0.5, xpos=(self.width, 0))
-		else:
-			# hide basic OSD
-			if not self.bread_text.quad.hidden:
-				draw.Animation(self.bread_text.quad, ease='in', duration=0.5, xpos=(0, -self.width), hide=True)
-			if not self.clock_text.quad.hidden:
-				draw.Animation(self.clock_text.quad, ease='in', duration=0.5, xpos=(0, self.width), hide=True)
+		show_basic_osd = (self.osd or self.enabled) or force
+		show_extended_osd = (self.osd and not self.enabled) or force
 
-		if (self.osd and not self.enabled) or force:
-			# show extended OSD
-			if self.osd_background_quad.hidden:
-				# FIXME: figure out better height?
-				self.osd_background_quad.h = -int((config.menu.header_vspace * 3 + self.bread_text.quad.h + self.osd_name_text.quad.h) * 1.5)
-				# FIXME: hardcoded opacity
-				draw.Animation(self.osd_background_quad, duration=0.5, opacity=(0, 0.7))
-			if self.osd_name_text.quad.hidden:
-				draw.Animation(self.osd_name_text.quad, ease='out', duration=0.5, xpos=(-self.width, 0))
-			if self.osd_duration_text.quad.hidden:
-				draw.Animation(self.osd_duration_text.quad, ease='out', duration=0.5, xpos=(self.width, 0))
-		else:
-			# hide extended OSD
-			if not self.osd_background_quad.hidden:
-				# FIXME: hardcoded opacity
-				draw.Animation(self.osd_background_quad, duration=0.5, opacity=(0.7, 0), hide=True)
-			if not self.osd_name_text.quad.hidden:
-				draw.Animation(self.osd_name_text.quad, ease='in', duration=0.5, xpos=(0, -self.width), hide=True)
-			if not self.osd_duration_text.quad.hidden:
-				draw.Animation(self.osd_duration_text.quad, ease='in', duration=0.5, xpos=(0, self.width), hide=True)
+		self.osd_bread_thing.show(show_basic_osd)
+		self.osd_clock_thing.show(show_basic_osd)
+		self.osd_name_thing.show(show_extended_osd)
+		self.osd_duration_thing.show(show_extended_osd)
+		self.osd_background_thing.show(show_extended_osd)
 
 
 	def show_dark_mode(self, enabled=None):
@@ -415,13 +402,5 @@ class Menu:
 		if enabled is not None:
 			self.dark_mode = enabled
 
-		if self.dark_mode:
-			if self.dark_mode_quad.hidden:
-				draw.Animation(self.dark_mode_quad, duration=0.5, opacity=(0, 1 - config.ui.dark_mode_brightness))
-			if self.dark_mode_text.quad.hidden:
-				draw.Animation(self.dark_mode_text.quad, duration=0.5, opacity=(0, 1))
-		else:
-			if not self.dark_mode_quad.hidden:
-				draw.Animation(self.dark_mode_quad, duration=0.5, opacity=(1 - config.ui.dark_mode_brightness, 0), hide=True)
-			if not self.dark_mode_text.quad.hidden:
-				draw.Animation(self.dark_mode_text.quad, duration=0.5, opacity=(1, 0), hide=True)
+		self.dark_mode_bg_thing.show(self.dark_mode)
+		self.dark_mode_icon_thing.show(self.dark_mode)
