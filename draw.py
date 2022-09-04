@@ -501,7 +501,7 @@ class Group:
 
 
 class Animation:
-	all = set()
+	all = {}
 	EASES = {  # Cubic easement functions
 		'in': lambda x: x ** 3,
 		'out': lambda x: 1 - (1 - x) ** 3,
@@ -517,7 +517,7 @@ class Animation:
 		self.after = after
 		self.hide = hide
 		self.started = False
-		Animation.all.add(self)
+		Animation.all[self] = None
 
 	def animate(self, t):
 		if t < self.start:
@@ -532,7 +532,7 @@ class Animation:
 			setattr(self.quad, k, v)
 
 		if x == 1:
-			Animation.all.remove(self)
+			Animation.all.pop(self)
 			if self.hide:
 				self.quad.hidden = True
 			if self.after:
@@ -540,12 +540,11 @@ class Animation:
 
 	@classmethod
 	def animate_all(cls):
-		if cls.all:
-			t = time.time()
-			for a in set(cls.all):
-				a.animate(t)
-			# Doing this makes glfw wait events not work properly, dropping rendering to ~30fps and stuttering ???
-			#window.wakeup()
+		t = time.time()
+		for a in list(cls.all.keys()):
+			a.animate(t)
+		# Doing this makes glfw wait events not work properly, dropping rendering to ~30fps and stuttering ???
+		#window.wakeup()
 
 
 
