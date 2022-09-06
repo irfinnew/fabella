@@ -41,13 +41,13 @@ class State:
 		raise NotImplementedError('Instantiation not allowed.')
 
 	@classmethod
-	def initialize(cls, width, height):
+	def initialize(cls, width, height, threads=None):
 		log.info(f'PyOpenGL version {OpenGL.version.__version__}')
 		log.info(f'Initialize for {width}x{height}')
 		cls.width = width
 		cls.height = height
 
-		cls.render_pool = worker.Pool('Render', threads=util.render_thread_count())
+		cls.render_pool = worker.Pool('Render', threads=util.render_thread_count() if threads is None else threads)
 
 		# Init OpenGL
 		gl.glEnable(gl.GL_BLEND)
