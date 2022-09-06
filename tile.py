@@ -183,7 +183,8 @@ class Tile:
 			x=self.xoff, y=self.yoff, w=config.tile.width, h=config.tile.thumb_height,
 			color=self.tile_color
 		)
-		draw.UpdateImg(self.cover, cover_data, fit=(config.tile.width, config.tile.thumb_height), color=(1, 1, 1, 1))
+		if cover_data:
+			draw.UpdateImg(self.cover, cover_data, fit=(config.tile.width, config.tile.thumb_height), color=(1, 1, 1, 1))
 
 
 	def show(self, pos, selected):
