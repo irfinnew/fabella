@@ -79,6 +79,7 @@ class Text:
 		else:
 			width = width // Pango.SCALE + border * 2
 
+		# Surface
 		surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
 		context = cairo.Context(surface)
 
@@ -101,7 +102,8 @@ class Text:
 		context.move_to(border, border)
 		PangoCairo.show_layout(context, layout)
 
-		return (width, height, 'BGRA', surface.get_data())
+		surface.flush()
+		return (width, height, 'BGRA', bytes(surface.get_data()))
 
 	def destroy(self):
 		self.quad.destroy()
