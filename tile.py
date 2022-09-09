@@ -194,7 +194,7 @@ class Tile:
 			self.render()
 
 		if selected:
-			draw.Animation(self.quads, duration=0.3, opacity=(0.4, 1), scale=(1.2, 1))
+			draw.Animation(self.quads, duration=0.2, scale=(1.1, 1))
 
 
 	def destroy(self):
