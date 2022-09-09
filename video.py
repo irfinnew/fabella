@@ -172,11 +172,12 @@ class Video:
 
 	def pause(self, pause=None):
 		if pause is None:
-			pause = not self.mpv.pause
+			pause = not self.paused
 
-		if pause != self.mpv.pause:
+		if pause != self.paused:
 			log.info('Pausing video' if pause else 'Unpausing video')
 			self.mpv.pause = pause
+			self.paused = pause
 
 
 	def start(self, filename, position=0, menu=None, tile=None):
