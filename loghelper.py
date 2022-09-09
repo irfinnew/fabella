@@ -8,6 +8,13 @@ import logging
 import logging.handlers
 
 
+NOTSET = 0
+DEBUG = 10
+VERBOSE = 15
+INFO = 20
+WARNING = 30
+ERROR = 40
+CRITICAL = 50
 
 class Color:
 	Reset = '\x1b[0m'

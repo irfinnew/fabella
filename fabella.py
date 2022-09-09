@@ -24,7 +24,7 @@ import draw
 
 
 
-loghelper.set_up_logging(15, 0, 'fabella.log')
+loghelper.set_up_logging(console_level=loghelper.VERBOSE, file_level=loghelper.NOTSET, filename='fabella.log')
 log = loghelper.get_logger('Fabella', loghelper.Color.Red)
 log.info('Starting Fabella.')
 
