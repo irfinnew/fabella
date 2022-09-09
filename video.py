@@ -191,7 +191,8 @@ class Video:
 		self.tile = tile
 		self.menu = menu
 
-		self.position_immune_until = time.time() + 1
+		# Don't update the position registration until a bit of time has passed.
+		self.position_immune_until = time.time() + 2
 		self.mpv.play(filename)
 		self.pause(False)
 		if self.position > 0:
