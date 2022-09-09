@@ -225,6 +225,8 @@ class Video:
 			# FIXME
 			log.warning('Seek error')
 			print(e)
+		else:
+			self.position_immune_until = 0
 
 
 	def render(self):
