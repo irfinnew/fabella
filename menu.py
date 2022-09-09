@@ -66,7 +66,7 @@ class Menu:
 		self.osd_duration_text = self.menu_font.text(z=102, text='ROSD', anchor='tr',
 			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace * 2 - self.menu_font.height(1),
 		)
-		self.osd_background_quad = draw.Quad(z=101, w=width, h=-200, pos=(0, height), color=(0, 0, 0, 0), hidden=True)
+		self.osd_background_quad = draw.Quad(z=101, w=width, h=-20, pos=(0, height), color=(0, 0, 0, 1), hidden=True)
 		self.osd_background_quad.update_raw(2, 2, 'RGBA', b'\xff\xff\xff\x00' * 2 + b'\xff\xff\xff\xff' * 2)
 		self.osd_background_quad.texture.inset_halftexel() # Ugh
 
@@ -74,7 +74,7 @@ class Menu:
 		self.osd_clock_thing = draw.Animatable(self.clock_text.quad, xpos=(self.width, 0))
 		self.osd_name_thing = draw.Animatable(self.osd_name_text.quad, xpos=(-self.width, 0))
 		self.osd_duration_thing = draw.Animatable(self.osd_duration_text.quad, xpos=(self.width, 0))
-		self.osd_background_thing = draw.Animatable(self.osd_background_quad, opacity=(0, 1))
+		self.osd_background_thing = draw.Animatable(self.osd_background_quad, ypos=(int(self.height * 1.5), self.height))
 
 		# FIXME: this entire section is yuck
 		tile_width = config.tile.width
@@ -397,6 +397,9 @@ class Menu:
 
 		show_basic_osd = (self.osd or self.enabled) or force
 		show_extended_osd = (self.osd and not self.enabled) or force
+
+		self.osd_background_quad.h = -int((config.menu.header_vspace * 3 + self.bread_text.quad.h + self.osd_name_text.quad.h) * 1.1)
+		self.osd_background_thing.update_params(ypos=(self.height - self.osd_background_quad.h, self.height))
 
 		self.osd_bread_thing.show(show_basic_osd)
 		self.osd_clock_thing.show(show_basic_osd)

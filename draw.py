@@ -571,12 +571,18 @@ class Animatable:
 		self.quad = quad
 		self.duration = duration
 		self.ease = ease
-		self.params_on = kwargs
-		self.params_off = {k: (u, v) for k, (v, u) in kwargs.items()}
+		self.params_on = {}
+		self.params_off = {}
+		self.update_params(**kwargs)
 
 		self.state = initial
 		for k, v in self.params_on.items():
 			setattr(quad, k, v[self.state])
+
+	def update_params(self, **kwargs):
+		for k, (u, v) in kwargs.items():
+			self.params_on[k] = (u, v)
+			self.params_off[k] = (v, u)
 
 	def show(self, state):
 		if state == self.state:
