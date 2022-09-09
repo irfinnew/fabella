@@ -24,6 +24,7 @@ log = loghelper.get_logger('Video', loghelper.Color.Yellow)
 
 class Video:
 	def __init__(self, width, height):
+		# https://mpv.io/manual/master/
 		try:
 			log.info(f'libmpv version {mpv.MPV_VERSION[0]}.{mpv.MPV_VERSION[1]}')
 		except AttributeError:
@@ -31,8 +32,10 @@ class Video:
 		log.debug('Created instance')
 		self.current_file = None
 		self.duration = 0
+		self.paused = False
 		self.position = 0
 		self.position_immune_until = 0
+		self.position_request = None
 		self.tile = None
 		self.width = width
 		self.height = height
@@ -83,6 +86,7 @@ class Video:
 		self.mpv.observe_property('height', self.size_changed)
 		self.mpv.observe_property('percent-pos', self.position_changed)
 		self.mpv.observe_property('duration', self.duration_changed)
+		self.mpv.observe_property('pause', self.pause_changed)
 		self.mpv.observe_property('eof-reached', self.eof_reached)
 
 		# Set up video texture / FBO / Quad
@@ -144,10 +148,26 @@ class Video:
 			self.tile.update_pos(self.position)
 
 
+	def pause_changed(self, prop, value):
+		log.info(f'Video paused changed to {value}')
+		assert prop == 'pause'
+
+		self.paused = value
+
+
 	def duration_changed(self, prop, value):
-		log.debug(f'Video duration changed to {value}')
+		log.info(f'Video duration changed to {value}')
 		assert prop == 'duration'
 		self.duration = value
+
+		# Setting the video position only works after the video duration is known.
+		# If there was a queued request for setting position, handle it now.
+		if self.position_request is not None and self.position_request > 0:
+			log.info(f'Performing delayed seek to position {self.position_request}')
+			pos = self.position_request * self.duration
+			pos = max(0, pos - 2) # Start a little earlier to have overlap with previous stop
+			self.mpv.seek(pos, 'absolute')
+			self.position_request = None
 
 
 	def pause(self, pause=None):
@@ -159,12 +179,8 @@ class Video:
 			self.mpv.pause = pause
 
 
-	@property
-	def paused(self):
-		return self.mpv.pause
-
-
 	def start(self, filename, position=0, menu=None, tile=None):
+		assert self.current_file is None
 		if self.current_file:
 			self.stop()
 		log.info(f'Starting playback for {filename} at pos={position}')
@@ -179,14 +195,10 @@ class Video:
 		self.mpv.play(filename)
 		self.pause(False)
 		if self.position > 0:
-			log.info(f'Seeking to position {position}')
-			# FIXME
-			# Updating the position only works after libmpv has had
-			# a chance to initialize the video; so we spin here until
-			# libmpv is ready.
-			while not self.context.update():
-				time.sleep(0.01)
-			self.mpv.percent_pos = position * 100
+			# Setting the video position only works after the video is sufficiently
+			# initialized. Set a request that will be handled later.
+			log.info(f'Requesting delayed seek to {position}')
+			self.position_request = self.position
 
 
 	def stop(self):
