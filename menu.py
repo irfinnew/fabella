@@ -329,10 +329,14 @@ class Menu:
 			log.info('Already playing this video, just maybe unpause')
 			video.pause(False)
 		self.osd_name_text.text = tile.name
-		# FIXME: this seems to work, but why?
-		# It should interfere with the close() animation, AND scale shouldn't get reset...
-		cur = self.current
-		draw.Animation(cur.quads, duration=0.5, opacity=(1, 0), scale=(1, 6), xpos=(cur.pos[0], self.width // 2), ypos=(cur.pos[1], self.height // 2), hide=True)
+
+		# Copy the current cover image, perform zoom animation
+		quad = self.current.cover.copy(z=250)
+		scale = max(self.width / quad.w, self.height / quad.h) * 1.25
+		draw.Animation(quad, ease='in', duration=0.5, opacity=(1, 0), scale=(quad.scale, scale),
+			xpos=(quad.pos[0], self.width // 2), ypos=(quad.pos[1], self.height // 2),
+			hide=True, after=quad.destroy,
+		)
 		self.close()
 
 
