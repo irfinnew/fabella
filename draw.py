@@ -245,6 +245,7 @@ class Texture:
 	video = None
 
 	def __init__(self, image=None, persistent=True):
+		self.ref_count = 0
 		self.persistent = persistent
 		self.concrete = False
 		self.width = None
@@ -277,8 +278,12 @@ class Texture:
 	def force_redraw(self):
 		State.redraw_needed = True
 
+	def use(self):
+		self.ref_count += 1
+
 	def destroy(self, force=False):
-		if self.persistent and not force:
+		self.ref_count -= 1
+		if not force and (self.persistent or self.ref_count > 0):
 			return
 		if self.concrete:
 			SuperTexture.remove(self)
@@ -305,6 +310,7 @@ class Quad:
 		self.scale = scale
 		self.hidden = hidden
 		self.texture = Texture(image=image, persistent=False) if texture is None else texture
+		self.texture.use()
 		self.w = w or self.texture.width or 0
 		self.h = h or self.texture.height or 0
 		self.color = (1, 1, 1, 1) if color is None else color
@@ -347,7 +353,9 @@ class Quad:
 
 	def update_raw(self, width, height, mode, pixels):
 		if self.texture is Texture.flat:
+			self.texture.destroy()
 			self.texture = Texture(None, persistent=False)
+			self.texture.use()
 		uv = self.texture.uv
 		self.texture.update_raw(width, height, mode, pixels)
 		if uv != self.texture.uv:
@@ -361,6 +369,13 @@ class Quad:
 			State.dirty_quads.add(self)
 		else:
 			State.redraw_needed = True
+
+	# Return an independent copy of this quad. All attributes are copied, except group.
+	# The texture is shared. Provided attributes override copied ones.
+	def copy(self, **kwargs):
+		attrs = {k: getattr(self, k) for k in ['x', 'y', 'w', 'h', 'z', 'pos', 'scale', 'texture', 'color', 'hidden']}
+		attrs.update(kwargs)
+		return Quad(**attrs)
 
 	def destroy(self):
 		self.destroyed = True
@@ -469,6 +484,9 @@ class Group:
 	def __init__(self, *quads):
 		self._quads = set(q for q in quads if q)
 		self._destroyed = False
+
+	def __iter__(self):
+		return iter(self._quads)
 
 	@property
 	def destroyed(self):
