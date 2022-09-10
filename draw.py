@@ -543,13 +543,14 @@ class Animation:
 
 		if not self.started:
 			self.quad.hidden = False
+			self.started = True
 
 		x = self.ease(min((t - self.start) / self.duration, 1))
 		for k, (s, e) in self.params.items():
 			v = s * (1 - x) + e * x
 			setattr(self.quad, k, v)
 
-		if x == 1:
+		if x >= 1:
 			Animation.all.pop(self)
 			if self.hide:
 				self.quad.hidden = True
