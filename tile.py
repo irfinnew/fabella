@@ -83,9 +83,10 @@ class Tile:
 		self.path = menu.path
 		self.font = menu.tile_font # FIXME Yuck
 
-		self.name = meta['name']
+		self.filename = meta['name']
 		self.isdir = meta['isdir']
-		self.full_path = os.path.join(self.path, self.name)
+		self.full_path = os.path.join(self.path, self.filename)
+		self.name = self.filename if self.isdir else os.path.splitext(self.filename)[0]
 
 		log.debug(f'Created {self}')
 
@@ -135,7 +136,7 @@ class Tile:
 	def update_meta(self, meta):
 		log.debug(f'Update metadata for {self}')
 
-		if meta['name'] != self.name:
+		if meta['name'] != self.filename:
 			raise ValueError('{self}.update_meta({meta})')
 		if meta['isdir'] != self.isdir:
 			raise ValueError('{self}.update_meta({meta})')
@@ -170,11 +171,11 @@ class Tile:
 
 	def update_cover(self, covers_zip):
 		try:
-			with covers_zip.open(self.name) as fd:
+			with covers_zip.open(self.filename) as fd:
 				cover_data = fd.read()
 		except KeyError:
 			cover_data = None
-			log.warning(f'Loading thumbnail for {self.name}: Not found in zip')
+			log.warning(f'Loading thumbnail for {self.filename}: Not found in zip')
 
 		# FIXME: reuse instead of recreate
 		if self.cover:
@@ -276,9 +277,9 @@ class Tile:
 	def write_state_update(self, state=None):
 		if state is None:
 			state = {'position': self.position}
-		log.info(f'Writing state for {self.name}: {state}')
+		log.info(f'Writing state for {self.filename}: {state}')
 		update_name = os.path.join(self.path, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
-		dbs.json_write(update_name, {self.name: state})
+		dbs.json_write(update_name, {self.filename: state})
 
 
 	@property
