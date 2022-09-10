@@ -157,9 +157,13 @@ class Menu:
 		self.show_osd()
 
 
-	def forget(self):
+	def forget(self, animate=None):
 		for t in self.tiles.values():
-			t.destroy()
+			if animate:
+				offset = {'left': -self.width, 'right': self.width}[animate]
+				draw.Animation(t.quads, ease='both', duration=0.4, xpos=(t.pos[0], t.pos[0] + offset), after=t.destroy)
+			else:
+				t.destroy()
 		self.tiles = {}
 		self.index = []
 		self.current_idx = 0
@@ -167,8 +171,13 @@ class Menu:
 		self.covers_zip = None
 
 
-	def load(self, path):
-		self.forget()
+	def load(self, path, previous=None):
+		if len(path) > len(self.path or ''):
+			animate_direction = 'left'
+		else:
+			animate_direction = 'right'
+
+		self.forget(animate=animate_direction)
 		log.info(f'Loading {path}')
 		self.path = path
 		timer = time.time()
@@ -201,24 +210,36 @@ class Menu:
 			self.covers_zip = None
 			log.error(f'Parsing cover DB {cover_db_name}: {e}')
 
-		# Find first "watching" video
-		index = 0
-		for i, tile in enumerate(self.index):
-			if 0.0 < tile.get('position', 0.0) < 1.0:
-				index = i
-				break
-		else:
-			# Otherwise find the first "unseen" video
+		index = None
+		if index is None and previous is not None:
+			# Find the tile that was used to enter the previous path
+			for idx, meta in enumerate(self.index):
+				if meta['name'] == previous:
+					index = idx
+					break
+
+		if index is None:
+			# Find first "watching" video
+			for i, tile in enumerate(self.index):
+				if 0.0 < tile.get('position', 0.0) < 1.0:
+					index = i
+					break
+
+		if index is None:
+			# Find the first "unseen" video
 			for i, tile in enumerate(self.index):
 				if tile.get('position', 0.0) == 0.0:
 					index = i
 					break
 
+		if index is None:
+			index = 0
+
 		timer = int((time.time() - timer) * 1000)
 		log.info(f'Loaded tiles in {timer}ms')
 
 		# This will also draw
-		self.jump_tile(index)
+		self.jump_tile(index, animate=animate_direction)
 
 
 	@property
@@ -226,7 +247,7 @@ class Menu:
 		return self.tiles[self.current_idx]
 
 
-	def jump_tile(self, idx):
+	def jump_tile(self, idx, animate=None):
 		log.debug(f'Jumping to tile {idx}')
 		self.current_idx = min(max(idx, 0), len(self.index) - 1)
 
@@ -243,7 +264,8 @@ class Menu:
 		if self.current_offset < 0:
 			self.current_offset = 0
 
-		self.draw_tiles()
+		print(self.current_offset)
+		self.draw_tiles(animate=animate)
 
 
 	def previous(self):
@@ -350,21 +372,16 @@ class Menu:
 			return
 
 		previous = os.path.basename(self.path)
-		self.load(os.path.dirname(self.path))
-
-		# Find the tile that was used to enter the previous path
-		for idx, meta in enumerate(self.index):
-			if meta['name'] == previous:
-				self.jump_tile(idx)
-				break
+		self.load(os.path.dirname(self.path), previous=previous)
 
 
-	def draw_tiles(self):
+	def draw_tiles(self, animate=None):
 		timer = time.time()
 
 		for tile in self.tiles.values():
 			tile.used = False
 
+		print(self.current_offset)
 		for y in range(self.tile_rows):
 			for x in range(self.tile_columns):
 				idx = (y + self.current_offset) * self.tile_columns + x
@@ -381,6 +398,11 @@ class Menu:
 				)
 				self.tiles[idx] = tile
 				tile.used = True
+
+				if animate:
+					print(f'animating tile {tile}')
+					offset = {'left': self.width, 'right': -self.width}[animate]
+					draw.Animation(tile.quads, ease='both', duration=0.4, xpos=(tile.pos[0] + offset, tile.pos[0]))
 
 		for idx, tile in dict(self.tiles).items():
 			if not tile.used:
