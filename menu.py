@@ -161,7 +161,7 @@ class Menu:
 		for t in self.tiles.values():
 			if animate:
 				offset = {'left': -self.width, 'right': self.width}[animate]
-				draw.Animation(t.quads, ease='both', duration=0.4, xpos=(t.pos[0], t.pos[0] + offset), after=t.destroy)
+				draw.Animation(t.quads, ease='in', duration=0.3, xpos=(t.pos[0], t.pos[0] + offset), after=t.destroy)
 			else:
 				t.destroy()
 		self.tiles = {}
@@ -400,9 +400,11 @@ class Menu:
 				tile.used = True
 
 				if animate:
-					print(f'animating tile {tile}')
 					offset = {'left': self.width, 'right': -self.width}[animate]
-					draw.Animation(tile.quads, ease='both', duration=0.4, xpos=(tile.pos[0] + offset, tile.pos[0]))
+					draw.Animation(tile.quads, ease='out', delay=0.1, duration=0.3, xpos=(tile.pos[0] + offset, tile.pos[0]))
+					# Ew.
+					for q in tile.quads:
+						q.xpos = tile.pos[0] + offset
 
 		for idx, tile in dict(self.tiles).items():
 			if not tile.used:
