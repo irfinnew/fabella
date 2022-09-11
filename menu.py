@@ -264,7 +264,6 @@ class Menu:
 		if self.current_offset < 0:
 			self.current_offset = 0
 
-		print(self.current_offset)
 		self.draw_tiles(animate=animate)
 
 
@@ -381,7 +380,6 @@ class Menu:
 		for tile in self.tiles.values():
 			tile.used = False
 
-		print(self.current_offset)
 		for y in range(self.tile_rows):
 			for x in range(self.tile_columns):
 				idx = (y + self.current_offset) * self.tile_columns + x
