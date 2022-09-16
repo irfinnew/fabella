@@ -428,7 +428,8 @@ def scan(path, pool):
 
 	#### Update covers/tile_color/duration etc; this is the expensive part
 	for tile in real_tiles:
-		pool.schedule(tile.analyze)
+		if tile.cover_needs_update:
+			pool.schedule(tile.analyze)
 	pool.join()
 
 	#### Write index
