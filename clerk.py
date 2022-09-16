@@ -28,6 +28,7 @@ import zipfile
 import enzyme
 import hashlib
 import logging
+import argparse
 import subprocess
 import PIL.Image
 import PIL.ImageOps
@@ -43,6 +44,14 @@ log = loghelper.get_logger('Clerk', loghelper.Color.Red)
 # Enzyme spams the logs with stuff we don't care about
 logging.getLogger('enzyme').setLevel(logging.CRITICAL)
 log.info('Starting Clerk.')
+
+
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='Fabella Clerk. Watches video library for changes, updates indices and state.')
+parser.add_argument('--once', '-o', action='store_true', help="Don't watch the library; just update everything and quit.")
+parser.add_argument('path', type=str, help='Path to video library')
+args = parser.parse_args()
+
 
 try:
 	import setproctitle
@@ -562,7 +571,8 @@ def process_state_queue(path, roots):
 
 
 
-roots = [os.path.abspath(root) for root in sys.argv[1:]]
+#roots = [os.path.abspath(root) for root in sys.argv[1:]]
+roots = [os.path.abspath(args.path)]
 if not roots:
 	print('Must specify at least one root')
 	exit(1)
@@ -617,18 +627,18 @@ for event in watcher.events(timeout=1):
 				if event.path.endswith(dbs.VIDEO_EXTENSIONS):
 					watcher.push(os.path.dirname(event.path))
 
-	# Full scan
+	# Items needing a full scan (index/cover update)
 	for path, age in list(scan_dirty.items()):
 		if now - age > EVENT_COOLDOWN_SECONDS:
 			del scan_dirty[path]
 			scan(path, pool=analyze_pool)
 			state_dirty[path] = now
 
-	# Process state
+	# Items needing a state update
 	for path, age in list(state_dirty.items()):
 		if now - age > EVENT_COOLDOWN_SECONDS:
 			del state_dirty[path]
 			process_state_queue(path, roots)
 
-	#if not dirty:
-	#	break
+	if args.once and not scan_dirty and not state_dirty:
+		break
