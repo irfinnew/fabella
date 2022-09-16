@@ -82,8 +82,7 @@ class BaseTile:
 		data = {
 			'name': self.name,
 			'isdir': self.isdir,
-			'src_size': self.src_size,
-			'src_mtime': self.src_mtime,
+			'fingerprint': self.fingerprint,
 			'tile_color': self.tile_color,
 		}
 		if not self.isdir:
@@ -200,12 +199,8 @@ class BaseTile:
 	def __eq__(self, other):
 		if other is None:
 			return False
-		# Size/mtime might be missing for both; does not mean they're equal!
-		# Actually, it does; missing in archive and missing in real = equal.
-		#if None in (self.isdir, self.size, self.mtime):
-		#	return False
-		return (self.name, self.isdir, self.src_size, self.src_mtime) == \
-			(other.name, other.isdir, other.src_size, other.src_mtime)
+		return (self.name, self.isdir, self.fingerprint) == \
+			(other.name, other.isdir, other.fingerprint)
 
 
 	def __lt__(self, other):
@@ -224,7 +219,7 @@ class BaseTile:
 
 
 	def __str__(self):
-		return f'{self.__class__.__name__}({self.name}, isdir={self.isdir}, src_size={self.src_size}, mtime={self.src_mtime})'
+		return f'{self.__class__.__name__}({self.name}, isdir={self.isdir}, fingerprint={self.fingerprint})'
 
 
 	def __repr__(self):
@@ -236,8 +231,7 @@ class IndexedTile(BaseTile):
 	def __init__(self, path, data):
 		self.name = data['name']
 		self.isdir = data['isdir']
-		self.src_size = data['src_size']
-		self.src_mtime = data['src_mtime']
+		self.fingerprint = data['fingerprint']
 		self.tile_color = data['tile_color']
 		self.duration = None if self.isdir else data['duration']
 
@@ -262,23 +256,22 @@ class RealTile(BaseTile):
 
 		# Get file attrs
 		try:
-			stat_data = os.stat(self.full_path)
+			st = os.stat(self.full_path)
 		except OSError as e:
 			# Can't stat the file we were just created for? Fatal.
 			raise ValueError(repr(e))
 
-		if stat.S_ISDIR(stat_data.st_mode):
+		if stat.S_ISDIR(st.st_mode):
 			self.isdir = True
 			# Folder, check cover image in it instead
 			try:
-				stat_data = os.stat(os.path.join(self.full_path, FOLDER_COVER_FILE))
-				self.src_size, self.src_mtime = stat_data.st_size, stat_data.st_mtime_ns
+				st = os.stat(os.path.join(self.full_path, FOLDER_COVER_FILE))
+				self.fingerprint = f'inode={st.st_ino}:size={st.st_size}:mtime={st.st_mtime_ns}'
 			except FileNotFoundError:
-				# Cover image not found? Not fatal; None for attrs.
-				self.src_size, self.src_mtime = None, None
+				self.fingerprint = None
 		else:
 			self.isdir = False
-			self.src_size, self.src_mtime = stat_data.st_size, stat_data.st_mtime_ns
+			self.fingerprint = f'inode={st.st_ino}:size={st.st_size}:mtime={st.st_mtime_ns}'
 
 	def valid(self):
 		"""True if the tile is "valid". Meaning the name/filetype/etc checks out."""
@@ -319,7 +312,7 @@ class Meta:
 
 	@classmethod
 	def fingerprint(cls, tiles):
-		tiles = [[t.name, t.isdir, t.src_size, t.src_mtime] for t in tiles]
+		tiles = [[t.name, t.isdir, t.fingerprint] for t in tiles]
 		return hashlib.sha256(json.dumps(tiles).encode('utf8')).hexdigest()
 
 	def __eq__(self, other):
@@ -377,9 +370,9 @@ def scan(path, pool):
 			log.debug(f'Found existing covers DB {cover_db_name}')
 			cover_meta = json.loads(fd.read(COVER_META_TAG))
 			if cover_meta['version'] != dbs.INDEX_META_VERSION:
-				log.info(f'Existing {covers.db_name} outdated version, discarding')
+				log.info(f'Existing {cover_db_name} outdated version, discarding')
 			elif cover_meta['dimensions'] != f'{COVER_WIDTH}x{COVER_HEIGHT}':
-				log.info(f'Existing {covers.db_name} has wrong cover dimensions, discarding')
+				log.info(f'Existing {cover_db_name} has wrong cover dimensions, discarding')
 			elif cover_meta['fingerprint'] != Meta.fingerprint(indexed_tiles):
 				log.warning(f'Existing {cover_db_name} fingerprint doesn\'t match {index_db_name}, discarding')
 			else:

@@ -7,7 +7,7 @@
 
 
 INDEX_DB_NAME = '.fabella/index.json.gz'
-INDEX_META_VERSION = 1
+INDEX_META_VERSION = 2
 
 COVER_DB_NAME = '.fabella/covers.zip'
 
@@ -31,8 +31,7 @@ INDEX_DB_SCHEMA = {
 		{
 			'name': str,
 			'isdir': bool,
-			'src_size': (int,),
-			'src_mtime': (int,),
+			'fingerprint': (str,),
 			'tile_color?': (str,),
 			'duration?': (int,),
 		}
