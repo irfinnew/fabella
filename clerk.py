@@ -497,9 +497,8 @@ def process_state_queue(path, roots):
 			try:
 				if not f.is_file() or f.path.endswith(dbs.NEW_SUFFIX):
 					continue
-				updates = dbs.json_read(f.path, dbs.STATE_UPDATE_SCHEMA)
-				if updates:
-					state_queue[f.stat().st_mtime, f.path] = updates
+				updates = dbs.json_read(f.path, dbs.STATE_UPDATE_SCHEMA, default={})
+				state_queue[f.stat().st_mtime, f.path] = updates
 			except OSError as e:
 				log.error(f'Reading {f.path}: {str(e)}')
 	except OSError as e:
