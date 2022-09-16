@@ -11,7 +11,6 @@
  - Videos with non-square pixels are poorly supported; video playback is letterboxed; thumbnails get squashed (IT crowd)
  - Perhaps display multiple seasons in one menu? Separated by a text header?
  - Copy better thumbnail generation from mkv-gencover
- - Have clerk preserve state across renames
  - Have a look at performance, in particular drawing tiles (defer image/font rendering to render threads?)
  - Text objects that are hidden shouldn't render when their text is updated
  - Dark mode should also postpone video position updates

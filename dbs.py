@@ -20,6 +20,7 @@ VIDEO_EXTENSIONS = tuple('.' + ext for ext in VIDEO_FILETYPES)
 
 STATE_DB_SCHEMA = {
 	'*': {
+		'fingerprint?': str,
 		'position?': float,
 		'tagged?': int,
 	}

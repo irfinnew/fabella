@@ -30,6 +30,7 @@ import hashlib
 import logging
 import argparse
 import subprocess
+import collections
 import PIL.Image
 import PIL.ImageOps
 
@@ -39,7 +40,7 @@ from watch import Watcher
 from worker import Pool
 import dbs
 
-loghelper.set_up_logging(15, 0, 'clerk.log')
+loghelper.set_up_logging(console_level=loghelper.VERBOSE, file_level=loghelper.NOTSET, filename='clerk.log')
 log = loghelper.get_logger('Clerk', loghelper.Color.Red)
 # Enzyme spams the logs with stuff we don't care about
 logging.getLogger('enzyme').setLevel(logging.CRITICAL)
@@ -482,16 +483,77 @@ def process_state_queue(path, roots):
 	os.chmod(queue_dir_name, 0o775)
 
 	#### Load original state
-	orig_state = dbs.json_read(state_db_name, dbs.STATE_DB_SCHEMA)
-	#log.debug(f'Original state: {orig_state}')
+	previous_state = dbs.json_read(state_db_name, dbs.STATE_DB_SCHEMA)
+	# Deep copy for later
+	orig_state = {n: dict(s) for n, s in previous_state.items()}
 
 	# Load filenames from index
-	index = dbs.json_read(os.path.join(path, dbs.INDEX_DB_NAME), dbs.INDEX_DB_SCHEMA, default={'files': []})
-	index = [idx['name'] for idx in index['files']]
+	index = dbs.json_read(os.path.join(path, dbs.INDEX_DB_NAME), dbs.INDEX_DB_SCHEMA, default={'files': []})['files']
+	new_state = {}
 
-	# Make deep copy of actual present files
-	state = {name: dict(orig_state.get(name, {})) for name in index}
+	# Match index to previous state on name AND fingerprint
+	remaining = []
+	for idx in index:
+		name = idx['name']
+		state = previous_state.get(name, {})
+		fp = state.get('fingerprint', None)
+		if fp is not None and fp == idx['fingerprint']:
+			new_state[name] = state
+			previous_state.pop(name)
+			log.debug(f'Found name+fingerprint match in previous state for "{name}"')
+		else:
+			remaining.append(idx)
 
+	# Match index to previous state on just fingerprint; these were probably renamed
+	index = remaining
+	remaining = []
+	duplicate_fps = {None} \
+		| {fp for fp, c in collections.Counter([i.get('fingerprint') for i in index]).items() if c > 1} \
+		| {fp for fp, c in collections.Counter([s.get('fingerprint') for s in previous_state.values()]).items() if c > 1}
+	if duplicate_fps != {None}:
+		log.warning(f'Duplicate fingerprints will be ignored: {duplicate_fps}')
+	previous_state_by_fp = {s['fingerprint']: (n, s) for n, s in previous_state.items() if s.get('fingerprint') not in duplicate_fps}
+	for idx in index:
+		name = idx['name']
+		fp = idx.get('fingerprint')
+		if fp in duplicate_fps:
+			remaining.append(idx)
+			continue
+		try:
+			oldname, state = previous_state_by_fp[fp]
+		except KeyError:
+			remaining.append(idx)
+			continue
+		else:
+			new_state[name] = state
+			previous_state.pop(oldname)
+			log.info(f'Found fingerprint match in previous state for "{name}"; renamed from "{oldname}"')
+
+	# Match index to previous state on just name; these were probably updated
+	index = remaining
+	remaining = []
+	for idx in index:
+		name = idx['name']
+		fp = idx.get('fingerprint')
+		try:
+			state = previous_state[name]
+		except KeyError:
+			new_state[name] = {} if fp is None else {'fingerprint': fp}
+			log.info(f'New file "{name}" has no match in previous state')
+		else:
+			log.info(f'Found name match in previous state for "{name}" fingerprint changed from {state.get("fingerprint")} to {fp}')
+			if fp is None:
+				state.pop('fingerprint', None)
+			else:
+				state['fingerprint'] = fp
+			new_state[name] = state
+			previous_state.pop(name)
+
+	# Remaining entries from previous state are unmatched; they were probably removed
+	for n, s in previous_state.items():
+		log.info(f'"{n}" in previous state was not matched to any current file; removed')
+
+	#### Collect any state update files
 	state_queue = {}
 	try:
 		for f in os.scandir(queue_dir_name):
@@ -506,13 +568,14 @@ def process_state_queue(path, roots):
 		log.error(f'Reading {queue_dir_name}: {str(e)}')
 		state_queue = {}
 
+	#### Apply the requested state updates
 	for meta, updates in sorted(state_queue.items()):
 		for name, update in updates.items():
 			log.debug(f'State update for {name}: {update}')
 
-			if name not in state:
-				state[name] = {}
-			this_state = state[name]
+			if name not in new_state:
+				new_state[name] = {}
+			this_state = new_state[name]
 
 			if 'position' in update:
 				if update['position'] > 0:
@@ -527,11 +590,11 @@ def process_state_queue(path, roots):
 					this_state.pop('tagged', None)
 
 	#### Write new state
-	if state == orig_state:
+	if new_state == orig_state:
 		log.debug('State unchanged, not updating.')
 	else:
-		if state:
-			dbs.json_write(state_db_name, state)
+		if new_state:
+			dbs.json_write(state_db_name, new_state)
 		else:
 			log.debug(f'Empty state; removing {state_db_name}')
 			try:
@@ -543,11 +606,11 @@ def process_state_queue(path, roots):
 
 		# Propagate state upwards (but not outside root dir)
 		if path not in roots:
-			flat = {'tagged': any(s.get('tagged', False) for s in state.values())}
+			flat = {'tagged': any(s.get('tagged', False) for s in new_state.values())}
 
-			if any(0 < s.get('position', 0) < 1 for s in state.values()):
+			if any(0 < s.get('position', 0) < 1 for s in new_state.values()):
 				flat['position'] = 0.5
-			elif any(s.get('position', 0) == 0 for s in state.values()):
+			elif any(s.get('position', 0) == 0 for s in new_state.values()):
 				flat['position'] = 0
 			else:
 				flat['position'] = 1
