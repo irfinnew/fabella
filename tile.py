@@ -22,7 +22,7 @@ log = loghelper.get_logger('Tile', loghelper.Color.Cyan)
 
 class Tile:
 	xoff = -config.tile.width // 2
-	yoff = -config.tile.thumb_height // 2
+	yoff = -config.tile.cover_height // 2
 
 	@classmethod
 	def initialize(cls):
@@ -31,7 +31,7 @@ class Tile:
 		cfg = config.tile
 
 		# Shadow
-		w, h = cfg.width + cfg.shadow_blursize * 2, cfg.thumb_height + cfg.shadow_blursize * 2
+		w, h = cfg.width + cfg.shadow_blursize * 2, cfg.cover_height + cfg.shadow_blursize * 2
 
 		shadow_img = PIL.Image.new('RGBA', (w, h), (255, 255, 255, 0))
 		shadow_img.paste((255, 255, 255, 255), (
@@ -43,7 +43,7 @@ class Tile:
 		cls.tx_shadow = draw.Texture(shadow_img)
 
 		# Highlight
-		w, h = cfg.width + cfg.highlight_blursize * 2, cfg.thumb_height + cfg.highlight_blursize * 2
+		w, h = cfg.width + cfg.highlight_blursize * 2, cfg.cover_height + cfg.highlight_blursize * 2
 
 		hl_img = PIL.Image.new('RGBA', (w, h), (255, 255, 255, 0))
 		hl_img.paste((255, 255, 255, 255), (
@@ -115,14 +115,14 @@ class Tile:
 		self.info = None
 		self.shadow = draw.Quad(z=200, group=self.quads,
 			x=self.xoff - (self.tx_shadow.width - config.tile.width) // 2 + config.tile.shadow_offset,
-			y=self.yoff - (self.tx_shadow.height - config.tile.thumb_height) // 2 - config.tile.shadow_offset,
+			y=self.yoff - (self.tx_shadow.height - config.tile.cover_height) // 2 - config.tile.shadow_offset,
 			texture=self.tx_shadow, color=config.tile.shadow_color
 		)
 		self.outline = draw.FlatQuad(z=202, group=self.quads,
 			x=self.xoff - config.tile.outline_size,
 			y=self.yoff - config.tile.outline_size,
 			w=config.tile.width + config.tile.outline_size * 2,
-			h=config.tile.thumb_height + config.tile.outline_size * 2,
+			h=config.tile.cover_height + config.tile.outline_size * 2,
 			color=config.tile.outline_color
 		)
 		self.highlight = None
@@ -184,11 +184,11 @@ class Tile:
 		if self.cover:
 			self.cover.destroy()
 		self.cover = draw.FlatQuad(z=203, group=self.quads,
-			x=self.xoff, y=self.yoff, w=config.tile.width, h=config.tile.thumb_height,
+			x=self.xoff, y=self.yoff, w=config.tile.width, h=config.tile.cover_height,
 			color=self.tile_color
 		)
 		if cover_data:
-			draw.UpdateImg(self.cover, cover_data, fit=(config.tile.width, config.tile.thumb_height), color=(1, 1, 1, 1))
+			draw.UpdateImg(self.cover, cover_data, fit=(config.tile.width, config.tile.cover_height), color=(1, 1, 1, 1))
 
 
 	def show(self, pos, selected):
@@ -236,18 +236,18 @@ class Tile:
 		)
 		self.maybe(draw.Quad, 'quad_unseen', self.unseen, z=204,
 			x=self.xoff + config.tile.width - self.tx_unseen.width // 2,
-			y=self.yoff + config.tile.thumb_height - self.tx_unseen.height // 2,
+			y=self.yoff + config.tile.cover_height - self.tx_unseen.height // 2,
 			texture=self.tx_unseen,
 		)
 		self.maybe(draw.Quad, 'quad_watching', self.watching, z=204,
 			x=self.xoff + config.tile.width - self.tx_watching.width // 2,
-			y=self.yoff + config.tile.thumb_height - self.tx_watching.height // 2,
+			y=self.yoff + config.tile.cover_height - self.tx_watching.height // 2,
 			texture=self.tx_watching,
 		)
 		offset = self.unseen * self.tx_unseen.width or self.watching * self.tx_watching.width or 0
 		self.maybe(draw.Quad, 'quad_tagged', self.tagged, z=204,
 			x=self.xoff + config.tile.width - self.tx_tagged.width // 2 - offset,
-			y=self.yoff + config.tile.thumb_height - self.tx_tagged.height // 2,
+			y=self.yoff + config.tile.cover_height - self.tx_tagged.height // 2,
 			texture=self.tx_tagged,
 		)
 

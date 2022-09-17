@@ -81,7 +81,7 @@ class Menu:
 		tile_hspace = config.tile.min_hspace
 		tile_htotal = tile_width + tile_hspace
 
-		tile_height = config.tile.thumb_height + config.tile.text_vspace + self.tile_font.height(config.tile.text_lines)
+		tile_height = config.tile.cover_height + config.tile.text_vspace + self.tile_font.height(config.tile.text_lines)
 		tile_vspace = config.tile.min_vspace
 		tile_vtotal = tile_height + tile_vspace
 
@@ -391,7 +391,7 @@ class Menu:
 					tile = Tile(self, self.index[idx], self.covers_zip)
 				tile.show(
 					(self.tile_hstart + x * self.tile_hoffset - Tile.xoff,
-					self.height - self.tile_vstart - y * self.tile_voffset - config.tile.thumb_height - Tile.yoff),
+					self.height - self.tile_vstart - y * self.tile_voffset - config.tile.cover_height - Tile.yoff),
 					idx == self.current_idx
 				)
 				self.tiles[idx] = tile
