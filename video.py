@@ -100,7 +100,7 @@ class Video:
 
 		# Set up position bar quads
 		# FIXME: this should be a shaded quad, but those are currently not supported
-		self.quad_posback = draw.FlatQuad(z=1, color=config.video.position_shadow_bottom_color,
+		self.quad_posback = draw.FlatQuad(z=1, color=config.video.position_shadow_color,
 			w=width, h=config.video.position_bar_height + config.video.position_shadow_height)
 		self.quad_posbar = draw.FlatQuad(z=2, color=config.video.position_bar_color,
 			w=0, h=config.video.position_bar_height)
@@ -228,6 +228,18 @@ class Video:
 		else:
 			self.position_immune_until = 0
 
+		orig_bar_h = config.video.position_bar_height
+		orig_back_h = orig_bar_h + config.video.position_shadow_height
+		new_bar_h = config.video.position_bar_height_active
+		new_back_h = new_bar_h + config.video.position_shadow_height * 2
+		new_bar_y = config.video.position_bar_float_active
+		new_back_y = config.video.position_bar_float_active - config.video.position_shadow_height
+
+		draw.Animation(self.quad_posback, duration=1, delay=2, y=(new_back_y, 0), h=(new_back_h, orig_back_h))
+		draw.Animation(self.quad_posbar, duration=1, delay=2, y=(new_bar_y, 0), h=(new_bar_h, orig_bar_h))
+
+		draw.Animation(self.quad_posback, duration=0.3, y=(None, new_back_y), h=(None, new_back_h))
+		draw.Animation(self.quad_posbar, duration=0.3, y=(None, new_bar_y), h=(None, new_bar_h))
 
 	def render(self):
 		if self.context.update():

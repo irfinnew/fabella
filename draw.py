@@ -530,20 +530,23 @@ class Animation:
 		self.duration = duration
 		self.start = time.time() + delay
 		self.params = kwargs
+		# Set None start value to current value.
+		# FIXME: this breaks if quad is a group.
+		for p, (b, a) in self.params.items():
+			if b is None:
+				b = getattr(self.quad, p)
+				self.params[p] = (b, a)
 		self.after = after
 		self.hide = hide
 		self.started = False
 		Animation.all[self] = None
+		self.quad.hidden = False
 
 	def animate(self, t):
-		if t < self.start:
-			return
-
-		if not self.started:
-			self.quad.hidden = False
-			self.started = True
-
-		x = self.ease(min((t - self.start) / self.duration, 1))
+		t = (t - self.start) / self.duration
+		t = max(t, 0)
+		t = min(t, 1)
+		x = self.ease(t)
 		for k, (s, e) in self.params.items():
 			v = s * (1 - x) + e * x
 			setattr(self.quad, k, v)
