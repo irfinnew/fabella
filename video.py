@@ -33,6 +33,7 @@ class Video:
 		self.current_file = None
 		self.duration = 0
 		self.paused = False
+		self.seeking = False
 		self.position = 0
 		self.position_immune_until = 0
 		self.position_request = None
@@ -217,6 +218,11 @@ class Video:
 
 	def seek(self, amount, whence='relative'):
 		log.info(f'Seeking {whence} {amount}')
+		if self.seeking:
+			log.info('Already a seek in progress; ignoring')
+			return
+
+		self.seeking = True
 		try:
 			self.mpv.seek(amount, whence)
 		except SystemError as e:
@@ -249,3 +255,5 @@ class Video:
 			new_pos = int(self.width * self.position)
 			if self.quad_posbar.w != new_pos:
 				self.quad_posbar.w = new_pos
+
+			self.seeking = False
