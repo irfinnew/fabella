@@ -22,7 +22,6 @@
  - Add quick search
  - Improve logging; at least strip colors if stdout is not a tty
  - Load covers asynchronously
- - Fix missing background when leaving a video quickly after playing it
  - Revert to better font outlines?
  - Change clock and video timer to minutes?
  - Offer better/simpler configuration of menu layout

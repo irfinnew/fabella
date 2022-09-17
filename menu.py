@@ -133,9 +133,8 @@ class Menu:
 			return
 		self.enabled = False
 
-		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(1, 0), hide=True)
-		draw.Animation(self.background, duration=1.0, delay=0.25, opacity=(1, 0), hide=True)
-		#draw.Animation(self.background, duration=1.0, delay=0.25, ypos=(0, -self.height), hide=True)
+		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(1, 0))
+		draw.Animation(self.background, duration=1.0, delay=0.25, opacity=(1, 0))
 		self.show_osd()
 
 
@@ -150,10 +149,11 @@ class Menu:
 			# FIXME: hack to force redraw on tile, so playing emblem / posbar is shown
 			self.current.show((0, 0), False)
 		self.draw_tiles()
-
 		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(0, 1))
-		draw.Animation(self.background, duration=0.5, opacity=(0, 1))
-		#draw.Animation(self.background, duration=1.0, ypos=(-self.height, 0))
+
+		draw.Animation.cancel(self.background)
+		draw.Animation(self.background, duration=0.5, opacity=(None, 1))
+
 		self.show_osd()
 
 

@@ -497,6 +497,14 @@ class Group:
 	def remove(self, *quads):
 		self._quads -= set(quads)
 
+	def contains(self, quad):
+		for q in self._quads:
+			if q == quad:
+				return True
+			elif isinstance(q, Group):
+				if q.contains(quad):
+					return True
+
 	def remove_destroyed(self):
 		for quad in {q for q in self._quads if q.destroyed}:
 			self.remove(quad)
@@ -559,6 +567,15 @@ class Animation:
 			if self.after:
 				self.after()
 
+	def contains(self, quad):
+		if isinstance(self.quad, Group):
+			return self.quad.contains(quad)
+		else:
+			return self.quad == quad
+
+	def abort(self):
+		Animation.all.pop(self, None)
+
 	@classmethod
 	def animate_all(cls):
 		t = time.time()
@@ -566,6 +583,13 @@ class Animation:
 			a.animate(t)
 		# Doing this makes glfw wait events not work properly, dropping rendering to ~30fps and stuttering ???
 		#window.wakeup()
+
+	@classmethod
+	def cancel(cls, *quads):
+		for a in list(cls.all.keys()):
+			for q in quads:
+				if a.contains(q):
+					a.abort()
 
 
 
