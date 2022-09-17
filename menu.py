@@ -121,7 +121,7 @@ class Menu:
 
 	def tick(self, video):
 		# FIXME: hurgh.
-		meh = datetime.datetime.now().strftime('%a %H:%M:%S')
+		meh = datetime.datetime.now().strftime('%a %H:%M')
 		if self.dark_mode:
 			meh += '        '
 		self.clock_text.text = meh
