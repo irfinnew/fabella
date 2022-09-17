@@ -230,16 +230,14 @@ class Video:
 
 		orig_bar_h = config.video.position_bar_height
 		orig_back_h = orig_bar_h + config.video.position_shadow_height
-		new_bar_h = config.video.position_bar_height_active
-		new_back_h = new_bar_h + config.video.position_shadow_height * 2
-		new_bar_y = config.video.position_bar_float_active
-		new_back_y = config.video.position_bar_float_active - config.video.position_shadow_height
+		new_bar_h = orig_bar_h * config.video.position_bar_active_scale
+		new_back_h = new_bar_h + config.video.position_shadow_height
 
-		draw.Animation(self.quad_posback, duration=1, delay=2, y=(new_back_y, 0), h=(new_back_h, orig_back_h))
-		draw.Animation(self.quad_posbar, duration=1, delay=2, y=(new_bar_y, 0), h=(new_bar_h, orig_bar_h))
+		draw.Animation(self.quad_posback, duration=1, delay=2, h=(new_back_h, orig_back_h))
+		draw.Animation(self.quad_posbar, duration=1, delay=2, h=(new_bar_h, orig_bar_h))
 
-		draw.Animation(self.quad_posback, duration=0.3, y=(None, new_back_y), h=(None, new_back_h))
-		draw.Animation(self.quad_posbar, duration=0.3, y=(None, new_bar_y), h=(None, new_bar_h))
+		draw.Animation(self.quad_posback, duration=0.3, h=(None, new_back_h))
+		draw.Animation(self.quad_posbar, duration=0.3, h=(None, new_bar_h))
 
 	def render(self):
 		if self.context.update():

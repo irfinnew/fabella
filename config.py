@@ -48,12 +48,12 @@ class menu:
 
 class video:
 	position_bar_height = 2
-	position_bar_height_active = 25
-	position_bar_float_active = 50
 	position_shadow_height = 2
 	position_bar_color = (0.4, 0.4, 1, 1)  # Blueish
 	#position_bar_color = (0.8, 0.1, 0.1, 1)  # Reddish
 	position_shadow_color = (0, 0, 0, 1)
+	position_bar_active_scale = 6
+	position_bar_active_duration = 3
 
 class ui:
 	dark_mode_brightness = 0.45
