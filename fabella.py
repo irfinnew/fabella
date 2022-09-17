@@ -37,6 +37,22 @@ except ModuleNotFoundError:
 	log.warning("Couldn't load setproctitle module; not changing process name")
 
 
+#### Configuration
+try:
+	import local
+except ModuleNotFoundError:
+	log.info("Couldn't import local.py for configuration overrides.")
+else:
+	import config
+	for cname in [a for a in dir(local) if not a.startswith('__')]:
+		config_cls = getattr(config, cname)
+		local_cls = getattr(local, cname)
+		for aname in [a for a in dir(local_cls) if not a.startswith('__')]:
+			value = getattr(local_cls, aname)
+			log.info(f'Overriding config.{cname}.{aname} = {value}')
+			setattr(config_cls, aname, value)
+
+
 #### Initialization
 # FIXME: hardcoded monitor
 window = Window(2, "Fabella")

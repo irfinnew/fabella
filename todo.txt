@@ -4,7 +4,7 @@
  - Fix GLFW bugs
  - Split out file I/O etc to its own thread
  - Make symlinks for tagged
- - Add configuration file
+ - Add better configuration file support
  - Add support for wallpaper
  - Maybe a living wallpaper?
  - Abstract out glfw key events

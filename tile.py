@@ -21,14 +21,18 @@ log = loghelper.get_logger('Tile', loghelper.Color.Cyan)
 
 
 class Tile:
-	xoff = -config.tile.width // 2
-	yoff = -config.tile.cover_height // 2
+	xoff = None
+	yoff = None
 
 	@classmethod
 	def initialize(cls):
 		# FIXME: wrong place for this I think
 		log.info(f'PIL / Pillow version {PIL.__version__}')
 		cfg = config.tile
+
+		# Positions etc
+		cls.xoff = -cfg.width // 2
+		cls.yoff = -cfg.cover_height // 2
 
 		# Shadow
 		w, h = cfg.width + cfg.shadow_blursize * 2, cfg.cover_height + cfg.shadow_blursize * 2
