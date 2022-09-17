@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # Fabella - Simple, elegant video library and player.
 #
-# Copyright 2020-2021 Marcel Moreaux.
+# Copyright 2020-2022 Marcel Moreaux.
 # Licensed under GPL v2.0, or (at your option) any later version.
 # (SPDX GPL-2.0-or-later) See LICENSE file for details.
 
