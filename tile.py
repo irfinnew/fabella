@@ -87,6 +87,9 @@ class Tile:
 		self.isdir = meta['isdir']
 		self.full_path = os.path.join(self.path, self.filename)
 		self.name = self.filename if self.isdir else os.path.splitext(self.filename)[0]
+		# Filenames can't contain slashes, so backslashes may have been substituted
+		# Backslashes don't make much sense in video titles, so convert them to slashes
+		self.name = self.name.replace('\\', '/')
 
 		log.debug(f'Created {self}')
 
