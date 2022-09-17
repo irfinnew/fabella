@@ -20,6 +20,7 @@ class tile:
 	pos_bar_height = 2
 	#pos_bar_color = (0.4, 0.4, 1, 1)
 	pos_bar_color = (0.8, 0.1, 0.1, 1)
+	emblem_scale = 0.2
 
 	thumb_dirs = ['covers']
 	thumb_files = ['cover.jpg']

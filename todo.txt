@@ -25,6 +25,5 @@
  - Revert to better font outlines?
  - Change clock and video timer to minutes?
  - Offer better/simpler configuration of menu layout
- - Scale emblems
  - Watch index/covers/state for changes on the fly
  - Cache image/text rendering?

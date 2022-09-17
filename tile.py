@@ -54,10 +54,11 @@ class Tile:
 		cls.tx_highlight = draw.Texture(hl_img)
 
 		# Emblems
+		size = round((config.tile.width * config.tile.cover_height) ** 0.5 * config.tile.emblem_scale)
+		log.info(f'Emblems are {size}x{size} pixels')
 		for emblem in ['unseen', 'watching', 'tagged']:
 			with PIL.Image.open(f'img/{emblem}.png') as img:
-				# FIXME: hardcoded size
-				width, height = (48, 48)
+				width, height = (size, size)
 				image = PIL.ImageOps.fit(img, (width, height))
 
 				# Shadow
