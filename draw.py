@@ -35,7 +35,6 @@ class State:
 	rebuild_buffer = False
 	dirty_quads = set()
 	redraw_needed = False
-	swap_needed = False
 
 	def __init__(self):
 		raise NotImplementedError('Instantiation not allowed.')
@@ -51,7 +50,7 @@ class State:
 
 		# Init OpenGL
 		gl.glEnable(gl.GL_BLEND)
-		gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+		gl.glBlendFuncSeparate(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA, gl.GL_ONE, gl.GL_ONE)
 
 		# Shaders
 		geometry_shader = gl.shaders.compileShader(GEOMETRY_SHADER, gl.GL_GEOMETRY_SHADER)
@@ -115,7 +114,7 @@ class State:
 
 
 	@classmethod
-	def render(cls):
+	def render(cls, win):
 		Update.finalize_all()
 
 		if cls.rebuild_buffer:
@@ -139,7 +138,6 @@ class State:
 			cls.redraw_needed = True
 
 		if not cls.redraw_needed:
-			cls.swap_needed = False
 			return
 
 		# MPV seems to mess this up, so we have to re-enable it.
@@ -161,7 +159,7 @@ class State:
 		#gl.glBindVertexArray(0)
 
 		cls.redraw_needed = False
-		cls.swap_needed = True
+		win.swap_buffers()
 
 
 

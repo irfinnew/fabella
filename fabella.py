@@ -155,9 +155,7 @@ while not window.closed():
 	video.render()
 	menu.tick(video)
 	draw.Animation.animate_all()
-	draw.State.render()
-	if draw.State.swap_needed:
-		window.swap_buffers()
+	draw.State.render(window)
 
 	frame_count += 1
 	new = time.time()

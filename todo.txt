@@ -16,3 +16,5 @@
  - Dark mode should also postpone video position updates
  - Add menu sleep timer
  - Better subtitle UI
+ - X11 support
+ - See if EGL force in fabella.py is still needed
