@@ -10,7 +10,6 @@ gi.require_version('Pango', '1.0')
 from gi.repository import Pango
 gi.require_version('PangoCairo', '1.0')
 from gi.repository import PangoCairo
-import math
 
 import loghelper
 import draw
@@ -82,43 +81,35 @@ class Text:
 		layout.set_height(-self._lines)
 
 		# Create actual surface
-		twidth, theight = layout.get_size()
-		twidth //= Pango.SCALE
-		theight //= Pango.SCALE
-		height = theight + border * 2
+		width, height = layout.get_size()
+		height = height // Pango.SCALE + border * 2
 		if self._max_width:
 			width = self._max_width
 		else:
-			width = twidth + border * 2
+			width = width // Pango.SCALE + border * 2
 
-		# Create text stencil
-		text = cairo.ImageSurface(cairo.FORMAT_A8, twidth, theight)
-		context = cairo.Context(text)
-		PangoCairo.show_layout(context, layout)
-
-		# Destination surface
+		# Surface
 		surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
 		context = cairo.Context(surface)
 
-		# Red background, useful for debugging
+		# Useful for debugging
 		#context.set_source_rgb(1, 0, 0)
 		#context.rectangle(0, 0, width, height)
 		#context.fill()
 
-		# Faster, lower quality outline
-		context.set_source_rgba(0, 0, 0, 0.75)
-		STEPS = 19
-		for i in range(STEPS):
-			t = math.pi * 2 * i / STEPS
-			x = round(border - math.sin(t) * border)
-			y = round(border - math.cos(t) * border)
-			context.mask_surface(text, x, y)
-			context.fill()
+		# Outline
+		context.set_source_rgb(0, 0, 0)
+		context.move_to(border, border)
+		PangoCairo.layout_path(context, layout)
+		context.set_line_width(self.font.stroke_width * 2)
+		context.set_line_join(cairo.LINE_JOIN_ROUND)
+		context.set_line_cap(cairo.LINE_CAP_ROUND)
+		context.stroke()
 
 		# Fill
 		context.set_source_rgb(1, 1, 1)
-		context.mask_surface(text, border, border)
-		context.fill()
+		context.move_to(border, border)
+		PangoCairo.show_layout(context, layout)
 
 		surface.flush()
 		return (width, height, 'BGRA', bytes(surface.get_data()))
