@@ -551,7 +551,7 @@ def process_state_queue(path, roots):
 
 	# Remaining entries from previous state are unmatched; they were probably removed
 	for n, s in previous_state.items():
-		log.info(f'"{n}" in previous state was not matched to any current file; removed')
+		log.info(f'"{n}" in previous state was not matched to any current file; ignored')
 
 	#### Collect any state update files
 	state_queue = {}
