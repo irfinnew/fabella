@@ -6,7 +6,7 @@
 
 import operator
 import OpenGL, OpenGL.GL.shaders, OpenGL.GL as gl
-import PIL.Image  # Hmm, just for SuperTexture.dump() ?
+import PIL.Image
 import math
 import queue
 import ctypes
@@ -442,6 +442,9 @@ class UpdateImg(Update):
 		if self.fit:
 			if (img.width, img.height) != self.fit:
 				img = PIL.ImageOps.fit(img, self.fit)
+		# Hmm. If we don't do this, we may end up with alignment problems when we upload to OpenGL.
+		# Also, future errors if the image is greyscale or CMYK (possible in theory).
+		img = img.convert('RGBA')
 		self.width = img.width
 		self.height = img.height
 		self.mode = img.mode
