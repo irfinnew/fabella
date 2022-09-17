@@ -9,6 +9,7 @@ import datetime
 import time
 import uuid
 import zipfile
+import PIL
 
 import loghelper
 import config
@@ -42,7 +43,19 @@ class Menu:
 		self.index = []
 		self.tiles = {}
 		self.covers_zip = None
-		self.background = draw.FlatQuad(z=100, w=width, h=height, color=config.menu.background_color)
+
+		# Background
+		log.info(f'Loading background image: {config.menu.background_image}')
+		if config.menu.background_image is not None:
+			# Bit of a hack: create image of right size now, so space gets allocated
+			# in the supertexture early on. Also, setting this to 75% gray provides
+			# a reasonable transition for when the actual wallpaper is loaded.
+			img = PIL.Image.new('RGBA', (width, height), (192, 192, 192, 255))
+			self.background = draw.Quad(z=100, w=width, h=height, image=img, color=config.menu.background_color)
+			data = open(config.menu.background_image, 'rb').read()
+			draw.UpdateImg(self.background, data, fit=(width, height))
+		else:
+			self.background = draw.FlatQuad(z=100, w=width, h=height, color=config.menu.background_color)
 
 		# Dark mode stuff
 		self.dark_mode_quad = draw.FlatQuad(z=1000, w=width, h=height, color=(0, 0, 0, 1 - config.ui.dark_mode_brightness), hidden=True)

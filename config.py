@@ -41,6 +41,8 @@ class tile:
 	text_hl_color = (1, 1, 1, 1)
 
 class menu:
+	background_image = None
+	#background_color = (0.2, 0.2, 0.25, 1)
 	background_color = (0.16, 0.16, 0.2, 1)
 	text_font = 'Ubuntu Medium'
 	text_size = 36
