@@ -21,7 +21,7 @@
  - Add key to quickly navigate between new/watching tiles
  - Add quick search
  - Improve logging; at least strip colors if stdout is not a tty
- - Fix crash when pagedowning too fast in a large folder (probably accessing a destroyed texture/quad)
+ - Load covers asynchronously
  - Fix missing background when leaving a video quickly after playing it
  - Revert to better font outlines?
  - Change clock and video timer to minutes?

@@ -376,10 +376,11 @@ class Quad:
 		return Quad(**attrs)
 
 	def destroy(self):
+		if self.destroyed:
+			return
 		self.destroyed = True
 		self.all.remove(self)
 		self.texture.destroy()
-		del self.x # trigger AttributeError if we're used after this
 		del self.texture  # trigger AttributeError if we're used after this
 		State.rebuild_buffer = True
 
