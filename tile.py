@@ -61,19 +61,19 @@ class Tile:
 				image = PIL.ImageOps.fit(img, (width, height))
 
 				# Shadow
-				blur_radius, blur_count = (2, 12)
-				outset = blur_radius + blur_count // 2 + 1
+				outset, blur_radius, blur_count = (1, 1, 8)
+				border = outset * 2 + blur_radius * 2 + blur_count // 2 + 1 # Yeah maybe maybe not
 
 				# Stencil
-				new = PIL.Image.new('RGBA', (width + outset * 2, height + outset * 2))
+				new = PIL.Image.new('RGBA', (width + border * 2, height + border * 2))
 
 				for i in range(blur_count):
-					new.paste((0, 0, 0), (outset - 1, outset - 1), mask=image)
-					new.paste((0, 0, 0), (outset + 1, outset - 1), mask=image)
-					new.paste((0, 0, 0), (outset + 1, outset + 1), mask=image)
-					new.paste((0, 0, 0), (outset - 1, outset + 1), mask=image)
+					new.paste((0, 0, 0), (border - outset, border - outset), mask=image)
+					new.paste((0, 0, 0), (border + outset, border - outset), mask=image)
+					new.paste((0, 0, 0), (border + outset, border + outset), mask=image)
+					new.paste((0, 0, 0), (border - outset, border + outset), mask=image)
 					new = new.filter(PIL.ImageFilter.GaussianBlur(blur_radius))
-				new.paste(image, (outset, outset), mask=image)
+				new.paste(image, (border, border), mask=image)
 
 				setattr(cls, f'tx_{emblem}', draw.Texture(new))
 
