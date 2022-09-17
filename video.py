@@ -121,11 +121,9 @@ class Video:
 			self.position = 1
 		self.stop()
 		# FIXME: tight coupling
+		# Also, we hope this method is called in time, so the open() doesn't interfere
+		# with whatever the user is doing.
 		if self.menu:
-			# FIXME: this is really ugly; this method is called from another thread, so
-			# this will call menu.open() asynchronously, which may interfere with what
-			# the user is doing at this point.
-			time.sleep(0.5)
 			self.menu.open()
 
 
