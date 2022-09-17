@@ -5,8 +5,8 @@
  - Split out file I/O etc to its own thread
  - Make symlinks for tagged
  - Add configuration file
- - Add background
- - Menu animations
+ - Add support for wallpaper
+ - Maybe a living wallpaper?
  - Abstract out glfw key events
  - Videos with non-square pixels are poorly supported; video playback is letterboxed; thumbnails get squashed (IT crowd)
  - Perhaps display multiple seasons in one menu? Separated by a text header?
@@ -18,3 +18,15 @@
  - Better subtitle UI
  - X11 support
  - See if EGL force in fabella.py is still needed
+ - Add key to quickly navigate between new/watching tiles
+ - Add quick search
+ - Improve logging; at least strip colors if stdout is not a tty
+ - Fix crash when pagedowning too fast in a large folder (probably accessing a destroyed texture/quad)
+ - Fix missing background when leaving a video quickly after playing it
+ - Revert to better font outlines?
+ - Change clock and video timer to minutes?
+ - Offer better/simpler configuration of menu layout
+ - Scale emblems
+ - Watch index/covers/state for changes on the fly
+ - Show full tile title when selected?
+ - Cache image/text rendering?
