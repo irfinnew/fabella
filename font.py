@@ -31,7 +31,7 @@ class Text:
 		self.quad = draw.FlatQuad(x=x, y=y, z=z, pos=pos, color=color, group=group)
 
 		self.font = font
-		self.lines = lines
+		self._lines = lines
 		self.max_width = max_width
 		self.text = text
 
@@ -53,6 +53,15 @@ class Text:
 			self._max_width = max_width
 			draw.UpdateText(self.quad, self)
 
+	@property
+	def lines(self):
+		return self._lines
+	@lines.setter
+	def lines(self, lines):
+		if lines != self._lines:
+			self._lines = lines
+			draw.UpdateText(self.quad, self)
+
 	def render(self):
 		if self._text is None:
 			return
@@ -70,7 +79,7 @@ class Text:
 		# Wrapping
 		if self._max_width:
 			layout.set_width((self._max_width - border * 2) * Pango.SCALE)
-		layout.set_height(-self.lines)
+		layout.set_height(-self._lines)
 
 		# Create actual surface
 		twidth, theight = layout.get_size()

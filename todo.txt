@@ -27,5 +27,4 @@
  - Offer better/simpler configuration of menu layout
  - Scale emblems
  - Watch index/covers/state for changes on the fly
- - Show full tile title when selected?
  - Cache image/text rendering?

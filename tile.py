@@ -199,6 +199,9 @@ class Tile:
 
 		if selected:
 			draw.Animation(self.quads, duration=0.2, scale=(1.1, 1))
+			self.title.lines = config.tile.text_lines_selected
+		else:
+			self.title.lines = config.tile.text_lines
 
 
 	def destroy(self):
