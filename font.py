@@ -117,8 +117,8 @@ class Text:
 
 		# Fill
 		context.set_source_rgb(1, 1, 1)
-		context.move_to(border, border)
-		PangoCairo.show_layout(context, layout)
+		context.mask_surface(text, border, border)
+		context.fill()
 
 		surface.flush()
 		return (width, height, 'BGRA', bytes(surface.get_data()))
