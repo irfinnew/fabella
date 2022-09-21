@@ -90,10 +90,16 @@ while not window.closed():
 
 			# Menu keys
 			if menu.enabled:
-				if key == glfw.KEY_TAB and modifiers == 0:
-					menu.toggle_seen()
-				if key == glfw.KEY_TAB and modifiers == glfw.MOD_SHIFT:
-					menu.toggle_seen_all()
+				if key == glfw.KEY_INSERT:
+					if modifiers == 0:
+						menu.toggle_seen()
+					if modifiers == glfw.MOD_SHIFT:
+						menu.toggle_seen_all()
+				if key == glfw.KEY_TAB:
+					if modifiers == 0:
+						menu.find_next_new()
+					if modifiers == glfw.MOD_SHIFT:
+						menu.find_next_new(backwards=True)
 				if key in [glfw.KEY_ENTER, glfw.KEY_SPACE]:
 					menu.enter(video)
 				if key == glfw.KEY_BACKSPACE:

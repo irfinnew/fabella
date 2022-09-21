@@ -18,7 +18,6 @@
  - Better subtitle UI
  - X11 support
  - See if EGL force in fabella.py is still needed
- - Add key to quickly navigate between new/watching tiles
  - Add quick search
  - Improve logging; at least strip colors if stdout is not a tty
  - Load covers asynchronously

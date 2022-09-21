@@ -10,6 +10,7 @@ import time
 import uuid
 import zipfile
 import PIL
+import bisect
 
 import loghelper
 import config
@@ -337,6 +338,30 @@ class Menu:
 
 		update_name = os.path.join(self.path, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
 		dbs.json_write(update_name, state)
+
+
+	def find_next_new(self, backwards=False):
+		watching = []
+		unseen = []
+		for i, tile in enumerate(self.index):
+			pos = tile.get('position', 0.0)
+			if pos == 0.0:
+				unseen.append(i)
+			elif pos < 1.0:
+				watching.append(i)
+
+		src_list = watching if watching else unseen
+		search = bisect.bisect_left if backwards else bisect.bisect
+		offset = 1 if backwards else 0
+
+		if not src_list:
+			return
+
+		src_pos = (search(src_list, self.current_idx) - offset) % len(src_list)
+		newpos = src_list[src_pos]
+
+		if newpos != self.current_idx:
+			self.jump_tile(newpos)
 
 
 	def toggle_tagged(self):
