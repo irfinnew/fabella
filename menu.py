@@ -327,19 +327,6 @@ class Menu:
 		self.current.toggle_seen()
 
 
-	def toggle_seen_all(self):
-		# FIXME: this needs complete revamp prolly
-		position = 1 if any(t.unseen and not t.isdir for t in self.tiles) else 0
-		state = {}
-		for tile in self.tiles:
-			if not tile.isdir:
-				tile.position = position
-				state[tile.name] = {'position': position}
-
-		update_name = os.path.join(self.path, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
-		dbs.json_write(update_name, state)
-
-
 	def find_next_new(self, backwards=False):
 		watching = []
 		unseen = []

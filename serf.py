@@ -7,12 +7,14 @@
 
 import os
 import sys
+import uuid
 
 import dbs
 
-if len(sys.argv) < 2 or sys.argv[1] != 'find-tagged':
-	print(f'Usage: {sys.argv[0]} find-tagged')
-	print(f'  Recursively lists all tagged files')
+if len(sys.argv) < 2 or sys.argv[1] not in {'find-tagged', 'mark-seen'}:
+	print(f'Usage:')
+	print(f'  {sys.argv[0]} find-tagged          Recursively lists all tagged files.')
+	print(f'  {sys.argv[0]} mark-seen <file(s)>  Mark files as seen.')
 	exit(1)
 
 def escape(path):
@@ -32,4 +34,17 @@ def process(path):
 			else:
 				print(escape(os.path.join(path, item['name'])))
 
-process('')
+if sys.argv[1] == 'find-tagged':
+	process('')
+
+if sys.argv[1] == 'mark-seen':
+	count = 0
+	for f in sys.argv[2:]:
+		path, file = os.path.split(f)
+		queue_dir_name = os.path.join(path, dbs.QUEUE_DIR_NAME)
+		os.makedirs(queue_dir_name, exist_ok=True)
+		os.chmod(queue_dir_name, 0o775)
+		state_name = os.path.join(queue_dir_name, str(uuid.uuid4()))
+		dbs.json_write(state_name, {file: {'position': 1}})
+		count += 1
+	print(f'Marked {count} files as seen.')
