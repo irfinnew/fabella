@@ -31,7 +31,7 @@ class Text:
 
 		self.font = font
 		self._lines = lines
-		self.max_width = max_width
+		self._max_width = max_width
 		self.text = text
 
 	@property
