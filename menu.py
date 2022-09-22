@@ -161,7 +161,8 @@ class Menu:
 
 		if self.tiles:
 			# FIXME: hack to force redraw on tile, so playing emblem / posbar is shown
-			self.current.show((0, 0), False)
+			if self.current:
+				self.current.show((0, 0), False)
 		self.draw_tiles()
 		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(0, 1))
 
@@ -258,7 +259,10 @@ class Menu:
 
 	@property
 	def current(self):
-		return self.tiles[self.current_idx]
+		try:
+			return self.tiles[self.current_idx]
+		except KeyError:
+			return None
 
 
 	def jump_tile(self, idx, animate=None):
@@ -324,7 +328,8 @@ class Menu:
 
 
 	def toggle_seen(self):
-		self.current.toggle_seen()
+		if self.current:
+			self.current.toggle_seen()
 
 
 	def find_next_new(self, backwards=False):
@@ -352,18 +357,20 @@ class Menu:
 
 
 	def toggle_tagged(self):
-		self.current.toggle_tagged()
+		if self.current:
+			self.current.toggle_tagged()
 
 
 	def enter(self, video):
 		log.info('Enter')
 		tile = self.current
-		if tile.isdir:
-			self.breadcrumbs.append(tile.name)
-			self.bread_text.text = '  ›  '.join(self.breadcrumbs)
-			self.load(tile.full_path)
-		else:
-			self.play(tile, video)
+		if tile:
+			if tile.isdir:
+				self.breadcrumbs.append(tile.name)
+				self.bread_text.text = '  ›  '.join(self.breadcrumbs)
+				self.load(tile.full_path)
+			else:
+				self.play(tile, video)
 
 
 	def play(self, tile, video):
