@@ -41,7 +41,7 @@ class Text:
 	def text(self, text):
 		if text != self._text:
 			self._text = text
-			draw.UpdateText(self.quad, self)
+			self.render()
 
 	@property
 	def max_width(self):
@@ -50,7 +50,7 @@ class Text:
 	def max_width(self, max_width):
 		if max_width != self._max_width:
 			self._max_width = max_width
-			draw.UpdateText(self.quad, self)
+			self.render()
 
 	@property
 	def lines(self):
@@ -59,7 +59,7 @@ class Text:
 	def lines(self, lines):
 		if lines != self._lines:
 			self._lines = lines
-			draw.UpdateText(self.quad, self)
+			self.render()
 
 	def render(self):
 		if self._text is None:
@@ -112,7 +112,17 @@ class Text:
 		PangoCairo.show_layout(context, layout)
 
 		surface.flush()
-		return (width, height, 'BGRA', bytes(surface.get_data()))
+		if self.quad.destroyed:
+			return
+		if (self.quad.w, self.quad.h) != (width, height):
+			if self.anchor[1] == 'r':
+				self.quad.x = self.quad.x + self.quad.w - width
+			if self.anchor[0] == 't':
+				self.quad.y = self.quad.y + self.quad.h - height
+			self.quad.w = width
+			self.quad.h = height
+		self.quad.update_raw(width, height, 'BGRA', bytes(surface.get_data()))
+
 
 	def destroy(self):
 		self.quad.destroy()

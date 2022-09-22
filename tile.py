@@ -188,12 +188,20 @@ class Tile:
 		# FIXME: reuse instead of recreate
 		if self.cover:
 			self.cover.destroy()
-		self.cover = draw.FlatQuad(z=203, group=self.quads,
-			x=self.xoff, y=self.yoff, w=config.tile.width, h=config.tile.cover_height,
-			color=self.tile_color
-		)
 		if cover_data:
-			draw.UpdateImg(self.cover, cover_data, fit=(config.tile.width, config.tile.cover_height), color=(1, 1, 1, 1))
+			img = PIL.Image.open(io.BytesIO(cover_data))
+			img = img.convert('RGBA')
+			if (img.width, img.height) != (config.tile.width, config.tile.cover_height):
+				img = PIL.ImageOps.fit(img, (config.tile.width, config.tile.cover_height))
+			self.cover = draw.Quad(z=203, group=self.quads,
+				x=self.xoff, y=self.yoff, w=config.tile.width, h=config.tile.cover_height,
+				image=img
+			)
+		else:
+			self.cover = draw.FlatQuad(z=203, group=self.quads,
+				x=self.xoff, y=self.yoff, w=config.tile.width, h=config.tile.cover_height,
+				color=self.tile_color
+			)
 
 
 	def show(self, pos, selected):
