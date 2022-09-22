@@ -107,6 +107,7 @@ class Window:
 
 		self.fullscreen = True
 		self.events = []
+		self.had_event = True
 
 	def terminate(self):
 		log.info('Terminating')
@@ -138,15 +139,17 @@ class Window:
 		# FIXME: doesn't seem to wait if swap_buffers is called every iteration
 		# https://github.com/glfw/glfw/issues/1911
 		# Wait until next second transition
-		glfw.wait_events_timeout(1 - (time.time() % 1))
+		if not self.had_event:
+			glfw.wait_events_timeout(1 - (time.time() % 1))
 
 	def swap_buffers(self):
 		#log.debug('glfw.swap_buffers()')
 		glfw.swap_buffers(self.window)
 
 	def get_events(self):
-		while True:
-			try:
-				yield self.events.pop(0)
-			except IndexError:
-				return
+		try:
+			yield self.events.pop(0)
+			self.had_event = True
+		except IndexError:
+			self.had_event = False
+			return
