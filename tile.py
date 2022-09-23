@@ -190,6 +190,7 @@ class Tile:
 			self.cover.destroy()
 		if cover_data:
 			img = PIL.Image.open(io.BytesIO(cover_data))
+			# Always convert to RGBA; 4-byte pixels avoid alignment problems
 			img = img.convert('RGBA')
 			if (img.width, img.height) != (config.tile.width, config.tile.cover_height):
 				img = PIL.ImageOps.fit(img, (config.tile.width, config.tile.cover_height))
