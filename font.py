@@ -65,8 +65,6 @@ class Text:
 		if self._text is None:
 			return
 
-		log.debug(f'Rendering text: "{self._text}"')
-
 		# We need to pad the surface a bit to account for the stroke width
 		border = self.font.stroke_width
 		layout = PangoCairo.create_layout(self.font.context)
