@@ -139,7 +139,9 @@ class Window:
 		# FIXME: doesn't seem to wait if swap_buffers is called every iteration
 		# https://github.com/glfw/glfw/issues/1911
 		# Wait until next second transition
-		if not self.had_event:
+		if self.had_event:
+			glfw.poll_events()
+		else:
 			glfw.wait_events_timeout(1 - (time.time() % 1))
 
 	def swap_buffers(self):
