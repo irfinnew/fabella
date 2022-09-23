@@ -10,12 +10,63 @@ gi.require_version('Pango', '1.0')
 from gi.repository import Pango
 gi.require_version('PangoCairo', '1.0')
 from gi.repository import PangoCairo
+import functools
 
 import loghelper
 import draw
+import config
 
 log = loghelper.get_logger('Font', loghelper.Color.BrightBlack)
 
+
+@functools.lru_cache(maxsize=config.performance.text_cache_items)
+def render_text(font, text, max_width, lines):
+	# We need to pad the surface a bit to account for the stroke width
+	border = font.stroke_width
+	layout = PangoCairo.create_layout(font.context)
+	layout.set_font_description(font.font_desc)
+	layout.set_wrap(Pango.WrapMode.WORD_CHAR)
+	layout.set_ellipsize(Pango.EllipsizeMode.END)
+	layout.set_text(text, -1)
+
+	# Wrapping
+	if max_width:
+		layout.set_width((max_width - border * 2) * Pango.SCALE)
+	layout.set_height(-lines)
+
+	# Create actual surface
+	width, height = layout.get_size()
+	height = height // Pango.SCALE + border * 2
+	if max_width:
+		width = max_width
+	else:
+		width = width // Pango.SCALE + border * 2
+
+	# Surface
+	surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+	context = cairo.Context(surface)
+
+	# Useful for debugging
+	#context.set_source_rgb(1, 0, 0)
+	#context.rectangle(0, 0, width, height)
+	#context.fill()
+
+	# Outline
+	context.set_source_rgb(0, 0, 0)
+	context.move_to(border, border)
+	PangoCairo.layout_path(context, layout)
+	context.set_line_width(font.stroke_width * 2)
+	context.set_line_join(cairo.LINE_JOIN_ROUND)
+	context.set_line_cap(cairo.LINE_CAP_ROUND)
+	context.stroke()
+
+	# Fill
+	context.set_source_rgb(1, 1, 1)
+	context.move_to(border, border)
+	PangoCairo.show_layout(context, layout)
+
+	surface.flush()
+	return width, height, bytes(surface.get_data())
 
 
 class Text:
@@ -64,54 +115,11 @@ class Text:
 	def render(self):
 		if self._text is None:
 			return
-
-		# We need to pad the surface a bit to account for the stroke width
-		border = self.font.stroke_width
-		layout = PangoCairo.create_layout(self.font.context)
-		layout.set_font_description(self.font.font_desc)
-		layout.set_wrap(Pango.WrapMode.WORD_CHAR)
-		layout.set_ellipsize(Pango.EllipsizeMode.END)
-		layout.set_text(self._text, -1)
-
-		# Wrapping
-		if self._max_width:
-			layout.set_width((self._max_width - border * 2) * Pango.SCALE)
-		layout.set_height(-self._lines)
-
-		# Create actual surface
-		width, height = layout.get_size()
-		height = height // Pango.SCALE + border * 2
-		if self._max_width:
-			width = self._max_width
-		else:
-			width = width // Pango.SCALE + border * 2
-
-		# Surface
-		surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
-		context = cairo.Context(surface)
-
-		# Useful for debugging
-		#context.set_source_rgb(1, 0, 0)
-		#context.rectangle(0, 0, width, height)
-		#context.fill()
-
-		# Outline
-		context.set_source_rgb(0, 0, 0)
-		context.move_to(border, border)
-		PangoCairo.layout_path(context, layout)
-		context.set_line_width(self.font.stroke_width * 2)
-		context.set_line_join(cairo.LINE_JOIN_ROUND)
-		context.set_line_cap(cairo.LINE_CAP_ROUND)
-		context.stroke()
-
-		# Fill
-		context.set_source_rgb(1, 1, 1)
-		context.move_to(border, border)
-		PangoCairo.show_layout(context, layout)
-
-		surface.flush()
 		if self.quad.destroyed:
 			return
+
+		width, height, pixels = render_text(self.font, self._text, self._max_width, self._lines)
+
 		if (self.quad.w, self.quad.h) != (width, height):
 			if self.anchor[1] == 'r':
 				self.quad.x = self.quad.x + self.quad.w - width
@@ -119,7 +127,7 @@ class Text:
 				self.quad.y = self.quad.y + self.quad.h - height
 			self.quad.w = width
 			self.quad.h = height
-		self.quad.update_raw(width, height, 'BGRA', bytes(surface.get_data()))
+		self.quad.update_raw(width, height, 'BGRA', pixels)
 
 
 	def destroy(self):

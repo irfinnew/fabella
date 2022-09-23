@@ -60,3 +60,6 @@ class video:
 
 class ui:
 	dark_mode_brightness = 0.45
+
+class performance:
+	text_cache_items = 256
