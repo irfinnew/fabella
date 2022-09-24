@@ -11,6 +11,7 @@ from gi.repository import Pango
 gi.require_version('PangoCairo', '1.0')
 from gi.repository import PangoCairo
 import functools
+import math
 
 import loghelper
 import draw
@@ -35,14 +36,16 @@ def render_text(font, text, max_width, lines):
 	layout.set_height(-lines)
 
 	# Create actual surface
-	width, height = layout.get_size()
-	height = height // Pango.SCALE + border * 2
+	twidth, theight = layout.get_size()
+	twidth //= Pango.SCALE
+	theight //= Pango.SCALE
+	height = theight + border * 2
 	if max_width:
 		width = max_width
 	else:
-		width = width // Pango.SCALE + border * 2
+		width = twidth + border * 2
 
-	# Surface
+	# Destination surface
 	surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
 	context = cairo.Context(surface)
 
@@ -51,16 +54,34 @@ def render_text(font, text, max_width, lines):
 	#context.rectangle(0, 0, width, height)
 	#context.fill()
 
-	# Outline
-	context.set_source_rgb(0, 0, 0)
-	context.move_to(border, border)
-	PangoCairo.layout_path(context, layout)
-	context.set_line_width(font.stroke_width * 2)
-	context.set_line_join(cairo.LINE_JOIN_ROUND)
-	context.set_line_cap(cairo.LINE_CAP_ROUND)
-	context.stroke()
+	if not config.performance.text_low_quality_outline:
+		#### High quality outline
+		context.set_source_rgb(0, 0, 0)
+		context.move_to(border, border)
+		PangoCairo.layout_path(context, layout)
+		context.set_line_width(font.stroke_width * 2)
+		context.set_line_join(cairo.LINE_JOIN_ROUND)
+		context.set_line_cap(cairo.LINE_CAP_ROUND)
+		context.stroke()
 
-	# Fill
+	else:
+		#### Lower quality outline
+		# Create stencil
+		text = cairo.ImageSurface(cairo.FORMAT_A8, twidth, theight)
+		text_context = cairo.Context(text)
+		PangoCairo.show_layout(text_context, layout)
+
+		# Apply stencil in a circular motion
+		context.set_source_rgba(0, 0, 0, 0.8)
+		STEPS = 8
+		for i in range(STEPS):
+			t = math.pi * 2 * i / STEPS
+			x = round(border - math.sin(t) * border)
+			y = round(border - math.cos(t) * border)
+			context.mask_surface(text, x, y)
+			context.fill()
+
+	#### Text itself
 	context.set_source_rgb(1, 1, 1)
 	context.move_to(border, border)
 	PangoCairo.show_layout(context, layout)

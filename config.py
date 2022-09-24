@@ -63,3 +63,4 @@ class ui:
 
 class performance:
 	text_cache_items = 256
+	text_low_quality_outline = False
