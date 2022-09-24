@@ -3,7 +3,6 @@
  - Fix sometimes-crash on seek (probably because MPV thread stuff)
  - Fix GLFW bugs
  - Split out file I/O etc to its own thread
- - Make symlinks for tagged
  - Add better configuration file support
  - Add support for wallpaper
  - Maybe a living wallpaper?
@@ -11,7 +10,6 @@
  - Videos with non-square pixels are poorly supported; video playback is letterboxed; thumbnails get squashed (IT crowd)
  - Perhaps display multiple seasons in one menu? Separated by a text header?
  - Copy better thumbnail generation from mkv-gencover
- - Have a look at performance, in particular drawing tiles (defer image/font rendering to render threads?)
  - Text objects that are hidden shouldn't render when their text is updated
  - Dark mode should also postpone video position updates
  - Add menu sleep timer
@@ -21,8 +19,6 @@
  - Add quick search
  - Improve logging; at least strip colors if stdout is not a tty
  - Load covers asynchronously
- - Revert to better font outlines?
  - Offer better/simpler configuration of menu layout
  - Watch index/covers/state for changes on the fly
- - Cache image/text rendering?
  - Add proper error checking on OpenGL calls
