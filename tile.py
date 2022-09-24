@@ -8,7 +8,7 @@ import os
 import io
 import time
 import uuid
-import PIL.Image, PIL.ImageFilter
+import PIL.Image, PIL.ImageFilter, PIL.features
 
 import dbs
 import config
@@ -28,6 +28,11 @@ class Tile:
 	def initialize(cls):
 		# FIXME: wrong place for this I think
 		log.info(f'PIL / Pillow version {PIL.__version__}')
+		if PIL.features.check_feature("libjpeg_turbo"):
+			log.info('Pillow is using libjpeg-turbo')
+		else:
+			log.info('Pillow is NOT using libjpeg-turbo; loading cover images may be slower')
+
 		cfg = config.tile
 
 		# Positions etc
