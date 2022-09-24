@@ -198,7 +198,8 @@ class Tile:
 			# Always convert to RGBA; 4-byte pixels avoid alignment problems
 			img = img.convert('RGBA')
 			if (img.width, img.height) != (config.tile.width, config.tile.cover_height):
-				img = PIL.ImageOps.fit(img, (config.tile.width, config.tile.cover_height))
+				#img = PIL.ImageOps.fit(img, (config.tile.width, config.tile.cover_height))
+				img = util.img_crop_ratio(img, (config.tile.width, config.tile.cover_height))
 			self.cover = draw.Quad(z=203, group=self.quads,
 				x=self.xoff, y=self.yoff, w=config.tile.width, h=config.tile.cover_height,
 				image=img
