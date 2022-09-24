@@ -25,3 +25,4 @@
  - Offer better/simpler configuration of menu layout
  - Watch index/covers/state for changes on the fly
  - Cache image/text rendering?
+ - Add proper error checking on OpenGL calls

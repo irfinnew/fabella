@@ -1,0 +1,4 @@
+ - Try and align covers.zip image size and Fabella cover size
+ - Check if Pillow uses libjpeg-turbo
+ - set config.tile.text_lines_selected = config.tile.text_lines
+ - config.performance.*

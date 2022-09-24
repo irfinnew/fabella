@@ -161,7 +161,7 @@ class State:
 class SuperTexture:
 	# Small alignment increases fragmentation, large alignment increases waste.
 	# This seems to be a reasonable trade-off.
-	alignment = 32
+	alignment = 16
 	tid = None
 	size = None
 	freelist = None
