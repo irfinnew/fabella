@@ -49,7 +49,7 @@ class Menu:
 		log.info(f'Loading background image: {config.menu.background_image}')
 		if config.menu.background_image is not None:
 			img = PIL.Image.open(config.menu.background_image)
-			img = img.convert('RGB')
+			img = img.convert('RGBA')
 			img = PIL.ImageOps.fit(img, (width, height))
 			self.background = draw.Quad(z=100, w=width, h=height, image=img, color=config.menu.background_color)
 		else:
