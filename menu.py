@@ -44,6 +44,8 @@ class Menu:
 		self.index = []
 		self.tiles = {}
 		self.covers_zip = None
+		self.searching = False
+		self.search_str = ''
 
 		# Background
 		log.info(f'Loading background image: {config.menu.background_image}')
@@ -71,6 +73,10 @@ class Menu:
 		self.clock_text = self.menu_font.text(z=102, text='clock', anchor='tr',
 			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace,
 		)
+		self.search_text = self.menu_font.text(z=102, anchor='tr',
+			x=width - config.menu.header_hspace, y=height - config.menu.header_vspace,
+		)
+		self.search_text.quad.hidden = True
 		self.osd_name_text = self.menu_font.text(z=102, text='LOSD', anchor='tl', lines=4,
 			x=config.menu.header_hspace, y=height - config.menu.header_vspace * 2 - self.menu_font.height(1),
 		)
@@ -351,6 +357,54 @@ class Menu:
 
 		if newpos != self.current_idx:
 			self.jump_tile(newpos)
+
+
+	def search_start(self):
+		log.info('Starting search')
+		self.searching = True
+		self.search_str = ''
+		self.clock_text.quad.hidden = True
+		self.search_text.text = '🔍 ' + self.search_str + '_'
+		self.search_text.quad.hidden = False
+		self.search_text.quad.color = (1, 1, 1, 1)
+
+
+	def search_end(self):
+		log.info('Ending search')
+		self.searching = False
+		self.search_str = ''
+		self.clock_text.quad.hidden = False
+		self.search_text.text = '🔍 ' + self.search_str + '_'
+		self.search_text.quad.hidden = True
+		self.search_text.quad.color = (1, 1, 1, 1)
+
+
+	# -1 backspaces
+	def search_char(self, char):
+		if char == -1:
+			self.search_str = self.search_str[:-1]
+		else:
+			self.search_str += chr(char)
+		log.info(f'Searching for {self.search_str}')
+		self.search_text.text = '🔍 ' + self.search_str + '_'
+		if self.search_next():
+			self.search_text.quad.color = (1, 1, 1, 1)
+		else:
+			self.search_text.quad.color = (1, 0.3, 0.3, 1)
+
+
+	def search_next(self, with_current=True):
+		needle = self.search_str.lower()
+		matches = [i for i, tile in enumerate(self.index) if needle in tile['name'].lower()]
+		search = bisect.bisect_left if with_current else bisect.bisect_right
+
+		if matches:
+			match_pos = search(matches, self.current_idx) % len(matches)
+			newpos = matches[match_pos]
+			self.jump_tile(newpos)
+			return True
+		else:
+			return False
 
 
 	def toggle_tagged(self):

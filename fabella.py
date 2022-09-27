@@ -69,27 +69,44 @@ log.info('Starting main loop')
 while not window.closed():
 	window.wait()
 
-	for key, scancode, action, modifiers in window.get_events():
+	for key, scancode, action, modifiers, char in window.get_events():
+		# FIXME
+		if menu.enabled and menu.searching and char:
+			if chr(char) == '/':
+				pass
+			elif chr(char) == ' ':
+				menu.search_next(with_current=False)
+			else:
+				menu.search_char(char)
+
 		if action in [glfw.PRESS, glfw.REPEAT]:
 			log.info(f'Parsing key {key} in {"menu" if menu.enabled else "video"} mode')
 
-			# Global keys
-			if key == glfw.KEY_Q and modifiers == glfw.MOD_CONTROL:
-				log.info('Quitting.')
-				menu.forget()
-				video.stop()
-				window.terminate()
-				exit()
-			if key == glfw.KEY_F:
-				window.set_fullscreen()
-			if key == glfw.KEY_T:
-				draw.SuperTexture.dump()
-			if key == glfw.KEY_D:
-				log.info('Cycling dark mode')
-				menu.show_dark_mode(not menu.dark_mode)
+			if menu.enabled and menu.searching:
+				if key in [glfw.KEY_SLASH, glfw.KEY_ESCAPE]:
+					menu.search_end()
+				elif key == glfw.KEY_ENTER:
+					menu.search_end()
+					menu.enter(video)
+				if key == glfw.KEY_BACKSPACE:
+					menu.search_char(-1)
+			elif menu.enabled:
+				# Global keys
+				if key == glfw.KEY_Q and modifiers == glfw.MOD_CONTROL:
+					log.info('Quitting.')
+					menu.forget()
+					video.stop()
+					window.terminate()
+					exit()
+				if key == glfw.KEY_F:
+					window.set_fullscreen()
+				if key == glfw.KEY_T and modifiers == glfw.MOD_CONTROL | glfw.MOD_ALT:
+					draw.SuperTexture.dump()
+				if key == glfw.KEY_D:
+					log.info('Cycling dark mode')
+					menu.show_dark_mode(not menu.dark_mode)
 
-			# Menu keys
-			if menu.enabled:
+				# Menu keys
 				if key == glfw.KEY_INSERT:
 					menu.toggle_seen()
 				if key == glfw.KEY_TAB:
@@ -119,7 +136,24 @@ while not window.closed():
 					menu.last()
 				if key == glfw.KEY_DELETE:
 					menu.toggle_tagged()
+				if key == glfw.KEY_SLASH:
+					menu.search_start()
 			else:
+				# Global keys
+				if key == glfw.KEY_Q and modifiers == glfw.MOD_CONTROL:
+					log.info('Quitting.')
+					menu.forget()
+					video.stop()
+					window.terminate()
+					exit()
+				if key == glfw.KEY_F:
+					window.set_fullscreen()
+				if key == glfw.KEY_T and modifiers == glfw.MOD_CONTROL | glfw.MOD_ALT:
+					draw.SuperTexture.dump()
+				if key == glfw.KEY_D:
+					log.info('Cycling dark mode')
+					menu.show_dark_mode(not menu.dark_mode)
+
 				# Video keys
 				if key in [glfw.KEY_ESCAPE, glfw.KEY_ENTER]:
 					video.stop()

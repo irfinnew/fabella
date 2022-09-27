@@ -101,6 +101,7 @@ class Window:
 		glfw.make_context_current(self.window)
 		glfw.swap_interval(1)
 		glfw.set_key_callback(self.window, self.on_keypress)
+		glfw.set_char_callback(self.window, self.on_character)
 
 		log.debug('Hiding mouse cursor')
 		glfw.set_input_mode(self.window, glfw.CURSOR, glfw.CURSOR_HIDDEN)
@@ -129,19 +130,23 @@ class Window:
 
 	def on_keypress(self, window, key, scancode, action, modifiers):
 		log.info(f'Keypress key={key}, scancode={scancode}, action={action}, modifiers={modifiers}')
-		self.events.append((key, scancode, action, modifiers))
+		self.events.append((key, scancode, action, modifiers, None))
+
+	def on_character(self, window, char):
+		log.info(f'Character input: codepoint {char} = {chr(char)}')
+		self.events.append((None, None, None, None, char))
 
 	def closed(self):
 		return glfw.window_should_close(self.window)
 
 	def wait(self):
-		#log.debug('glfw.wait_events()')
-		# FIXME: doesn't seem to wait if swap_buffers is called every iteration
-		# https://github.com/glfw/glfw/issues/1911
-		# Wait until next second transition
 		if self.had_event:
+			# If we had an event previously, don't wait, there might be more to do now.
 			glfw.poll_events()
 		else:
+			# FIXME: doesn't seem to wait if swap_buffers is called every iteration
+			# https://github.com/glfw/glfw/issues/1911
+			# Wait until next second transition
 			glfw.wait_events_timeout(1 - (time.time() % 1))
 
 	def swap_buffers(self):
