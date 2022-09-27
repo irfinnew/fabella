@@ -33,9 +33,8 @@ class tile:
 	outline_size = 2
 	outline_color = (0, 0, 0, 1)
 
-	highlight_blursize = 19
-	highlight_expand = 10
-	highlight_color = (0.4, 0.7, 1, 1)
+	highlight_outset = 6
+	highlight_color = (0.5, 0.7, 1, 1)
 
 	text_color = (0.6, 0.6, 0.6, 1)
 	text_hl_color = (1, 1, 1, 1)

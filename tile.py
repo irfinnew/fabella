@@ -8,7 +8,7 @@ import os
 import io
 import time
 import uuid
-import PIL.Image, PIL.ImageFilter, PIL.features
+import PIL.Image, PIL.ImageFilter, PIL.features, PIL.ImageDraw
 
 import dbs
 import config
@@ -52,13 +52,15 @@ class Tile:
 		cls.tx_shadow = draw.Texture(shadow_img)
 
 		# Highlight
-		w, h = cfg.width + cfg.highlight_blursize * 2, cfg.cover_height + cfg.highlight_blursize * 2
+		aa = 4
+		outl = cfg.outline_size
+		outs = cfg.highlight_outset
+		w, h = cfg.width + (outl + outs) * 2, cfg.cover_height + (outl + outs) * 2
 
-		hl_img = PIL.Image.new('RGBA', (w, h), (255, 255, 255, 0))
-		hl_img.paste((255, 255, 255, 255), (
-			cfg.highlight_blursize - cfg.highlight_expand, cfg.highlight_blursize - cfg.highlight_expand,
-			w - cfg.highlight_blursize + cfg.highlight_expand, h - cfg.highlight_blursize + cfg.highlight_expand))
-		hl_img = hl_img.filter(PIL.ImageFilter.GaussianBlur((cfg.highlight_blursize - cfg.highlight_expand) // 2))
+		hl_img = PIL.Image.new('RGBA', (w * aa, h * aa), (0, 0, 0, 0))
+		imgdraw = PIL.ImageDraw.Draw(hl_img)
+		imgdraw.rounded_rectangle((0, 0, w * aa - 1, h * aa - 1), fill=(255, 255, 255, 255), radius=cfg.highlight_outset * aa)
+		hl_img = hl_img.resize((w, h))
 
 		cls.tx_highlight = draw.Texture(hl_img)
 
@@ -250,8 +252,8 @@ class Tile:
 
 	def render(self):
 		self.maybe(draw.Quad, 'highlight', self.selected, z=201,
-			x=self.xoff - config.tile.highlight_blursize,
-			y=self.yoff - config.tile.highlight_blursize,
+			x=self.xoff - config.tile.outline_size - config.tile.highlight_outset,
+			y=self.yoff - config.tile.outline_size - config.tile.highlight_outset,
 			texture=self.tx_highlight, color=config.tile.highlight_color,
 		)
 		self.maybe(draw.Quad, 'quad_unseen', self.unseen, z=204,
