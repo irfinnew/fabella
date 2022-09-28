@@ -452,11 +452,6 @@ class Menu:
 		self.load(os.path.dirname(self.path), previous=previous)
 
 
-	def wake_clerk(self):
-		# Write empty state update, this will hopefully spin up storage disks
-		dbs.json_write([self.root, dbs.QUEUE_DIR_NAME, ...], {})
-
-
 	def draw_tiles(self, animate=None):
 		timer = time.time()
 
