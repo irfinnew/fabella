@@ -7,7 +7,6 @@
 
 import os
 import sys
-import uuid
 
 import dbs
 
@@ -21,11 +20,8 @@ def escape(path):
 	return '"' + path.replace('\\', '\\\\').replace('"', '\\"') + '"'
 
 def process(path):
-	index_db_name = os.path.join(path, dbs.INDEX_DB_NAME)
-	index = dbs.json_read(index_db_name, dbs.INDEX_DB_SCHEMA)
-
-	state_db_name = os.path.join(path, dbs.STATE_DB_NAME)
-	state = dbs.json_read(state_db_name, dbs.STATE_DB_SCHEMA)
+	index = dbs.json_read([path, dbs.INDEX_DB_NAME], dbs.INDEX_DB_SCHEMA)
+	state = dbs.json_read([path, dbs.STATE_DB_NAME], dbs.STATE_DB_SCHEMA)
 
 	for item in index['files']:
 		if state[item['name']].get('tagged', False):
@@ -41,10 +37,6 @@ if sys.argv[1] == 'mark-seen':
 	count = 0
 	for f in sys.argv[2:]:
 		path, file = os.path.split(f)
-		queue_dir_name = os.path.join(path, dbs.QUEUE_DIR_NAME)
-		os.makedirs(queue_dir_name, exist_ok=True)
-		os.chmod(queue_dir_name, 0o775)
-		state_name = os.path.join(queue_dir_name, str(uuid.uuid4()))
-		dbs.json_write(state_name, {file: {'position': 1}})
+		dbs.json_write([path, dbs.QUEUE_DIR_NAME, ...], {file: {'position': 1}})
 		count += 1
 	print(f'Marked {count} files as seen.')

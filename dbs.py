@@ -45,6 +45,7 @@ import os
 import gzip
 import zlib
 import json
+import uuid
 
 import loghelper
 
@@ -112,7 +113,11 @@ def json_validate(data, schema, keyname=None):
 
 
 
-def json_read(filename, schema, default=...):
+def json_read(paths, schema, default=...):
+	if isinstance(paths, str):
+		paths = [paths]
+	filename = os.path.join(*paths)
+
 	openfunc = gzip.open if filename.endswith('.gz') else open
 	if default is ...:
 		default = {}
@@ -135,7 +140,14 @@ def json_read(filename, schema, default=...):
 
 
 
-def json_write(filename, data):
+# ... in paths gets replaced with a uuid
+def json_write(paths, data):
+	if isinstance(paths, str):
+		paths = [paths]
+	paths = [(str(uuid.uuid4()) if p is ... else p) for p in paths]
+	filename = os.path.join(*paths)
+	os.makedirs(os.path.dirname(filename), exist_ok=True)
+
 	openfunc = gzip.open if filename.endswith('.gz') else open
 	new_filename = filename + NEW_SUFFIX
 

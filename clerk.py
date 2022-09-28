@@ -23,7 +23,6 @@ import ast
 import stat
 import json
 import time
-import uuid
 import zipfile
 import enzyme
 import hashlib
@@ -488,7 +487,7 @@ def process_state_queue(path, roots):
 	orig_state = {n: dict(s) for n, s in previous_state.items()}
 
 	# Load filenames from index
-	index = dbs.json_read(os.path.join(path, dbs.INDEX_DB_NAME), dbs.INDEX_DB_SCHEMA, default={'files': []})['files']
+	index = dbs.json_read([path, dbs.INDEX_DB_NAME], dbs.INDEX_DB_SCHEMA, default={'files': []})['files']
 	new_state = {}
 
 	# Match index to previous state on name AND fingerprint
@@ -615,8 +614,7 @@ def process_state_queue(path, roots):
 			else:
 				flat['position'] = 1
 
-			parent_state_name = os.path.join(os.path.dirname(path), dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
-			dbs.json_write(parent_state_name, {os.path.basename(path): flat})
+			dbs.json_write([os.path.dirname(path), dbs.QUEUE_DIR_NAME, ...], {os.path.basename(path): flat})
 
 	for update_mtime, update_name in state_queue.keys():
 		try:

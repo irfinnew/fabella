@@ -7,7 +7,6 @@
 import os
 import datetime
 import time
-import uuid
 import zipfile
 import PIL
 import bisect
@@ -53,7 +52,7 @@ class Menu:
 			img = PIL.Image.open(config.menu.background_image)
 			img = img.convert('RGBA')
 			img = PIL.ImageOps.fit(img, (width, height))
-			self.background = draw.Quad(z=100, w=width, h=height, image=img, color=config.menu.background_color)
+			self.background = draw.Quad(z=100, w=width, h=height, image=img)
 		else:
 			self.background = draw.FlatQuad(z=100, w=width, h=height, color=config.menu.background_color)
 
@@ -200,9 +199,7 @@ class Menu:
 		self.path = path
 		timer = time.time()
 
-		index_db_name = os.path.join(path, dbs.INDEX_DB_NAME)
-		index = dbs.json_read(index_db_name, dbs.INDEX_DB_SCHEMA, default=None)
-
+		index = dbs.json_read([path, dbs.INDEX_DB_NAME], dbs.INDEX_DB_SCHEMA, default=None)
 		if index is None:
 			log.warning(f'falling back to scandir()')
 			index = []
@@ -212,9 +209,7 @@ class Menu:
 			self.index = index
 			return
 
-		state_db_name = os.path.join(path, dbs.STATE_DB_NAME)
-		state = dbs.json_read(state_db_name, dbs.STATE_DB_SCHEMA)
-
+		state = dbs.json_read([path, dbs.STATE_DB_NAME], dbs.STATE_DB_SCHEMA)
 		index = index['files']
 		for entry in index:
 			entry.update(state.get(entry['name'], {}))

@@ -7,7 +7,6 @@
 import os
 import io
 import time
-import uuid
 import PIL.Image, PIL.ImageFilter, PIL.features, PIL.ImageDraw
 
 import dbs
@@ -306,8 +305,7 @@ class Tile:
 		if state is None:
 			state = {'position': self.position}
 		log.info(f'Writing state for {self.filename}: {state}')
-		update_name = os.path.join(self.path, dbs.QUEUE_DIR_NAME, str(uuid.uuid4()))
-		dbs.json_write(update_name, {self.filename: state})
+		dbs.json_write([self.path, dbs.QUEUE_DIR_NAME, ...], {self.filename: state})
 
 
 	@property
