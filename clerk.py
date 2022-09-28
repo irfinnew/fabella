@@ -455,8 +455,6 @@ def scan(path, pool):
 				# Write cover images
 				for tile in real_tiles:
 					fd.writestr(tile.name, tile.cover_image or b'')
-			with open(cover_db_name + dbs.NEW_SUFFIX) as fd:
-				os.fdatasync(fd)
 			os.rename(cover_db_name + dbs.NEW_SUFFIX, cover_db_name)
 		else:
 			if os.path.isfile(cover_db_name):
