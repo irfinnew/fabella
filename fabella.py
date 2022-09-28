@@ -70,7 +70,9 @@ while not window.closed():
 	window.wait()
 
 	for key, scancode, action, modifiers, char in window.get_events():
-		# FIXME
+		menu.wake_clerk()
+
+		# Process text input for search
 		if menu.enabled and menu.searching and char:
 			if chr(char) == '/':
 				pass
