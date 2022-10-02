@@ -213,13 +213,16 @@ class Tile:
 
 
 	def show(self, pos, selected):
+		selected_before = self.selected
+
 		if (pos, selected) != (self.pos, self.selected):
 			self.pos = pos
 			self.selected = selected
 			self.render()
 
 		if selected:
-			draw.Animation(self.quads, duration=0.2, scale=(1.1, 1))
+			if not selected_before:
+				draw.Animation(self.quads, duration=0.2, scale=(1.1, 1))
 			self.title.lines = config.tile.text_lines_selected
 		else:
 			self.title.lines = config.tile.text_lines
