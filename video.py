@@ -124,6 +124,8 @@ class Video:
 		# FIXME: tight coupling
 		# Also, we hope this method is called in time, so the open() doesn't interfere
 		# with whatever the user is doing.
+		# FIXME: even worse, calling draw stuff from another thread has race conditions
+		# with the render code. This might happen in more places...
 		if self.menu:
 			self.menu.open()
 
