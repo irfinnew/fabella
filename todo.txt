@@ -25,3 +25,5 @@
  - SuperTexture remove should join adjacent free spaces
  - Probably limit search text length
  - Reinstate Tile objects? Maybe light objects until they are rendered?
+ - Better deal with disappearing files/directories
+ - Optimization: Don't render text if it's hidden
