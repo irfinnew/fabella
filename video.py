@@ -50,7 +50,7 @@ class Video:
 		pos_height = config.video.position_bar_height * config.video.position_bar_active_scale + config.video.position_shadow_height
 		self.seek_text = menu.menu_font.text(z=3, text='duration', anchor='br',
 			x=width - config.menu.header_hspace, y=pos_height + menu.menu_font.height() // 4,
-			pos=(width, 0),
+			pos=(0, -(pos_height + int(menu.menu_font.height() * 1.25))),
 		)
 
 		mpv_logger = loghelper.get_logger('libmpv', loghelper.Color.Green)
@@ -266,12 +266,12 @@ class Video:
 
 		draw.Animation(self.seek_back_quad, duration=1, delay=2, h=(new_back_h, orig_back_h))
 		draw.Animation(self.seek_bar_quad, duration=1, delay=2, h=(new_bar_h, orig_bar_h))
-		offset = config.menu.header_hspace + int(self.seek_text.quad.w * 1.25)  # Meh
-		draw.Animation(self.seek_text.quad, duration=1, delay=2, xpos=(0, offset), ease='in')
+		offset = new_back_h + int(self.seek_text.quad.h * 1.25)
+		draw.Animation(self.seek_text.quad, duration=1, delay=2, ypos=(0, -offset), ease='in')
 
 		draw.Animation(self.seek_back_quad, duration=0.3, h=(None, new_back_h))
 		draw.Animation(self.seek_bar_quad, duration=0.3, h=(None, new_bar_h))
-		draw.Animation(self.seek_text.quad, duration=0.3, xpos=(None, 0), ease='out')
+		draw.Animation(self.seek_text.quad, duration=0.3, ypos=(None, 0), ease='out')
 
 
 	def render(self):
