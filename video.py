@@ -17,13 +17,14 @@ import loghelper
 import config
 import draw
 import window
+import util
 
 log = loghelper.get_logger('Video', loghelper.Color.Yellow)
 
 
 
 class Video:
-	def __init__(self, width, height):
+	def __init__(self, width, height, menu):
 		# https://mpv.io/manual/master/
 		try:
 			log.info(f'libmpv version {mpv.MPV_VERSION[0]}.{mpv.MPV_VERSION[1]}')
@@ -41,6 +42,17 @@ class Video:
 		self.width = width
 		self.height = height
 
+		# Seek UI
+		self.seek_back_quad = draw.FlatQuad(z=1, color=config.video.position_shadow_color,
+			w=width, h=config.video.position_bar_height + config.video.position_shadow_height)
+		self.seek_bar_quad = draw.FlatQuad(z=2, color=config.video.position_bar_color,
+			w=0, h=config.video.position_bar_height)
+		pos_height = config.video.position_bar_height * config.video.position_bar_active_scale + config.video.position_shadow_height
+		self.seek_text = menu.menu_font.text(z=3, text='duration', anchor='br',
+			x=width - config.menu.header_hspace, y=pos_height + menu.menu_font.height() // 4,
+			pos=(width, 0),
+		)
+
 		mpv_logger = loghelper.get_logger('libmpv', loghelper.Color.Green)
 		mpv_levels = {
 			'fatal': 50,
@@ -54,7 +66,7 @@ class Video:
 		}
 		self.mpv = mpv.MPV(log_handler=lambda l, c, m: mpv_logger.log(mpv_levels[l], f'{c}: {m}'), loglevel='debug')
 
-		self.menu = None
+		self.menu = menu
 		# FIXME: should come from configuration, at least partially
 		log.warning('FIXME: setting MPV options')
 
@@ -99,13 +111,6 @@ class Video:
 		gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 		self.quad = draw.Quad(z=0, w=width, h=height, texture=self.texture)
 
-		# Set up position bar quads
-		# FIXME: this should be a shaded quad, but those are currently not supported
-		self.quad_posback = draw.FlatQuad(z=1, color=config.video.position_shadow_color,
-			w=width, h=config.video.position_bar_height + config.video.position_shadow_height)
-		self.quad_posbar = draw.FlatQuad(z=2, color=config.video.position_bar_color,
-			w=0, h=config.video.position_bar_height)
-
 
 	def frame_ready(self):
 		# Wake up main loop, so self.render() will get called
@@ -130,6 +135,26 @@ class Video:
 			self.menu.open()
 
 
+	def osd_update_position(self, position, duration, paused):
+		log.debug(f'osd_update_position({position=}, {duration=}, {paused=})')
+
+		if position is None or duration is None:
+			osd_text = '?:??'
+			seek_text = ''
+		else:
+			paused = '⏸️' if paused else '▶️'
+			position = util.duration_format(int(position * duration), seconds=True)
+			duration = util.duration_format(int(duration), seconds=True)
+
+			osd_text = f'{paused}  {position}  /  {duration}'
+			seek_text = f'{position}'
+
+		self.seek_text.text = seek_text
+		self.menu.osd_duration_text.text = osd_text
+		# Ugh.
+		self.menu.osd_name_text.max_width = self.menu.width - self.menu.osd_duration_text.quad.w - config.menu.header_hspace * 3
+
+
 	def size_changed(self, prop, value):
 		log.info(f'Video {prop} is {value}')
 
@@ -138,15 +163,16 @@ class Video:
 		log.debug(f'Video percent-pos changed to {value}')
 		assert prop == 'percent-pos'
 
-		if self.position_immune_until > time.time():
-			log.debug(f'Video percent-pos is immune, ignoring')
-			return
 		if value is None:
 			return
+
 		self.position = value / 100
 
-		if self.tile:
-			self.tile.update_pos(self.position)
+		if self.position_immune_until > time.time():
+			log.debug(f'Video percent-pos is immune, not updating tile')
+		else:
+			if self.tile:
+				self.tile.update_pos(self.position)
 
 
 	def pause_changed(self, prop, value):
@@ -181,7 +207,7 @@ class Video:
 			self.paused = pause
 
 
-	def start(self, filename, position=0, menu=None, tile=None):
+	def start(self, filename, position=0, tile=None):
 		assert self.current_file is None
 		if self.current_file:
 			self.stop()
@@ -191,7 +217,6 @@ class Video:
 		self.position = 0 if position == 1 else position
 		self.duration = None
 		self.tile = tile
-		self.menu = menu
 
 		# Don't update the position registration until a bit of time has passed.
 		self.position_immune_until = time.time() + 2
@@ -239,13 +264,19 @@ class Video:
 		new_bar_h = orig_bar_h * config.video.position_bar_active_scale
 		new_back_h = new_bar_h + config.video.position_shadow_height
 
-		draw.Animation(self.quad_posback, duration=1, delay=2, h=(new_back_h, orig_back_h))
-		draw.Animation(self.quad_posbar, duration=1, delay=2, h=(new_bar_h, orig_bar_h))
+		draw.Animation(self.seek_back_quad, duration=1, delay=2, h=(new_back_h, orig_back_h))
+		draw.Animation(self.seek_bar_quad, duration=1, delay=2, h=(new_bar_h, orig_bar_h))
+		offset = config.menu.header_hspace + int(self.seek_text.quad.w * 1.25)  # Meh
+		draw.Animation(self.seek_text.quad, duration=1, delay=2, xpos=(0, offset), ease='in')
 
-		draw.Animation(self.quad_posback, duration=0.3, h=(None, new_back_h))
-		draw.Animation(self.quad_posbar, duration=0.3, h=(None, new_bar_h))
+		draw.Animation(self.seek_back_quad, duration=0.3, h=(None, new_back_h))
+		draw.Animation(self.seek_bar_quad, duration=0.3, h=(None, new_bar_h))
+		draw.Animation(self.seek_text.quad, duration=0.3, xpos=(None, 0), ease='out')
+
 
 	def render(self):
+		self.osd_update_position(self.position, self.duration, self.paused)
+
 		if self.context.update():
 			log.debug('Rendering frame')
 			# FIXME: apparently, we shouldn't call other mpv functions from the same
@@ -255,7 +286,7 @@ class Video:
 
 			# FIXME: not sure if this is the proper place for this...
 			new_pos = int(self.width * self.position)
-			if self.quad_posbar.w != new_pos:
-				self.quad_posbar.w = new_pos
+			if self.seek_bar_quad.w != new_pos:
+				self.seek_bar_quad.w = new_pos
 
 			self.seeking = False

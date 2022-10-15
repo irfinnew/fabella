@@ -15,7 +15,6 @@ import loghelper
 import config
 import dbs
 import draw
-import util
 from tile import Tile
 from font import Font
 
@@ -128,20 +127,6 @@ class Menu:
 		if self.dark_mode:
 			meh += '        '
 		self.clock_text.text = meh
-
-		# FIXME: Hmm, kinda gross we need the video object here
-		duration_text = '⏸️  ' if video.paused else '▶️  '
-		if video.position is None or video.duration is None:
-			duration_text += '?:??'
-		else:
-			position = int(video.position * video.duration)
-			position = util.duration_format(position, seconds=True)
-			duration = int(video.duration)
-			duration = util.duration_format(duration, seconds=True)
-			duration_text += f'{position}  ∕  {duration}'
-		self.osd_duration_text.text = duration_text
-		# Ugh.
-		self.osd_name_text.max_width = self.width - self.osd_duration_text.quad.w - config.menu.header_hspace * 3
 
 
 	def close(self):
@@ -423,7 +408,7 @@ class Menu:
 		log.info(f'Play; (currently {video.tile})')
 		if tile is not video.tile:
 			log.info(f'Starting new video: {tile}')
-			video.start(tile.full_path, position=tile.position, menu=self, tile=tile)
+			video.start(tile.full_path, position=tile.position, tile=tile)
 		else:
 			log.info('Already playing this video, just maybe unpause')
 			video.pause(False)

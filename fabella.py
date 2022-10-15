@@ -59,7 +59,7 @@ window = Window(2, "Fabella")
 draw.State.initialize(window.width, window.height)
 Tile.initialize()
 menu = Menu(sys.argv[1], window.width, window.height, enabled=True)
-video = Video(window.width, window.height)
+video = Video(window.width, window.height, menu)
 
 
 #### Main loop
