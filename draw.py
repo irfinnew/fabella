@@ -6,7 +6,7 @@
 
 import operator
 import OpenGL, OpenGL.GL.shaders, OpenGL.GL as gl
-import PIL.Image
+import PIL.Image, PIL.ImageDraw
 import math
 import queue
 import ctypes
@@ -229,6 +229,9 @@ class SuperTexture:
 		gl.glBindTexture(gl.GL_TEXTURE_2D, cls.tid)
 		pixels = gl.glGetTexImage(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE)
 		image = PIL.Image.frombytes('RGBA', (cls.size, cls.size), pixels)
+		draw = PIL.ImageDraw.Draw(image)
+		for i, (fh, fw, fx, fy) in enumerate(sorted(cls.freelist)):
+			draw.rectangle((fx, fy, fx + fw, fy + fh), fill=(0, 255, 255), outline=(255, 0, 0), width=3)
 		image.save('supertexture.png')
 
 
