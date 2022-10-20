@@ -106,7 +106,7 @@ class Video:
 		self.texture = draw.Texture.video
 		self.fbo = gl.glGenFramebuffers(1)
 		gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, self.fbo)
-		gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, draw.SuperTexture.tid, 0)
+		gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, draw.TextureAtlas.tid, 0)
 		assert gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER) == gl.GL_FRAMEBUFFER_COMPLETE
 		gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 		self.quad = draw.Quad(z=0, w=width, h=height, texture=self.texture)

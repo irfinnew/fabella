@@ -22,7 +22,6 @@
  - Offer better/simpler configuration of menu layout
  - Watch index/covers/state for changes on the fly
  - Add proper error checking on OpenGL calls
- - SuperTexture remove should join adjacent free spaces
  - Probably limit search text length
  - Reinstate Tile objects? Maybe light objects until they are rendered?
  - Better deal with disappearing files/directories

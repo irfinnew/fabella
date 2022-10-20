@@ -7,6 +7,7 @@
 import operator
 import OpenGL, OpenGL.GL.shaders, OpenGL.GL as gl
 import PIL.Image, PIL.ImageDraw
+from collections import namedtuple
 import math
 import queue
 import ctypes
@@ -87,7 +88,8 @@ class State:
 		gl.glUniform1i(uTexture, 0)
 		gl.glUniform2f(uResolution, cls.width / 2, cls.height / 2)
 
-		# Allocate SuperTexture
+		# Allocate TextureAtlas
+		# FIXME: have TextureAtlas expand when it's full, and choose smaller size here
 		max_size = gl.glGetInteger(gl.GL_MAX_TEXTURE_SIZE)
 		log.info(f'GL_MAX_TEXTURE_SIZE = {max_size}')
 		size = max(width, height)
@@ -96,7 +98,7 @@ class State:
 		if size > max_size:
 			log.error(f'Desired texture size {size}x{size} unsupported, using {max_size}x{max_size}!')
 			size = max_size
-		SuperTexture.initialize(size)
+		TextureAtlas.initialize(size, size)
 
 		# Allocate video texture.
 		# This NEEDS to be done first, because it has to go in the top left corner.
@@ -140,7 +142,7 @@ class State:
 
 		gl.glUseProgram(cls.shader)
 		gl.glActiveTexture(gl.GL_TEXTURE0)
-		gl.glBindTexture(gl.GL_TEXTURE_2D, SuperTexture.tid)
+		gl.glBindTexture(gl.GL_TEXTURE_2D, TextureAtlas.tid)
 
 		gl.glBindVertexArray(cls.vao)
 		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, cls.vbo)
@@ -158,81 +160,151 @@ class State:
 
 
 
-class SuperTexture:
-	# Small alignment increases fragmentation, large alignment increases waste.
-	# This seems to be a reasonable trade-off.
-	alignment = 16
-	tid = None
-	size = None
-	freelist = None
-	coords = {}
+class TextureShelf:
+	Hole = namedtuple('Hole', 'x w')
+	# Minimum height for shelves, and tolerance for lower items on the shelf.
+	# Higher value means fewer shelves, so searching the shelves is faster.
+	# Higher value means more eligible items, so fuller shelves, which may improve packing.
+	# Higher value means more vertical space is wasted on shelves, worsening packing.
+	# This is a trade-off. 64 seems to work pretty well for my settings.
+	# Optimum seems to be at the height of the largest Tile title.
+	alignment = 64
 
+	def __init__(self, ypos, height, width):
+		if height < self.alignment:
+			height = self.alignment
+		self.ypos = ypos
+		self.height = height
+		self.width = width
+		self.holes = {self.Hole(0, width)}
+
+	def add(self, width, height):
+		if height > self.height or height < self.height - self.alignment:
+			raise ValueError('height not suitable for this shelf')
+
+		best = None
+		for hole in self.holes:
+			if hole.w > width:
+				if best is None or hole.w < hole.w:
+					best = hole
+
+		if best:
+			self.holes.remove(best)
+			self.holes.add(self.Hole(best.x + width, best.w - width))
+			return (best.x, self.ypos)
+
+		raise ValueError('no horizontal space in this shelf')
+
+	def remove(self, xpos, width):
+		left, right = None, None
+		for hole in self.holes:
+			if hole.x + hole.w == xpos:
+				left = hole
+			if xpos + width == hole.x:
+				right = hole
+
+		if left and right:
+			self.holes.remove(left)
+			self.holes.remove(right)
+			self.holes.add(self.Hole(left.x, left.w + width + right.w))
+		elif left:
+			self.holes.remove(left)
+			self.holes.add(self.Hole(left.x, left.w + width))
+		elif right:
+			self.holes.remove(right)
+			self.holes.add(self.Hole(xpos, right.w + width))
+		else:
+			self.holes.add(self.Hole(xpos, width))
+
+	def __str__(self):
+		pct = int(sum(h.w for h in self.holes) / self.width * 100)
+		return f'<TextureShelf h{self.height} @{self.ypos}, {pct}% free>'
+
+	def __repr__(self):
+		return str(self)
+
+
+
+class TextureAtlas:
 	def __init__(self, size):
 		raise NotImplementedError('Instantiation not allowed.')
 
 	@classmethod
-	def initialize(cls, size):
-		assert cls.tid is None
-		cls.size = size
+	def initialize(cls, width, height):
+		cls.width = width
+		cls.height = height
+		cls.used = 0
+		cls.shelves = []
+		cls.textures = {}
 		cls.tid = gl.glGenTextures(1)
-		cls.freelist = {(size, size, 0, 0)}
 		gl.glBindTexture(gl.GL_TEXTURE_2D, cls.tid)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
 		gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, size, size, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, None)
+		gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, width, height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, None)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-		log.info(f'Initialized SuperTexture of size {size}x{size}')
+		log.info(f'Initialized TextureAtlas of size {width}x{height}')
 
 	@classmethod
-	def allocate_area(cls, width, height):
-		width = (width + cls.alignment - 1) // cls.alignment * cls.alignment
-		height = (height + cls.alignment - 1) // cls.alignment * cls.alignment
-		for (fh, fw, fx, fy) in sorted(cls.freelist):
-			if fw >= width and fh >= height:
-				cls.freelist.remove((fh, fw, fx, fy))
-				if fh > height:
-					cls.freelist.add((fh - height, fw, fx, fy + height))
-				if fw > width:
-					cls.freelist.add((height, fw - width, fx + width, fy))
-				return (fx, fy)
-
-		cls.dump()
-		raise ValueError(f"Couldn't allocate {width}x{height} area in SuperTexture!")
+	def add_to_shelf(cls, shelf, txt):
+		xoff, yoff = shelf.add(txt.width, txt.height)
+		cls.textures[txt] = (shelf, xoff, yoff, txt.width, txt.height)
+		return (xoff / cls.width, yoff / cls.height, (xoff + txt.width) / cls.width, (yoff + txt.height) / cls.height)
 
 	@classmethod
 	def add(cls, texture):
-		size = cls.size
-		width, height = texture.width, texture.height
-		xoff, yoff = cls.allocate_area(width, height)
-		cls.coords[texture] = (xoff, yoff, width, height)
-		return (xoff / size, yoff / size, (xoff + width) / size, (yoff + height) / size)
+		# Find a shelf to put this on.
+		for shelf in cls.shelves:
+			try:
+				return cls.add_to_shelf(shelf, texture)
+			except ValueError:
+				pass
+
+		# No available shelf; create a new shelf.
+		if cls.height - cls.used > texture.height:
+			shelf = TextureShelf(cls.used, texture.height, cls.width)
+			cls.shelves.append(shelf)
+			# Sort shelves by height, so that we'll find the tightest match that has room
+			cls.shelves = sorted(cls.shelves, key=lambda s: s.height)
+			cls.used += shelf.height
+			try:
+				return cls.add_to_shelf(shelf, texture)
+			except ValueError:
+				cls.dump()
+				raise
+
+		cls.dump()
+		raise ValueError(f"Couldn't allocate {width}x{height} area in TextureAtlas!")
 
 	@classmethod
 	def remove(cls, texture):
-		(xoff, yoff, width, height) = cls.coords[texture]
-		width = (width + cls.alignment - 1) // cls.alignment * cls.alignment
-		height = (height + cls.alignment - 1) // cls.alignment * cls.alignment
-		cls.freelist.add((height, width, xoff, yoff))
-		cls.coords.pop(texture)
+		shelf, xpos, ypos, width, height = cls.textures.pop(texture)
+		shelf.remove(xpos, width)
 
 	@classmethod
 	def update(cls, texture, format, pixels):
-		coords = cls.coords[texture]
+		shelf, *coords = cls.textures[texture]
 		gl.glBindTexture(gl.GL_TEXTURE_2D, cls.tid)
 		gl.glTexSubImage2D(gl.GL_TEXTURE_2D, 0, *coords, format, gl.GL_UNSIGNED_BYTE, pixels)
 
 	@classmethod
 	def dump(cls):
-		items = len(cls.freelist)
-		pixels = sum(h * w for (h, w, x, y) in cls.freelist)
-		log.warning(f'Dumping SuperTexture ({items} items, {pixels} pixels on freelist)')
+		log.warning(f'{int(cls.used / cls.height * 100)}% of TextureAtlas used, in {len(cls.shelves)} shelves:')
+		for shelf in cls.shelves:
+			log.warning(str(shelf))
+		log.warning(f'Dumping TextureAtlas contents')
 		gl.glBindTexture(gl.GL_TEXTURE_2D, cls.tid)
 		pixels = gl.glGetTexImage(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE)
-		image = PIL.Image.frombytes('RGBA', (cls.size, cls.size), pixels)
-		draw = PIL.ImageDraw.Draw(image)
-		for i, (fh, fw, fx, fy) in enumerate(sorted(cls.freelist)):
-			draw.rectangle((fx, fy, fx + fw, fy + fh), fill=(0, 255, 255), outline=(255, 0, 0), width=3)
-		image.save('supertexture.png')
+		image = PIL.Image.frombytes('RGBA', (cls.width, cls.height), pixels)
+		overlay = PIL.Image.new('RGBA', (cls.width, cls.height))
+		draw = PIL.ImageDraw.Draw(overlay)
+		for sh, fx, fy, fw, fh in cls.textures.values():
+			draw.rectangle((fx, fy, fx + fw - 1, fy + fh - 1), fill=(150, 30, 30, 128), outline=(255, 160, 160), width=3)
+		for shelf in cls.shelves:
+			for hole in shelf.holes:
+				fx, fy, fw, fh = hole.x, shelf.ypos, hole.w, shelf.height
+				draw.rectangle((fx, fy, fx + fw - 1, fy + fh - 1), fill=(40, 40, 160), outline=(160, 160, 255), width=3)
+		image = PIL.Image.alpha_composite(image, overlay)
+		image.save('texture_atlas.png')
 
 
 
@@ -253,14 +325,14 @@ class Texture:
 	def update_raw(self, width, height, mode, pixels):
 		if (self.width, self.height) != (width, height):
 			if self.concrete:
-				SuperTexture.remove(self)
+				TextureAtlas.remove(self)
 			self.width = width
 			self.height = height
 			self.concrete = True
-			self.uv = SuperTexture.add(self)
+			self.uv = TextureAtlas.add(self)
 
 		glformat = {'RGB': gl.GL_RGB, 'RGBA': gl.GL_RGBA, 'BGRA': gl.GL_BGRA}[mode]
-		SuperTexture.update(self, glformat, pixels)
+		TextureAtlas.update(self, glformat, pixels)
 
 	def update_image(self, img):
 		if img is not None:
@@ -268,8 +340,9 @@ class Texture:
 
 	# Hack to avoid texture edge bleeding on very small textures
 	def inset_halftexel(self):
-		d = 1 / (SuperTexture.size * 2)
-		self.uv = (self.uv[0] + d, self.uv[1] + d, self.uv[2] - d, self.uv[3] - d)
+		dx = 1 / (TextureAtlas.width * 2)
+		dy = 1 / (TextureAtlas.height * 2)
+		self.uv = (self.uv[0] + dx, self.uv[1] + dy, self.uv[2] - dx, self.uv[3] - dy)
 
 	def force_redraw(self):
 		State.redraw_needed = True
@@ -282,7 +355,7 @@ class Texture:
 		if not force and (self.persistent or self.ref_count > 0):
 			return
 		if self.concrete:
-			SuperTexture.remove(self)
+			TextureAtlas.remove(self)
 		self.concrete = False
 		del self.concrete  # Trigger AttributeError if used again
 

@@ -101,7 +101,7 @@ while not window.closed():
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
 				if key == glfw.KEY_T and modifiers == glfw.MOD_CONTROL | glfw.MOD_ALT:
-					draw.SuperTexture.dump()
+					draw.TextureAtlas.dump()
 				if key == glfw.KEY_D:
 					log.info('Cycling dark mode')
 					menu.show_dark_mode(not menu.dark_mode)
@@ -149,7 +149,7 @@ while not window.closed():
 				if key == glfw.KEY_F:
 					window.set_fullscreen()
 				if key == glfw.KEY_T and modifiers == glfw.MOD_CONTROL | glfw.MOD_ALT:
-					draw.SuperTexture.dump()
+					draw.TextureAtlas.dump()
 				if key == glfw.KEY_D:
 					log.info('Cycling dark mode')
 					menu.show_dark_mode(not menu.dark_mode)
