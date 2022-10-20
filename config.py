@@ -34,7 +34,7 @@ class tile:
 	outline_color = (0, 0, 0, 1)
 
 	highlight_outset = 6
-	highlight_color = (0.5, 0.7, 1, 1)
+	highlight_color = (0.55, 0.7, 1, 1)
 
 	text_color = (0.6, 0.6, 0.6, 1)
 	text_hl_color = (1, 1, 1, 1)
