@@ -135,7 +135,7 @@ class Menu:
 		self.enabled = False
 
 		draw.Animation(draw.Group(*(t.quads for t in self.tiles.values())), duration=0.5, opacity=(1, 0))
-		draw.Animation(self.background, duration=1.0, delay=0.25, opacity=(1, 0))
+		draw.Animation(self.background, duration=0.5, delay=0.25, opacity=(1, 0))
 		self.show_osd()
 
 
