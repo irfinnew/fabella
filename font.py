@@ -182,7 +182,7 @@ class Font:
 		log.info(f'{self.desc}: Loaded font: {self.font_desc.to_string()}')
 
 		self.line_height = self.font.get_metrics().height / Pango.SCALE
-		log.info(f'{self.desc}: Font height: {self.height}px')
+		log.info(f'{self.desc}: Font height: {self.height()}px')
 
 		# Surface and context will be re-used for every Text instance to create
 		# a Pango layout from, just to lay out the text.
