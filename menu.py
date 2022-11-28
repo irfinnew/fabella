@@ -8,7 +8,7 @@ import os
 import datetime
 import time
 import zipfile
-import PIL
+import PIL.ImageEnhance
 import bisect
 
 import loghelper
@@ -174,6 +174,16 @@ class Menu:
 
 
 	def load(self, path, previous=None):
+		# FIXME: PoC; should be loaded asynchronously with animation etc
+		try:
+			img = PIL.Image.open(f'{path}/.cover.jpg')
+			img = img.convert('RGBA')
+			img = PIL.ImageEnhance.Brightness(img).enhance(0.3333)
+			img = PIL.ImageOps.fit(img, (self.width, self.height))
+			self.background.update_image(img)
+		except FileNotFoundError:
+			pass
+
 		if len(path) > len(self.path or ''):
 			animate_direction = 'left'
 		else:
