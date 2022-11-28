@@ -433,7 +433,7 @@ class Quad:
 			State.redraw_needed = True
 
 	def update_image(self, image):
-		self.texture.update_image(image)
+		uv = self.texture.update_image(image)
 		if uv != self.texture.uv:
 			State.dirty_quads.add(self)
 		else:
