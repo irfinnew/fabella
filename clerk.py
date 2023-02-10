@@ -475,6 +475,8 @@ def process_state_queue(path, roots):
 	queue_dir_name = os.path.join(path, dbs.QUEUE_DIR_NAME)
 	state_db_name = os.path.join(path, dbs.STATE_DB_NAME)
 
+	new = not os.path.isdir(queue_dir_name)
+
 	# Ensure queue dir exists
 	os.makedirs(queue_dir_name, exist_ok=True)
 	os.chmod(queue_dir_name, 0o775)
@@ -483,6 +485,11 @@ def process_state_queue(path, roots):
 	previous_state = dbs.json_read(state_db_name, dbs.STATE_DB_SCHEMA)
 	# Deep copy for later
 	orig_state = {n: dict(s) for n, s in previous_state.items()}
+
+	if new:
+		# This is a new directory. Setting orig_state = None will force a propagation
+		# of state to the parent (notably, for position: 1).
+		orig_state = None
 
 	# Load filenames from index
 	index = dbs.json_read([path, dbs.INDEX_DB_NAME], dbs.INDEX_DB_SCHEMA, default={'files': []})['files']
@@ -644,7 +651,7 @@ for event in watcher.events(timeout=1):
 	if event:
 		if event.isdir and not event.hidden():
 			# Case: path/ itself
-			if event.evtype in {'modified'}:
+			if event.evtype in {'modified', 'created'}:
 				scan_dirty[event.path] = now
 
 			# Case: path/foo/
