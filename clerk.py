@@ -605,9 +605,9 @@ def process_state_queue(path, roots):
 		if path not in roots:
 			flat = {'tagged': any(s.get('tagged', False) for s in new_state.values())}
 
-			if any(0 < s.get('position', 0) < 1 for s in new_state.values()):
+			if any(0 < s.get('position', -1) < 1 for s in new_state.values()):
 				flat['position'] = 0.5
-			elif any(s.get('position', 0) == 0 for s in new_state.values()):
+			elif any(s.get('position', -1) == 0 for s in new_state.values()):
 				flat['position'] = 0
 			else:
 				flat['position'] = 1
