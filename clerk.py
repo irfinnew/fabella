@@ -12,7 +12,7 @@ COVER_HEIGHT = 200
 THUMB_VIDEO_POSITION = 0.25
 FOLDER_COVER_FILE = '.cover.jpg'
 MKV_COVER_FILE = 'cover.jpg'
-EVENT_COOLDOWN_SECONDS = 0.2
+EVENT_COOLDOWN_SECONDS = 1
 
 
 
@@ -642,7 +642,7 @@ for root in roots:
 analyze_pool = Pool('analyze', threads=4)
 scan_dirty = {}
 state_dirty = {}
-for event in watcher.events(timeout=1):
+for event in watcher.events(timeout=EVENT_COOLDOWN_SECONDS):
 	if event:
 		log.debug(f'Got event: {event}')
 
@@ -688,6 +688,8 @@ for event in watcher.events(timeout=1):
 
 	# Items needing a full scan (index/cover update)
 	for path, age in list(scan_dirty.items()):
+		# Only process index events after a little while. In case a file is being
+		# written, this postpones scanning until the file is completely done.
 		if now - age > EVENT_COOLDOWN_SECONDS:
 			del scan_dirty[path]
 			scan(path, pool=analyze_pool)
@@ -695,9 +697,10 @@ for event in watcher.events(timeout=1):
 
 	# Items needing a state update
 	for path, age in list(state_dirty.items()):
-		if now - age > EVENT_COOLDOWN_SECONDS:
-			del state_dirty[path]
-			process_state_queue(path, roots)
+		# Don't think we need a cooldown for state updates.
+		#if now - age > EVENT_COOLDOWN_SECONDS:
+		del state_dirty[path]
+		process_state_queue(path, roots)
 
 	if args.once and not scan_dirty and not state_dirty:
 		break
