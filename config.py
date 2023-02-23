@@ -18,8 +18,8 @@ class tile:
 	text_lines_selected = 3
 
 	pos_bar_height = 2
-	#pos_bar_color = (0.4, 0.4, 1, 1)
-	pos_bar_color = (0.8, 0.1, 0.1, 1)
+	#pos_bar_color = (0.4, 0.4, 1, 1)  # Bluish
+	pos_bar_color = (0.8, 0.1, 0.1, 1)  # Reddish
 	emblem_scale = 0.2
 
 	thumb_dirs = ['covers']
@@ -42,8 +42,7 @@ class tile:
 
 class menu:
 	background_image = None
-	#background_color = (0.2, 0.2, 0.25, 1)
-	background_color = (0.16, 0.16, 0.2, 1)
+	background_color = (0.1, 0.1, 0.1, 1)
 	text_font = 'Ubuntu Medium'
 	text_size = 36
 	header_hspace = 64
