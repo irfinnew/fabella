@@ -11,11 +11,12 @@ import subprocess
 
 import dbs
 
-if len(sys.argv) < 2 or sys.argv[1] not in {'find-tagged', 'mark-seen', 'do-tagged'}:
+if len(sys.argv) < 2 or sys.argv[1] not in {'find-tagged', 'mark-seen', 'mark-new', 'do-tagged'}:
 	print(f'Usage:')
 	print(f'  {sys.argv[0]} find-tagged          Recursively lists all tagged files.')
 	print(f'  {sys.argv[0]} do-tagged <cmd> <args> \'*\' <args>')
 	print(f'  {sys.argv[0]} mark-seen <file(s)>  Mark files as seen.')
+	print(f'  {sys.argv[0]} mark-new <file(s)>   Mark files as new.')
 	exit(1)
 
 
@@ -79,3 +80,11 @@ if sys.argv[1] == 'mark-seen':
 		dbs.json_write([path, dbs.QUEUE_DIR_NAME, ...], {file: {'position': 1}})
 		count += 1
 	print(f'Marked {count} files as seen.')
+
+if sys.argv[1] == 'mark-new':
+	count = 0
+	for f in sys.argv[2:]:
+		path, file = os.path.split(f)
+		dbs.json_write([path, dbs.QUEUE_DIR_NAME, ...], {file: {'position': 0}})
+		count += 1
+	print(f'Marked {count} files as new.')
