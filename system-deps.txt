@@ -1,0 +1,5 @@
+virtualenv
+libmpv1
+libcairo2-dev
+libgirepository1.0-dev
+libglib2.0-dev
