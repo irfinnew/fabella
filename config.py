@@ -58,7 +58,7 @@ class video:
 	position_bar_active_duration = 3
 
 class ui:
-	dark_mode_brightness = 0.45
+	dark_mode_brightness = 0.50
 
 class performance:
 	text_cache_items = 512
