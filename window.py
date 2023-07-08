@@ -69,7 +69,7 @@ class Display:
 class Window:
 	def __init__(self, display_num, title):
 		log.info(f'pyglfw version {glfw.__version__}')
-		log.info(f'Using glfw version {glfw.get_version_string()}')
+		log.info(f'Using glfw version {glfw.get_version_string().decode()}')
 		if not glfw.init():
 			raise Exception(f'glfw.init() failed: {glfw_error()}')
 
