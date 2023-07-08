@@ -88,11 +88,16 @@ class Video:
 		self.mpv['sub-font'] = 'Ubuntu Medium'
 		self.mpv['sub-font-size'] = 45
 
+		# C function callback to get the address of glFoo functions
+		@ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p)
+		def get_proc_address(unused, name):
+			return window.get_proc_address(name.decode('utf-8'))
+
 		self.context = mpv.MpvRenderContext(
 			self.mpv,
 			'opengl',
 			wl_display=ctypes.c_void_p(window.get_wayland_display()),
-			opengl_init_params={'get_proc_address': mpv.OpenGlCbGetProcAddrFn(lambda _, name: window.get_proc_address(name.decode('utf8')))},
+			opengl_init_params={'get_proc_address': get_proc_address},
 		)
 		self.context.update_cb = self.frame_ready
 		self.mpv.observe_property('width', self.size_changed)
