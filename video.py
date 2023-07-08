@@ -64,7 +64,9 @@ class Video:
 			'debug': 10,
 			'trace': 5
 		}
-		self.mpv = mpv.MPV(log_handler=lambda l, c, m: mpv_logger.log(mpv_levels[l], f'{c}: {m}'), loglevel='debug')
+		def mpv_log_handler(level, component, message):
+			mpv_logger.log(mpv_levels[level], f'{component}: {message.strip()}')
+		self.mpv = mpv.MPV(log_handler=mpv_log_handler, loglevel='debug')
 
 		self.menu = menu
 		# FIXME: should come from configuration, at least partially
