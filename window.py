@@ -22,6 +22,11 @@ def get_proc_address(name):
 def wakeup():
 	glfw.post_empty_event()
 
+def glfw_error():
+	code, msg = glfw.get_error()
+	msg = msg.decode()
+	return f'Error {code}: {msg}'
+
 
 
 class Display:
@@ -63,10 +68,10 @@ class Display:
 
 class Window:
 	def __init__(self, display_num, title):
-		log.info(f'pyglfw version {glfw.__version__}, using GLFW version {glfw.VERSION_MAJOR}.{glfw.VERSION_MINOR}.{glfw.VERSION_REVISION}')
+		log.info(f'pyglfw version {glfw.__version__}')
+		log.info(f'Using glfw version {glfw.get_version_string()}')
 		if not glfw.init():
-			log.critical('glfw.init() failed')
-			raise 'glfw.init()'
+			raise Exception(f'glfw.init() failed: {glfw_error()}')
 
 		glfw.window_hint(glfw.DECORATED, False)
 		glfw.window_hint(glfw.AUTO_ICONIFY, False)

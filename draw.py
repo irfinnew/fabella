@@ -42,6 +42,8 @@ class State:
 	@classmethod
 	def initialize(cls, width, height, threads=None):
 		log.info(f'PyOpenGL version {OpenGL.version.__version__}')
+		log.info(f'PyOpenGL platform: {OpenGL.platform.PLATFORM}')
+		log.info(f'PyOpenGL CurrentContextIsValid(): {OpenGL.platform.CurrentContextIsValid()}')
 		log.info(f'Initialize for {width}x{height}')
 		cls.width = width
 		cls.height = height
