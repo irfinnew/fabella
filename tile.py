@@ -7,7 +7,7 @@
 import os
 import io
 import time
-import PIL.Image, PIL.ImageFilter, PIL.features, PIL.ImageDraw
+import PIL.Image, PIL.ImageFilter, PIL.features, PIL.ImageDraw, PIL.ImageOps
 
 import dbs
 import config
