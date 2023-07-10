@@ -23,6 +23,40 @@ log = loghelper.get_logger('Video', loghelper.Color.Yellow)
 
 
 
+# Ugh. Python-mpv 0.5.2 has a bug where it crashes if you supply wl-display, which we need to do.
+# The next version, 1.0.1, requires libmpv2. There is no version that works with fabella and libmpv1.
+# So, we detect the 0.5.2 bug case, and monkeypatch python-mpv to work. Ew, but it works.
+# See https://github.com/jaseg/python-mpv/issues/169
+def mpv_052_monkeypatch():
+	# Monkeypatched __init__
+	def monkeypatched__init__(self, name, value=None):
+		if name not in self.TYPES:
+			raise ValueError('unknown render param type "{}"'.format(name))
+		self.type_id, cons = self.TYPES[name]
+		if cons is ctypes.c_void_p:
+			self.value = value
+			self.data = ctypes.cast(self.value, ctypes.c_void_p)
+		else:
+			return self.__monkeypatch__old__init__(name, value)
+
+	log.info('Testing python-mpv for wl_display bug...')
+	try:
+		mpv.MpvRenderParam('wl_display', 5)
+		log.info('Bug not detected, leaving mpv alone.')
+	except TypeError as e:
+		log.warn(f'Got exception: {e}')
+		if str(e) == 'ctypes.c_void_p() argument after ** must be a mapping, not int':
+			log.warn(f'Suspected python-mpv 0.5.2 with wl-display bug, monkey-patching!')
+			log.warn(f'See https://github.com/jaseg/python-mpv/issues/169')
+			# Replace MpvRenderParam.__init__() with our version
+			mpv.MpvRenderParam.__monkeypatch__old__init__ = mpv.MpvRenderParam.__init__
+			mpv.MpvRenderParam.__init__ = monkeypatched__init__
+		else:
+			log.warn(f'Not an exception we handle, re-raising!')
+			raise
+
+
+
 class Video:
 	def __init__(self, width, height, menu):
 		# https://mpv.io/manual/master/
@@ -95,12 +129,14 @@ class Video:
 		def get_proc_address(unused, name):
 			return window.get_proc_address(name.decode('utf-8'))
 
+		mpv_052_monkeypatch()  # Ew.
 		self.context = mpv.MpvRenderContext(
 			self.mpv,
 			'opengl',
 			wl_display=ctypes.c_void_p(window.get_wayland_display()),
 			opengl_init_params={'get_proc_address': get_proc_address},
 		)
+
 		self.context.update_cb = self.frame_ready
 		self.mpv.observe_property('width', self.size_changed)
 		self.mpv.observe_property('height', self.size_changed)
