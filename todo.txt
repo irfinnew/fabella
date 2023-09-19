@@ -29,3 +29,4 @@
  - Ending a video sometimes crashes with draw.py: 132: AttributeError: 'Quad' object has no attribute 'buffer_index'; this is likely due to video.py: eof_reached() calling drawing stuff out of main thread
  - Last frame of video is briefly shown when playing new video (or for a long time if the video takes long to load)
  - Playing a video that disappeared gets stuck in video player
+ - Change search to limit/filter view?
