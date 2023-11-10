@@ -88,7 +88,7 @@ while not window.closed():
 				elif key == glfw.KEY_ENTER:
 					menu.search_end()
 					menu.enter(video)
-				if key in [glfw.KEY_BACKSPACE, glfw.KEY_ESCAPE]:
+				if key == glfw.KEY_BACKSPACE:
 					menu.search_char(-1)
 			elif menu.enabled:
 				# Global keys
@@ -116,7 +116,7 @@ while not window.closed():
 						menu.find_next_new(backwards=True)
 				if key in [glfw.KEY_ENTER, glfw.KEY_SPACE]:
 					menu.enter(video)
-				if key == glfw.KEY_BACKSPACE or scancode == 158:  # XF86Back
+				if key in [glfw.KEY_BACKSPACE, glfw.KEY_ESCAPE] or scancode == 158:  # XF86Back
 					menu.back()
 				if key in [glfw.KEY_UP, glfw.KEY_K]:
 					menu.previous_row()
