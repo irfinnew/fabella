@@ -80,7 +80,7 @@ while not window.closed():
 				menu.search_char(char)
 
 		if action in [glfw.PRESS, glfw.REPEAT]:
-			log.info(f'Parsing key {key} in {"menu" if menu.enabled else "video"} mode')
+			log.info(f'Parsing key {key}/{scancode} in {"menu" if menu.enabled else "video"} mode')
 
 			if menu.enabled and menu.searching:
 				if key in [glfw.KEY_SLASH, glfw.KEY_ESCAPE]:
@@ -109,14 +109,14 @@ while not window.closed():
 				# Menu keys
 				if key == glfw.KEY_INSERT:
 					menu.toggle_seen()
-				if key == glfw.KEY_TAB:
+				if key == glfw.KEY_TAB or scancode == 164:  # Media play/pause
 					if modifiers == 0:
 						menu.find_next_new()
 					if modifiers == glfw.MOD_SHIFT:
 						menu.find_next_new(backwards=True)
 				if key in [glfw.KEY_ENTER, glfw.KEY_SPACE]:
 					menu.enter(video)
-				if key == glfw.KEY_BACKSPACE:
+				if key == glfw.KEY_BACKSPACE or scancode == 158:  # XF86Back
 					menu.back()
 				if key in [glfw.KEY_UP, glfw.KEY_K]:
 					menu.previous_row()
@@ -155,14 +155,14 @@ while not window.closed():
 					menu.show_dark_mode(not menu.dark_mode)
 
 				# Video keys
-				if key in [glfw.KEY_ESCAPE, glfw.KEY_ENTER]:
+				if key in [glfw.KEY_ESCAPE, glfw.KEY_ENTER] or scancode == 158:  # XF86Back
 					video.stop()
 					menu.open()
 				if key == glfw.KEY_O:
 					log.info('Cycling OSD')
 					if not video.paused:
 						menu.show_osd(not menu.osd)
-				if key == glfw.KEY_SPACE:
+				if key == glfw.KEY_SPACE or scancode == 164:  # Media play/pause
 					video.pause()
 					menu.show_osd(force=video.paused)
 				if key == glfw.KEY_RIGHT:
@@ -182,9 +182,9 @@ while not window.closed():
 				if key == glfw.KEY_END:
 					video.seek(-15, 'absolute')
 
-				if key in [glfw.KEY_J, glfw.KEY_K]:
+				if key in [glfw.KEY_J, glfw.KEY_K] or scancode in [163, 165]:  # Media prev/next
 					log.warning('Cycling Subtitles (FIXME: move code)')
-					if key == glfw.KEY_J:
+					if key == glfw.KEY_J or scancode == 163:
 						video.mpv.cycle('sub')
 					else:
 						video.mpv.cycle('sub', 'down')
