@@ -135,6 +135,13 @@ class Window:
 
 	def on_keypress(self, window, key, scancode, action, modifiers):
 		log.info(f'Keypress key={key}, scancode={scancode}, action={action}, modifiers={modifiers}')
+
+		if scancode in [163, 164, 165]:
+			# Media keys only seem to generate key release events, not press events?
+			# So we fake these :'(
+			log.warning(f'Ugly hack: faking keypress for media key')
+			self.events.append((key, scancode, glfw.PRESS, modifiers, None))
+
 		self.events.append((key, scancode, action, modifiers, None))
 
 	def on_character(self, window, char):
