@@ -88,7 +88,7 @@ while not window.closed():
 				elif key == glfw.KEY_ENTER:
 					menu.search_end()
 					menu.enter(video)
-				if key == glfw.KEY_BACKSPACE:
+				if key in [glfw.KEY_BACKSPACE, glfw.KEY_ESCAPE]:
 					menu.search_char(-1)
 			elif menu.enabled:
 				# Global keys
