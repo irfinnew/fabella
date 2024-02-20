@@ -81,7 +81,7 @@ class Video:
 			w=width, h=config.video.position_bar_height + config.video.position_shadow_height)
 		self.seek_bar_quad = draw.FlatQuad(z=2, color=config.video.position_bar_color,
 			w=0, h=config.video.position_bar_height)
-		pos_height = config.video.position_bar_height * config.video.position_bar_active_scale + config.video.position_shadow_height
+		pos_height = config.video.position_bar_active_height + config.video.position_shadow_height
 		self.seek_text = menu.menu_font.text(z=3, text='duration', anchor='br',
 			x=width - config.menu.header_hspace, y=pos_height + menu.menu_font.height() // 4,
 			pos=(0, -(pos_height + int(menu.menu_font.height() * 1.25))),
@@ -304,7 +304,7 @@ class Video:
 
 		orig_bar_h = config.video.position_bar_height
 		orig_back_h = orig_bar_h + config.video.position_shadow_height
-		new_bar_h = orig_bar_h * config.video.position_bar_active_scale
+		new_bar_h = config.video.position_bar_active_height
 		new_back_h = new_bar_h + config.video.position_shadow_height
 
 		draw.Animation(self.seek_back_quad, duration=1, delay=2, h=(new_back_h, orig_back_h))

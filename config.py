@@ -18,7 +18,6 @@ class tile:
 	text_lines_selected = 3
 
 	pos_bar_height = 2
-	#pos_bar_color = (0.4, 0.4, 1, 1)  # Bluish
 	pos_bar_color = (0.8, 0.1, 0.1, 1)  # Reddish
 	emblem_scale = 0.2
 
@@ -49,12 +48,11 @@ class menu:
 	header_vspace = 32
 
 class video:
-	position_bar_height = 2
-	position_shadow_height = 2
+	position_bar_height = 1
+	position_shadow_height = 1
 	position_bar_color = (0.4, 0.4, 1, 1)  # Blueish
-	#position_bar_color = (0.8, 0.1, 0.1, 1)  # Reddish
 	position_shadow_color = (0, 0, 0, 1)
-	position_bar_active_scale = 6
+	position_bar_active_height = 10
 	position_bar_active_duration = 3
 
 class ui:
