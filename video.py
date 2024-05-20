@@ -294,13 +294,21 @@ class Video:
 
 		self.seeking = True
 		try:
-			self.mpv.seek(amount, whence)
+			if whence == 'frame':
+				# Frame step
+				if amount >= 0:
+					self.mpv.frame_step()
+				else:
+					self.mpv.frame_back_step()
+				self.paused = True
+			else:
+				# Normal seek
+				self.mpv.seek(amount, whence)
+			self.position_immune_until = 0
 		except SystemError as e:
 			# FIXME
 			log.warning('Seek error')
 			print(e)
-		else:
-			self.position_immune_until = 0
 
 		orig_bar_h = config.video.position_bar_height
 		orig_back_h = orig_bar_h + config.video.position_shadow_height

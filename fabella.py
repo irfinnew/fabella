@@ -181,6 +181,14 @@ while not window.closed():
 					video.seek(0, 'absolute')
 				if key == glfw.KEY_END:
 					video.seek(-15, 'absolute')
+				if key == glfw.KEY_PERIOD:
+					video.seek(1, 'frame')
+					# FIXME: kinda ugly that I need to do this?
+					menu.show_osd(force=video.paused)
+				if key == glfw.KEY_COMMA:
+					video.seek(-1, 'frame')
+					# FIXME: kinda ugly that I need to do this?
+					menu.show_osd(force=video.paused)
 
 				if key in [glfw.KEY_J, glfw.KEY_K] or scancode in [163, 165]:  # Media prev/next
 					log.warning('Cycling Subtitles (FIXME: move code)')
