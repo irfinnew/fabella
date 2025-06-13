@@ -21,6 +21,8 @@ log = loghelper.get_logger('Font', loghelper.Color.BrightBlack)
 
 
 @functools.lru_cache(maxsize=config.performance.text_cache_items)
+# FIXME: maybe special-case 01:23:45 strings by composing cached substrings?
+# This may make the OSD position update faster, reducing the risk of stutters.
 def render_text(font, text, max_width, lines):
 	# We need to pad the surface a bit to account for the stroke width
 	border = font.stroke_width
@@ -59,7 +61,7 @@ def render_text(font, text, max_width, lines):
 		context.set_source_rgb(0, 0, 0)
 		context.move_to(border, border)
 		PangoCairo.layout_path(context, layout)
-		context.set_line_width(font.stroke_width * 2)
+		context.set_line_width(border * 2)
 		context.set_line_join(cairo.LINE_JOIN_ROUND)
 		context.set_line_cap(cairo.LINE_CAP_ROUND)
 		context.stroke()
@@ -67,9 +69,9 @@ def render_text(font, text, max_width, lines):
 	else:
 		#### Lower quality outline
 		# Create stencil
-		text = cairo.ImageSurface(cairo.FORMAT_A8, twidth, theight)
-		text_context = cairo.Context(text)
-		PangoCairo.show_layout(text_context, layout)
+		outline_surface = cairo.ImageSurface(cairo.FORMAT_A8, twidth, theight)
+		outline_context = cairo.Context(outline_surface)
+		PangoCairo.show_layout(outline_context, layout)
 
 		# Apply stencil in a circular motion
 		context.set_source_rgba(0, 0, 0, 0.8)
@@ -78,7 +80,7 @@ def render_text(font, text, max_width, lines):
 			t = math.pi * 2 * i / STEPS
 			x = round(border - math.sin(t) * border)
 			y = round(border - math.cos(t) * border)
-			context.mask_surface(text, x, y)
+			context.mask_surface(outline_surface, x, y)
 			context.fill()
 
 	#### Text itself
@@ -170,7 +172,7 @@ class Font:
 		log.info(f'{self.desc}: Initializing Font renderer')
 		log.info(f'{self.desc}: Pycairo version {cairo.version}')
 		if stroke_width is None:
-			self.stroke_width = 1 + round(size / 9)
+			self.stroke_width = round(size / 9)
 		else:
 			self.stroke_width = stroke_width
 		log.info(f'{self.desc}: Stroke width: {self.stroke_width}')

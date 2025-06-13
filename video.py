@@ -195,6 +195,8 @@ class Video:
 			osd_text = f'{paused}{position}  /  {duration}'
 			seek_text = f'{position}'
 
+		# FIXME: this causes the new OSD texts to be rendered _now_, potentially
+		# causing stutter.  Maybe offload to a thread? Dunno.
 		self.seek_text.text = seek_text
 		self.menu.osd_duration_text.text = osd_text
 		# Ugh.
