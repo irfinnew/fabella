@@ -186,11 +186,13 @@ class Video:
 			osd_text = '?:??'
 			seek_text = ''
 		else:
-			paused = '⏸️' if paused else '▶️'
+			# Previously used ⏸️ for paused and ▶️ for playing.
+			# But rendering the outline for these emoji is slow enough to cause stutter.
+			paused = '⏸️  ' if paused else ''
 			position = util.duration_format(int(position * duration), seconds=True)
 			duration = util.duration_format(int(duration), seconds=True)
 
-			osd_text = f'{paused}  {position}  /  {duration}'
+			osd_text = f'{paused}{position}  /  {duration}'
 			seek_text = f'{position}'
 
 		self.seek_text.text = seek_text
