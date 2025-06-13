@@ -1,6 +1,10 @@
+import loghelper
 import functools
+import time
 import os
 
+
+log = loghelper.get_logger('Util', loghelper.Color.BrightYellow)
 
 
 @functools.lru_cache
@@ -43,3 +47,12 @@ def img_crop_ratio(image, size):
 
 	# Actually crop
 	return image.crop((crop_left, crop_top, crop_left + crop_width, crop_top + crop_height))
+
+
+def stopwatch(msg=None):
+	now = time.perf_counter()
+	if msg:
+		ms = (now - stopwatch.start) * 1000
+		log.warning(f'{ms:.1f}ms: {msg}')
+
+	stopwatch.start = now
