@@ -41,7 +41,7 @@ class tile:
 
 class menu:
 	background_image = None
-	background_color = (0.1, 0.1, 0.1, 1)
+	background_color = (0, 0, 0, 1)
 	text_font = 'Ubuntu Medium'
 	text_size = 36
 	header_hspace = 64
