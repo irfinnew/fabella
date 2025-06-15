@@ -140,6 +140,7 @@ class Video:
 		)
 
 		self.context.update_cb = self.frame_ready
+		self.mpv.observe_property('track-list', self.track_list_changed)
 		self.mpv.observe_property('width', self.size_changed)
 		self.mpv.observe_property('height', self.size_changed)
 		self.mpv.observe_property('percent-pos', self.position_changed)
@@ -202,6 +203,43 @@ class Video:
 		self.menu.osd_duration_text.text = osd_text
 		# Ugh.
 		self.menu.osd_name_text.max_width = self.menu.width - self.menu.osd_duration_text.quad.w - config.menu.header_hspace * 3
+
+
+	def track_list_changed(self, prop, value):
+		assert prop == 'track-list'
+
+		def describe_video(t):
+			codec, title = t.get('codec'), t.get('title')
+			fps, w, h = t.get('demux-fps', 0), t.get('demux-w'), t.get('demux-h')
+			return f'{codec} {fps:.2f}fps {w}x{h} title={title}'
+
+		def describe_audio(t):
+			codec, lang, title = t.get('codec'), t.get('lang'), t.get('title')
+			ch, hz = t.get('demux-channel-count'), t.get('demux-samplerate')
+			replaygain = ' (replaygain)' if 'replaygain-track-gain' in t else ''
+			return f'{codec} {ch}ch {hz}Hz lang={lang} title={title}' + replaygain
+
+		def describe_sub(t):
+			codec, lang, forced, title = t.get('codec'), t.get('lang'), t.get('forced'), t.get('title')
+			return f"{codec} lang={lang} forced={forced} title={title}"
+
+		def describe_track(t):
+			typ, tid, default, selected = t['type'], t['id'], t['default'], t['selected']
+			match typ:
+				case 'video':
+					desc = describe_video(t)
+				case 'audio':
+					desc = describe_audio(t)
+				case 'sub':
+					desc = describe_sub(t)
+				case _:
+					desc = f'Unknown track type: {typ}'
+
+			return f'{typ:5} {tid:2d}{" ="[default]}{" *"[selected]} {desc}'
+
+		log.info('Tracks:')
+		for track in self.mpv.track_list:
+			log.info('  ' + describe_track(track))
 
 
 	def size_changed(self, prop, value):
