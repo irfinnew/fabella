@@ -299,7 +299,7 @@ class Tile:
 		self.position = position
 
 		now = time.time()
-		if now - self.state_last_update > 10 or abs(old_pos - position) > 0.01 or force:
+		if now - self.state_last_update > 30 or abs(old_pos - position) > 0.1 or force:
 			self.state_last_update = now
 			self.write_state_update()
 

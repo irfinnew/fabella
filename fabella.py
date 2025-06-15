@@ -247,7 +247,7 @@ while not window.closed():
 	new = time.time()
 	if int(new) > last_time:
 		last_time = int(new)
-		log.info(f'Rendering at {frame_count} fps')
+		log.debug(f'Rendering at {frame_count} fps')
 		frame_count = 0
 
 log.info('End of program.')

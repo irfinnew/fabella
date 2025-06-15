@@ -151,7 +151,7 @@ def json_write(paths, data):
 	openfunc = gzip.open if filename.endswith('.gz') else open
 	new_filename = filename + NEW_SUFFIX
 
-	log.info(f'Writing DB {filename}')
+	log.debug(f'Writing DB {filename}')
 	try:
 		os.makedirs(os.path.dirname(filename), exist_ok=True)
 		with openfunc(new_filename, 'wt') as fd:
