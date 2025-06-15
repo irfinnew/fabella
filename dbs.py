@@ -155,7 +155,7 @@ def json_write(paths, data):
 	try:
 		os.makedirs(os.path.dirname(filename), exist_ok=True)
 		with openfunc(new_filename, 'wt') as fd:
-			json.dump(data, fd, indent=4)
+			json.dump(data, fd, indent='\t')
 
 		if filename.endswith('.gz'):
 			# UGHHHHHHHH.

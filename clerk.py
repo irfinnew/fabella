@@ -450,7 +450,7 @@ def scan(path, pool):
 					'dimensions': f'{COVER_WIDTH}x{COVER_HEIGHT}',
 					'fingerprint': real_fingerprint,
 				}
-				fd.writestr(COVER_META_TAG, json.dumps(meta, indent=4))
+				fd.writestr(COVER_META_TAG, json.dumps(meta, indent='\t'))
 
 				# Write cover images
 				for tile in real_tiles:
