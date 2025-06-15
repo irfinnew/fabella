@@ -99,7 +99,8 @@ while not window.closed():
 				menu.search_char(-1)
 				continue
 			if event.key == glfw.KEY_SPACE:
-				menu.search_next(with_current=False)
+				menu.search_end()
+				menu.enter(video)
 				continue
 			if event.key == glfw.KEY_ENTER:
 				menu.search_end()

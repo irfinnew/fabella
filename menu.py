@@ -347,6 +347,7 @@ class Menu:
 		self.search_text.text = '🔍 ' + self.search_str + '_'
 		self.search_text.quad.hidden = False
 		self.search_text.quad.color = (1, 1, 1, 1)
+		self.orig_index = self.index
 
 
 	def search_end(self):
@@ -357,6 +358,14 @@ class Menu:
 		self.search_text.text = '🔍 ' + self.search_str + '_'
 		self.search_text.quad.hidden = True
 		self.search_text.quad.color = (1, 1, 1, 1)
+		old_index = self.index
+		self.index = self.orig_index
+		for t in self.tiles.values():
+			t.destroy()
+		self.tiles = {}
+		#self.draw_tiles()
+		pos = self.find_new_pos(old_index, self.current_idx, self.index)
+		self.jump_tile(pos)
 
 
 	# -1 backspaces
@@ -370,24 +379,64 @@ class Menu:
 			self.search_str += chr(char)
 		log.info(f'Searching for {self.search_str}')
 		self.search_text.text = '🔍 ' + self.search_str + '_'
-		if self.search_next():
+		old_index = self.index
+		self.index = [x for x in self.orig_index if self.search_str in x['name'].lower()]
+		if self.index:
 			self.search_text.quad.color = (1, 1, 1, 1)
 		else:
 			self.search_text.quad.color = (1, 0.3, 0.3, 1)
 
+		for t in self.tiles.values():
+			t.destroy()
+		self.tiles = {}
+		#self.draw_tiles()
 
-	def search_next(self, with_current=True):
-		needle = self.search_str.lower()
-		matches = [i for i, tile in enumerate(self.index) if needle in tile['name'].lower()]
-		search = bisect.bisect_left if with_current else bisect.bisect_right
+		pos = self.find_new_pos(old_index, self.current_idx, self.index)
+		self.jump_tile(pos)
 
-		if matches:
-			match_pos = search(matches, self.current_idx) % len(matches)
-			newpos = matches[match_pos]
-			self.jump_tile(newpos)
-			return True
-		else:
-			return False
+
+	def find_new_pos(self, old_index, old_pos, new_index):
+		# These contexts leave us no choice
+		if len(new_index) < 2:
+			return 0
+		if not old_index:
+			return 0
+
+		# Prepare lookup for new names
+		new_names = {}
+		for i, e in enumerate(new_index):
+			new_names[e['name']] = i
+
+		# Find exact match
+		old_name = old_index[old_pos]['name']
+		if old_name in new_names:
+			return new_names[old_name]
+
+		# None found; scan left for first old name that still exists
+		oldpos_left = 0
+		newpos_left = 0
+		for o in range(old_pos - 1, -1, -1):
+			old_name = old_index[o]['name']
+			if old_name in new_names:
+				oldpos_left = o
+				newpos_left = new_names[old_name]
+				break
+
+		# And scan right for first old name that still exists
+		oldpos_right = len(old_index) - 1
+		newpos_right = len(new_index) - 1
+		for o in range(old_pos + 1, len(old_index)):
+			old_name = old_index[o]['name']
+			if old_name in new_names:
+				oldpos_right = o
+				newpos_right = new_names[old_name]
+				break
+
+		# Project the old position between old left and old right match
+		# onto area between new left and new right match.
+		# This "approximately" keeps the same position.
+		ratio = (old_pos - oldpos_left) / (oldpos_right - oldpos_left)
+		return round(ratio * (newpos_right - newpos_left) + newpos_left)
 
 
 	def toggle_tagged(self):
