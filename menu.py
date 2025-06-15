@@ -237,7 +237,7 @@ class Menu:
 		log.info(f'Loaded tiles in {timer}ms')
 
 		# This will also draw
-		self.jump_tile(index, animate=animate_direction)
+		self.jump_tile(index, animate=animate_direction, center=True)
 
 
 	@property
@@ -248,16 +248,20 @@ class Menu:
 			return None
 
 
-	def jump_tile(self, idx, animate=None):
-		log.debug(f'Jumping to tile {idx}')
+	def jump_tile(self, idx, animate=None, center=False):
+		log.debug(f'Jumping to tile {idx} {center=}')
 		self.current_idx = min(max(idx, 0), len(self.index) - 1)
 
-		# Fix offset
-		while self.current_idx // self.tile_columns < self.current_offset:
-			self.current_offset -= 1
+		if center:
+			# Center offset
+			self.current_offset = (self.current_idx // self.tile_columns) - (self.tile_rows - 1) // 2
+		else:
+			# Minimally fix offset
+			while self.current_idx // self.tile_columns < self.current_offset:
+				self.current_offset -= 1
 
-		while self.current_idx // self.tile_columns >= (self.current_offset + self.tile_rows):
-			self.current_offset += 1
+			while self.current_idx // self.tile_columns >= (self.current_offset + self.tile_rows):
+				self.current_offset += 1
 
 		if self.current_offset > (len(self.index) - 1) // self.tile_columns + 1 - self.tile_rows:
 			self.current_offset = (len(self.index) - 1) // self.tile_columns + 1 - self.tile_rows
@@ -365,7 +369,7 @@ class Menu:
 		self.tiles = {}
 		#self.draw_tiles()
 		pos = self.find_new_pos(old_index, self.current_idx, self.index)
-		self.jump_tile(pos)
+		self.jump_tile(pos, center=True)
 
 
 	# -1 backspaces
@@ -392,7 +396,7 @@ class Menu:
 		#self.draw_tiles()
 
 		pos = self.find_new_pos(old_index, self.current_idx, self.index)
-		self.jump_tile(pos)
+		self.jump_tile(pos, center=True)
 
 
 	def find_new_pos(self, old_index, old_pos, new_index):
