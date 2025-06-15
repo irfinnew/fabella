@@ -29,6 +29,45 @@ def glfw_error():
 
 
 
+class Event:
+	pass
+
+
+
+class KeyEvent(Event):
+	def __init__(self, action=None, key=None, scancode=None, modifiers=None):
+		self.is_key = True
+		self.is_char = False
+
+		self.action = action
+		self.key = key
+		self.scancode = scancode
+		self.modifiers = modifiers
+
+		self.pressed = action in [glfw.PRESS, glfw.REPEAT]
+		self.identifier = glfw.get_key_name(key, scancode)
+
+	@property
+	def is_printable(self):
+		return self.identifier is not None and (self.modifiers | glfw.MOD_SHIFT) == glfw.MOD_SHIFT
+
+	def __str__(self):
+		return f'KeyEvent(action={self.action}, key={self.key}, scancode={self.scancode}, modifiers={self.modifiers}, identifier={self.identifier})'
+
+
+
+class CharEvent(Event):
+	def __init__(self, char=None):
+		self.is_key = False
+		self.is_char = True
+
+		self.char = char
+
+	def __str__(self):
+		return f'CharEvent(char={self.char})'
+
+
+
 class Display:
 	def __init__(self, monitor):
 		self.monitor = monitor
@@ -140,13 +179,16 @@ class Window:
 			# Media keys only seem to generate key release events, not press events?
 			# So we fake these :'(
 			log.warning(f'Ugly hack: faking keypress for media key')
-			self.events.append((key, scancode, glfw.PRESS, modifiers, None))
+			self.events.append(KeyEvent(glfw.PRESS, key, scancode, modifiers))
 
-		self.events.append((key, scancode, action, modifiers, None))
+		event = KeyEvent(action, key, scancode, modifiers)
+		log.info(event)
+		self.events.append(event)
 
 	def on_character(self, window, char):
-		log.info(f'Character input: codepoint {char} = {chr(char)}')
-		self.events.append((None, None, None, None, char))
+		event = CharEvent(char)
+		log.info(event)
+		self.events.append(event)
 
 	def closed(self):
 		return glfw.window_should_close(self.window)

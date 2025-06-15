@@ -362,6 +362,9 @@ class Menu:
 	# -1 backspaces
 	def search_char(self, char):
 		if char == -1:
+			if not self.search_str:
+				self.search_end()
+				return
 			self.search_str = self.search_str[:-1]
 		else:
 			self.search_str += chr(char)
