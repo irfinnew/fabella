@@ -380,7 +380,7 @@ class Menu:
 				return
 			self.search_str = self.search_str[:-1]
 		else:
-			self.search_str += chr(char)
+			self.search_str += chr(char).lower()
 		log.info(f'Searching for {self.search_str}')
 		self.search_text.text = '🔍 ' + self.search_str + '_'
 		old_index = self.index
