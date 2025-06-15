@@ -81,6 +81,12 @@ while not window.closed():
 					menu.search_char(event.char)
 			continue
 
+		if not menu.enabled and event.key in [glfw.KEY_LEFT_SHIFT, glfw.KEY_LEFT_CONTROL]:
+			if event.pressed:
+				menu.show_osd(True)
+			else:
+				menu.show_osd(video.paused or video.show_osd)
+
 		if not (event.is_key and event.pressed):
 			log.warning(f'Ignoring key input')
 			continue
@@ -179,10 +185,11 @@ while not window.closed():
 			if event.key == glfw.KEY_O:
 				log.info('Cycling OSD')
 				if not video.paused:
-					menu.show_osd(not menu.osd)
+					video.show_osd = not video.show_osd
+					menu.show_osd(video.paused or video.show_osd)
 			if event.key == glfw.KEY_SPACE or event.scancode == 164:  # Media play/pause
 				video.pause()
-				menu.show_osd(force=video.paused)
+				menu.show_osd(video.paused or video.show_osd)
 			if event.key == glfw.KEY_RIGHT:
 				video.seek(5)
 			if event.key == glfw.KEY_LEFT:
@@ -202,11 +209,11 @@ while not window.closed():
 			if event.key == glfw.KEY_PERIOD:
 				video.seek(1, 'frame')
 				# FIXME: kinda ugly that I need to do this?
-				menu.show_osd(force=video.paused)
+				menu.show_osd(video.paused or video.show_osd)
 			if event.key == glfw.KEY_COMMA:
 				video.seek(-1, 'frame')
 				# FIXME: kinda ugly that I need to do this?
-				menu.show_osd(force=video.paused)
+				menu.show_osd(video.paused or video.show_osd)
 
 			if event.key in [glfw.KEY_J, glfw.KEY_K] or event.scancode in [163, 165]:  # Media prev/next
 				log.warning('Cycling Subtitles (FIXME: move code)')

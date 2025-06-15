@@ -75,6 +75,7 @@ class Video:
 		self.tile = None
 		self.width = width
 		self.height = height
+		self.show_osd = False
 
 		# Seek UI
 		self.seek_back_quad = draw.FlatQuad(z=1, color=config.video.position_shadow_color,
@@ -265,6 +266,7 @@ class Video:
 		self.position = 0 if position == 1 else position
 		self.duration = None
 		self.tile = tile
+		self.show_osd = False
 
 		# Don't update the position registration until a bit of time has passed.
 		self.position_immune_until = time.time() + 2

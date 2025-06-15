@@ -33,7 +33,6 @@ class Menu:
 		self.width = width
 		self.height = height
 		self.enabled = False
-		self.osd = False
 		self.dark_mode = False
 		self.root = path
 		self.path = None
@@ -532,21 +531,17 @@ class Menu:
 		log.info(f'Drew tiles in {timer}ms')
 
 
-	def show_osd(self, enabled=None, force=False):
-		if enabled is not None:
-			self.osd = enabled
-
-		show_basic_osd = (self.osd or self.enabled) or force
-		show_extended_osd = (self.osd and not self.enabled) or force
+	def show_osd(self, extended=False):
+		basic = self.enabled or extended
 
 		self.osd_background_quad.h = -int((config.menu.header_vspace * 3 + self.bread_text.quad.h + self.osd_name_text.quad.h) * 1.1)
 		self.osd_background_thing.update_params(ypos=(self.height - self.osd_background_quad.h, self.height))
 
-		self.osd_bread_thing.show(show_basic_osd)
-		self.osd_clock_thing.show(show_basic_osd)
-		self.osd_name_thing.show(show_extended_osd)
-		self.osd_duration_thing.show(show_extended_osd)
-		self.osd_background_thing.show(show_extended_osd)
+		self.osd_bread_thing.show(basic)
+		self.osd_clock_thing.show(basic)
+		self.osd_name_thing.show(extended)
+		self.osd_duration_thing.show(extended)
+		self.osd_background_thing.show(extended)
 
 
 	def show_dark_mode(self, enabled=None):
