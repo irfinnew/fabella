@@ -19,7 +19,6 @@ EVENT_COOLDOWN_SECONDS = 1
 import sys
 import os
 import io
-import ast
 import stat
 import json
 import time
@@ -37,7 +36,6 @@ import PIL.ImageOps
 import loghelper
 import colorpicker
 from watch import Watcher
-from worker import Pool
 import dbs
 
 loghelper.set_up_logging(console_level=loghelper.VERBOSE, file_level=loghelper.NOTSET, filename='clerk.log')
@@ -323,14 +321,11 @@ class Meta:
 
 
 
-def scan(path, pool):
+def scan(path):
 	log.debug(f'Scanning {path}')
 	if not os.path.isdir(path):
 		log.info(f'{path} is gone, nothing to do')
 		return
-
-	from util import stopwatch
-	stopwatch()
 
 	index_db_name = os.path.join(path, dbs.INDEX_DB_NAME)
 	orig_index = dbs.json_read(index_db_name, dbs.INDEX_DB_SCHEMA)
@@ -464,7 +459,6 @@ def scan(path, pool):
 				os.remove(cover_db_name)
 			else:
 				log.debug(f'No files here, not writing {cover_db_name}')
-	stopwatch('updating covers')
 
 
 
@@ -548,7 +542,7 @@ def process_state_queue(path, roots):
 			new_state[name] = {} if fp is None else {'fingerprint': fp}
 			log.info(f'New file "{name}" has no match in previous state')
 		else:
-			#log.info(f'Found name match in previous state for "{name}" fingerprint changed from {state.get("fingerprint")} to {fp}')
+			log.info(f'Found name match in previous state for "{name}" fingerprint changed from {state.get("fingerprint")} to {fp}')
 			if fp is None:
 				state.pop('fingerprint', None)
 			else:
@@ -633,7 +627,6 @@ def process_state_queue(path, roots):
 
 
 
-#roots = [os.path.abspath(root) for root in sys.argv[1:]]
 roots = [os.path.abspath(args.path)]
 if not roots:
 	print('Must specify at least one root')
@@ -644,7 +637,6 @@ if not args.skip_initial:
 	for root in roots:
 		watcher.push(root, recursive=True)
 
-analyze_pool = Pool('analyze', threads=1)
 scan_dirty = {}
 state_dirty = {}
 for event in watcher.events(timeout=EVENT_COOLDOWN_SECONDS):
@@ -697,7 +689,7 @@ for event in watcher.events(timeout=EVENT_COOLDOWN_SECONDS):
 		# written, this postpones scanning until the file is completely done.
 		if now - age > EVENT_COOLDOWN_SECONDS:
 			del scan_dirty[path]
-			scan(path, pool=analyze_pool)
+			scan(path)
 			state_dirty[path] = now
 
 	# Items needing a state update
