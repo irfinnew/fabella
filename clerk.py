@@ -30,6 +30,7 @@ import logging
 import argparse
 import subprocess
 import collections
+import multiprocessing
 import PIL.Image
 import PIL.ImageOps
 
@@ -76,6 +77,90 @@ class TileError(Exception):
 	pass
 
 
+def scale_cover(fd, path):
+	"""Takes file-like object, reads image from it, scales, encodes to JPEG.
+	Also determines representative color. Returns (color, jpeg bytes)."""
+	try:
+		with PIL.Image.open(fd) as cover:
+			cover = cover.convert('RGB')
+			cover = PIL.ImageOps.fit(cover, (COVER_WIDTH, COVER_HEIGHT))
+	except PIL.UnidentifiedImageError as e:
+		raise TileError(f'Loading image for {path}: {str(e)}')
+
+	# Choose a representative color from the cover image
+	color = '#' + ''.join(f'{c:02x}' for c in colorpicker.pick(cover))
+
+	buffer = io.BytesIO()
+	cover.save(buffer, format='JPEG', quality=90, subsampling=0, optimize=True)
+	return color, buffer.getvalue()
+
+
+def extract_duration(path):
+	try:
+		sp = run_command(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', path])
+		return float(sp.stdout)
+	except (subprocess.CalledProcessError, ValueError) as e:
+		log.error(f'Getting video duration for {path}: {e}')
+		return None
+
+
+def generate_thumbnail(path, duration=None):
+	if path.endswith(dbs.VIDEO_EXTENSIONS):
+		log.info(f'Generating thumbnail for {path}')
+		try:
+			if duration is None:
+				duration = extract_duration(path)
+
+			duration = str(duration * THUMB_VIDEO_POSITION)
+			sp = run_command(['ffmpeg', '-ss', duration, '-threads', '1', '-i', path,
+				'-vf', 'scale=1280:720,thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
+			color, jpeg = scale_cover(sp.stdout, path)
+			return duration, jpeg, color
+		except subprocess.CalledProcessError:
+			raise TileError(f'Processing {path}: Command returned error')
+
+
+def get_info_image(path):
+	if not os.path.isfile(path):
+		raise TileError(f'Cover image {path} not found')
+
+	with open(path, 'rb') as fd:
+		log.info(f'Found cover {path}')
+		color, jpeg = scale_cover(fd, path)
+		return 0, jpeg, color
+
+
+def get_info_matroska(path):
+	try:
+		with open(path, 'rb') as fd:
+			mkv = enzyme.MKV(fd)
+			duration = mkv.info.duration
+			duration = round(duration.seconds + duration.microseconds / 1000000)
+			for a in mkv.attachments:
+				if a.mimetype == 'image/jpeg' and a.filename == MKV_COVER_FILE:
+					log.info(f'Found embedded cover in {path}')
+					color, jpeg = scale_cover(a.data, path)
+					return duration, jpeg, color
+	except (OSError, enzyme.exceptions.Error) as e:
+		raise TileError(f'Processing {path}: {e}')
+
+	# If we got here, no embedded cover was found, generate thumbnail
+	return generate_thumbnail(path, duration=duration)
+
+
+# returns (duration, jpeg cover image, tile color)
+def get_video_info(path):
+	_, ext = os.path.splitext(path)
+	ext = ext.lower()
+
+	if ext in ['.jpg', '.jpeg', '.png']:
+		return get_info_image(path)
+	if ext == '.mkv':
+		return get_info_matroska(path)
+	
+	log.warning(f'Getting video info: unsupported filetype: {path}')
+	return (0, None, None)
+
 
 class BaseTile:
 	def to_json(self):
@@ -92,111 +177,6 @@ class BaseTile:
 		return data
 
 
-	def scale_encode(self, fd):
-		"""Takes file-like object, reads image from it, scales, encodes to JPEG, returns bytes."""
-		try:
-			with PIL.Image.open(fd) as cover:
-				cover = cover.convert('RGB')
-				cover = PIL.ImageOps.fit(cover, (COVER_WIDTH, COVER_HEIGHT))
-		except PIL.UnidentifiedImageError as e:
-			raise TileError(f'Loading image for {self.path}: {str(e)}')
-
-		# Choose a representative color from the cover image
-		# Don't like setting this from here, but we need it later anyway.
-		self.tile_color = '#' + ''.join(f'{c:02x}' for c in colorpicker.pick(cover))
-
-		buffer = io.BytesIO()
-		cover.save(buffer, format='JPEG', quality=90, subsampling=0, optimize=True)
-		return buffer.getvalue()
-
-
-	def get_folder_cover(self):
-		"""Find cover image for folder, scale, return bytes."""
-		cover_file = os.path.join(self.full_path, FOLDER_COVER_FILE)
-		if not os.path.isfile(cover_file):
-			raise TileError(f'Cover image {cover_file} not found')
-
-		with open(cover_file, 'rb') as fd:
-			log.info(f'Found cover {cover_file}')
-			return self.scale_encode(fd)
-
-
-	def get_file_cover(self):
-		"""Find cover image for file, scale, return bytes."""
-		# FIXME: Hmm. Not sure; image files are ignored earlier in the process anyway.
-		if self.name.endswith(('.jpg', '.png')):
-			log.info(f'Using image file as its own cover: {self.full_path}')
-			with open(self.full_path, 'rb') as fd:
-				return self.scale_encode(fd)
-
-		if self.name.endswith('.mkv'):
-			try:
-				with open(self.full_path, 'rb') as fd:
-					mkv = enzyme.MKV(fd)
-					for a in mkv.attachments:
-						if a.mimetype == 'image/jpeg' and a.filename == MKV_COVER_FILE:
-							log.info(f'Found embedded cover in {self.full_path}')
-							return self.scale_encode(a.data)
-			except (OSError, enzyme.exceptions.Error) as e:
-				raise TileError(f'Processing {self.full_path}: {e}')
-
-		# If we got here, no embedded cover was found, generate thumbnail
-		if self.name.endswith(dbs.VIDEO_EXTENSIONS):
-			log.info(f'Generating thumbnail for {self.full_path}')
-			try:
-				duration = self.get_video_duration()
-				# Bit dirty, but we need it later anyway.
-				self.duration = round(duration)
-				duration = str(duration * THUMB_VIDEO_POSITION)
-
-				sp = run_command(['ffmpeg', '-ss', duration, '-threads', '1', '-i', self.full_path, '-vf', 'scale=1280:720,thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
-				return self.scale_encode(io.BytesIO(sp.stdout))
-			except subprocess.CalledProcessError:
-				raise TileError(f'Processing {self.full_path}: Command returned error')
-
-		raise TileError(f'Processing {self.full_path}: unknown filetype to generate cover image from')
-
-
-	def get_video_duration(self):
-		if self.name.endswith('.mkv'):
-			try:
-				with open(self.full_path, 'rb') as fd:
-					mkv = enzyme.MKV(fd)
-					duration = mkv.info.duration
-					return duration.seconds + duration.microseconds / 1000000
-			except (OSError, enzyme.exceptions.Error) as e:
-				log.error(f'Processing {self.full_path}: {e}')
-				return None
-		else:
-			try:
-				sp = run_command(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', self.full_path])
-				return float(sp.stdout)
-			except (subprocess.CalledProcessError, ValueError) as e:
-				log.error(f'Getting video duration for {self.name}: {e}')
-				return none
-
-
-	def analyze(self):
-		if self.cover_needs_update:
-			try:
-				if self.isdir:
-					self.cover_image = self.get_folder_cover()
-				else:
-					self.cover_image = self.get_file_cover()
-			except TileError as e:
-				log.error(str(e))
-				self.cover_image = None
-			self.cover_needs_update = False
-
-		# Maybe duration was set from getting the cover, maybe not.
-		if self.duration is None and not self.isdir and self.name.endswith(dbs.VIDEO_EXTENSIONS):
-			try:
-				self.duration = self.get_video_duration()
-				self.duration = round(self.duration) if self.duration is not None else None
-			except subprocess.CalledProcessError as e:
-				log.error(f'Couldn\'t determine video duration: {e}')
-
-
 	def __eq__(self, other):
 		if other is None:
 			return False
@@ -206,6 +186,20 @@ class BaseTile:
 
 	def __lt__(self, other):
 		return self.sortkey < other.sortkey
+
+
+	def analyze(self):
+		duration, image, color = get_video_info(self.cover_source_path())
+		self.duration = duration
+		self.cover_image = image
+		self.tile_color = color
+
+
+	def cover_source_path(self):
+		if self.isdir:
+			return os.path.join(self.full_path, FOLDER_COVER_FILE)
+		else:
+			return self.full_path
 
 
 	@property
@@ -335,6 +329,9 @@ def scan(path, pool):
 		log.info(f'{path} is gone, nothing to do')
 		return
 
+	from util import stopwatch
+	stopwatch()
+
 	index_db_name = os.path.join(path, dbs.INDEX_DB_NAME)
 	orig_index = dbs.json_read(index_db_name, dbs.INDEX_DB_SCHEMA)
 
@@ -428,10 +425,14 @@ def scan(path, pool):
 			log.debug(f'Tile for {name} is stale, re-inspecting')
 
 	#### Update covers/tile_color/duration etc; this is the expensive part
-	for tile in real_tiles:
-		if tile.cover_needs_update:
-			pool.schedule(tile.analyze)
-	pool.join()
+	update_tiles = [tile for tile in real_tiles if tile.cover_needs_update]
+	paths = [tile.cover_source_path() for tile in update_tiles]
+	with multiprocessing.Pool() as pool:
+		new_info = pool.map(get_video_info, paths)
+	for tile, (duration, image, color) in zip(update_tiles, new_info):
+		tile.duration = duration
+		tile.cover_image = image
+		tile.tile_color = color
 
 	#### Write index
 	if index_needs_update:
@@ -463,6 +464,7 @@ def scan(path, pool):
 				os.remove(cover_db_name)
 			else:
 				log.debug(f'No files here, not writing {cover_db_name}')
+	stopwatch('updating covers')
 
 
 
@@ -546,7 +548,7 @@ def process_state_queue(path, roots):
 			new_state[name] = {} if fp is None else {'fingerprint': fp}
 			log.info(f'New file "{name}" has no match in previous state')
 		else:
-			log.info(f'Found name match in previous state for "{name}" fingerprint changed from {state.get("fingerprint")} to {fp}')
+			#log.info(f'Found name match in previous state for "{name}" fingerprint changed from {state.get("fingerprint")} to {fp}')
 			if fp is None:
 				state.pop('fingerprint', None)
 			else:
@@ -642,7 +644,7 @@ if not args.skip_initial:
 	for root in roots:
 		watcher.push(root, recursive=True)
 
-analyze_pool = Pool('analyze', threads=4)
+analyze_pool = Pool('analyze', threads=1)
 scan_dirty = {}
 state_dirty = {}
 for event in watcher.events(timeout=EVENT_COOLDOWN_SECONDS):
