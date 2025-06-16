@@ -49,6 +49,7 @@ log.info('Starting Clerk.')
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Fabella Clerk. Watches video library for changes, updates indices and state.')
 parser.add_argument('--once', '-o', action='store_true', help="Don't watch the library; just update everything and quit.")
+parser.add_argument('--skip-initial', '-s', action='store_true', help="Skip the initial consistency scan of the library; just watch it for changes.")
 parser.add_argument('path', type=str, help='Path to video library')
 args = parser.parse_args()
 
@@ -636,8 +637,10 @@ if not roots:
 	print('Must specify at least one root')
 	exit(1)
 watcher = Watcher(roots)
-for root in roots:
-	watcher.push(root, recursive=True)
+
+if not args.skip_initial:
+	for root in roots:
+		watcher.push(root, recursive=True)
 
 analyze_pool = Pool('analyze', threads=4)
 scan_dirty = {}
