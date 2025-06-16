@@ -5,6 +5,7 @@
 # (SPDX GPL-2.0-or-later) See LICENSE file for details.
 
 import math
+import PIL
 
 
 def color_distance(c1, c2):
@@ -15,13 +16,13 @@ def color_distance(c1, c2):
 	return sum(abs(a - b) ** (1/2) for a, b in zip(c1, c2))
 
 
-def pick(img, colors=64):
+def pick(img, colors=32):
 	"""Pick a representative color for img. colors should be 1-256.
 	A higher number of colors should give a better result, but will be slower.
 	"""
 
 	# Quantize the image into colors; this will effectively generate a histogram for us
-	quantized = img.quantize(colors)
+	quantized = img.quantize(colors, method=PIL.Image.Quantize.FASTOCTREE)
 
 	# Get the palette as color-tuples
 	palette = quantized.getpalette()
