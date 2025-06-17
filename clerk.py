@@ -119,13 +119,14 @@ def generate_thumbnail(path, duration=None):
 
 
 def get_info_image(path):
-	if not os.path.isfile(path):
-		raise TileError(f'Cover image {path} not found')
-
-	with open(path, 'rb') as fd:
-		log.info(f'Found cover {path}')
-		color, jpeg = scale_cover(fd, path)
-		return 0, jpeg, color
+	try:
+		with open(path, 'rb') as fd:
+			log.info(f'Found cover {path}')
+			color, jpeg = scale_cover(fd, path)
+			return 0, jpeg, color
+	except OSError as e:
+		log.error(f'Opening cover image {path}: {e}')
+		return 0, None, None
 
 
 def get_info_matroska(path):
