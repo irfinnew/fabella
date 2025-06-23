@@ -271,46 +271,32 @@ class Menu:
 		self.draw_tiles(animate=animate)
 
 
-	def previous(self):
-		log.info('Select previous')
-		self.jump_tile(self.current_idx - 1)
-
-
-	def next(self):
-		log.info('Select next')
-		self.jump_tile(self.current_idx + 1)
-
-
-	def previous_row(self):
-		log.info('Select previous row')
-		if self.current_idx >= self.tile_columns:
-			self.jump_tile(self.current_idx - self.tile_columns)
-
-
-	def next_row(self):
-		log.info('Select next row')
-		if self.current_idx // self.tile_columns < (len(self.index) - 1) // self.tile_columns:
-			self.jump_tile(self.current_idx + self.tile_columns)
-
-
-	def page_up(self):
-		log.info('Select page up')
-		self.jump_tile(self.current_idx - self.tile_columns * self.tile_rows)
-
-
-	def page_down(self):
-		log.info('Select page down')
-		self.jump_tile(self.current_idx + self.tile_columns * self.tile_rows)
-
-
-	def first(self):
-		log.info('Select first tile')
-		self.jump_tile(0)
-
-
-	def last(self):
-		log.info('Select last tile')
-		self.jump_tile(len(self.index))
+	def move(self, amount, whence='tile'):
+		log.info(f'Moving {amount} {whence}')
+		amount = int(amount)
+		current_row, current_col = divmod(self.current_idx, self.tile_columns)
+		max_rows = (len(self.index) - 1) // self.tile_columns
+		match whence:
+			case 'tile':
+				self.jump_tile(self.current_idx + amount)
+			case 'row':
+				current_row = min(max_rows, max(0, current_row + amount))
+				self.jump_tile(current_row * self.tile_columns + current_col)
+			case 'page':
+				amount *= self.tile_rows
+				current_row = min(max_rows, max(0, current_row + amount))
+				self.jump_tile(current_row * self.tile_columns + current_col)
+			case 'first':
+				self.jump_tile(0)
+			case 'last':
+				self.jump_tile(len(self.index))
+			case 'next-new':
+				if amount > 0:
+					self.find_next_new()
+				if amount < 0:
+					self.find_next_new(backwards=True)
+			case _:
+				log.error(f'Unknown whence in move({amount}, {whence=})')
 
 
 	def toggle_seen(self):

@@ -134,29 +134,29 @@ while not window.closed():
 				menu.toggle_seen()
 			if event.key == glfw.KEY_TAB or event.scancode == 164:  # Media play/pause
 				if event.modifiers == 0:
-					menu.find_next_new()
+					menu.move(1, 'next-new')
 				if event.modifiers == glfw.MOD_SHIFT:
-					menu.find_next_new(backwards=True)
+					menu.move(-1, 'next-new')
 			if event.key in [glfw.KEY_ENTER, glfw.KEY_SPACE]:
 				menu.enter(video)
 			if event.key in [glfw.KEY_BACKSPACE, glfw.KEY_ESCAPE] or event.scancode == 158:  # XF86Back
 				menu.back()
 			if event.key in [glfw.KEY_UP, glfw.KEY_K]:
-				menu.previous_row()
+				menu.move(-1, 'row')
 			if event.key in [glfw.KEY_DOWN, glfw.KEY_J]:
-				menu.next_row()
+				menu.move(1, 'row')
 			if event.key in [glfw.KEY_RIGHT, glfw.KEY_L]:
-				menu.next()
+				menu.move(1)
 			if event.key in [glfw.KEY_LEFT, glfw.KEY_H]:
-				menu.previous()
+				menu.move(-1)
 			if event.key == glfw.KEY_PAGE_UP:
-				menu.page_up()
+				menu.move(-1, 'page')
 			if event.key == glfw.KEY_PAGE_DOWN:
-				menu.page_down()
+				menu.move(1, 'page')
 			if event.key == glfw.KEY_HOME:
-				menu.first()
+				menu.move(0, 'first')
 			if event.key == glfw.KEY_END:
-				menu.last()
+				menu.move(0, 'last')
 			if event.key == glfw.KEY_DELETE:
 				menu.toggle_tagged()
 			if event.key == glfw.KEY_SLASH:
