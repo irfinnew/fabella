@@ -113,6 +113,7 @@ class Video:
 		#self.mpv['interpolation'] = 'yes'
 		#self.mpv['override-display-fps'] = 59
 
+		self.mpv['vo'] = 'libmpv'  # Must be set starting with libmpv 0.38
 		self.mpv['hwdec'] = 'auto'
 		self.mpv['osd-duration'] = 1000
 		self.mpv['osd-level'] = 1
@@ -124,6 +125,7 @@ class Video:
 		self.mpv['osd-font-size'] = 45
 		self.mpv['sub-font'] = 'Ubuntu Medium'
 		self.mpv['sub-font-size'] = 45
+		self.mpv['sub-outline-size'] = 3
 		self.mpv['sub-ass-force-style'] = 'FontName=Ubuntu Medium'
 
 		# C function callback to get the address of glFoo functions
