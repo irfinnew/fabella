@@ -125,7 +125,7 @@ class Video:
 		self.mpv['osd-font-size'] = 45
 		self.mpv['sub-font'] = 'Ubuntu Medium'
 		self.mpv['sub-font-size'] = 45
-		self.mpv['sub-outline-size'] = 3
+		self.mpv['sub-border-size'] = 3
 		self.mpv['sub-ass-force-style'] = 'FontName=Ubuntu Medium'
 
 		# C function callback to get the address of glFoo functions
