@@ -141,7 +141,8 @@ def get_info_matroska(path):
 					color, jpeg = scale_cover(a.data, path)
 					return duration, jpeg, color
 	except (OSError, enzyme.exceptions.Error) as e:
-		raise TileError(f'Processing {path}: {e}')
+		log.error(f'Processing metadata from {path}: {e}')
+		return 0, None, None
 
 	# If we got here, no embedded cover was found, generate thumbnail
 	return generate_thumbnail(path, duration=duration)
