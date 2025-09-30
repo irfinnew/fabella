@@ -40,6 +40,7 @@ class MKV:
         self.subtitle_tracks = []
         self.chapters = []
         self.tags = []
+        self.attachments = []
 
         # keep track of the elements parsed
         self.recurse_seek_head = recurse_seek_head
@@ -122,6 +123,10 @@ class MKV:
                     stream,
                     specs,
                 )
+            elif element_name == 'Attachments':
+                logger.info('Processing element %s from SeekHead at position %d', element_name, element_position)
+                stream.seek(element_position)
+                self.attachments.extend([Attachment.fromelement(t) for t in ebml.parse_element(stream, specs, True, ignore_element_names=['Void', 'CRC-32'])])
             else:
                 logger.debug("Element %s ignored", element_name)
             self._parsed_positions.add(element_position)
@@ -467,3 +472,47 @@ class Chapter:
 
     def __repr__(self):
         return "<%s [%s, enabled=%s]>" % (self.__class__.__name__, self.start, self.enabled)
+
+
+class Attachment(object):
+    """Object for the Attachments EBML element"""
+    def __init__(self, filename, mimetype, uid, data, length, description=None, referral=None, used_start_time=None, used_end_time=None):
+        self.filename = filename
+        self.mimetype = mimetype
+        self.data = data
+        self.length = length
+        self.uid = uid
+        self.description = description
+        self.referral = referral
+        self.used_start_time = used_start_time
+        self.used_end_time = used_end_time
+
+    @classmethod
+    def fromelement(cls, element):
+        """Load the :class:`Attachment` from an :class:`~enzyme.parsers.ebml.Element`
+
+        :param element: the AttachedFile element
+        :type element: :class:`~enzyme.parsers.ebml.Element`
+
+        """
+        filename = element.get('FileName')
+        mimetype = element.get('FileMimeType')
+        data = element.get('FileData')
+        uid = element.get('FileUID')
+        description = element.get('FileDescription')
+        referral = element.get('FileReferral')
+        used_start_time = element.get('FileUsedStartTime')
+        used_end_time = element.get('FileUsedEndTime')
+
+        if used_start_time is not None:
+            used_start_time = timedelta(microseconds=used_start_time // 1000)
+        if used_end_time is not None:
+            used_end_time = timedelta(microseconds=used_end_time // 1000)
+
+        length = data.seek(0, 2)
+        data.seek(0)
+
+        return cls(filename, mimetype, uid, data, length, description, referral, used_start_time, used_end_time)
+
+    def __repr__(self):
+        return '<%s [%s, %s, %i bytes]>' % (self.__class__.__name__, self.filename, self.mimetype, self.length)
