@@ -107,7 +107,7 @@ def json_validate(data, schema, keyname=None):
 		if schema is float:
 			schema = (int, float)
 		if not isinstance(data, schema):
-			raise JsonValidationError(f'Key {keyname}={data} should be type {schema}')
+			raise JsonValidationError(f'Key {keyname}={data!r} should be type {schema}')
 	else:
 		raise KeyError(f'Unsupported schema type: {schema}')
 

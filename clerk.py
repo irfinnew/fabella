@@ -109,11 +109,11 @@ def generate_thumbnail(path, duration=None):
 			if duration is None:
 				duration = extract_duration(path)
 
-			duration = str(duration * THUMB_VIDEO_POSITION)
-			sp = run_command(['ffmpeg', '-ss', duration, '-threads', '1', '-i', path,
+			thumb_pos = str(duration * THUMB_VIDEO_POSITION)
+			sp = run_command(['ffmpeg', '-ss', thumb_pos, '-threads', '1', '-i', path,
 				'-vf', 'scale=1280:720,thumbnail', '-frames:v', '1', '-f', 'apng', '-'])
-			color, jpeg = scale_cover(sp.stdout, path)
-			return duration, jpeg, color
+			color, jpeg = scale_cover(io.BytesIO(sp.stdout), path)
+			return round(duration), jpeg, color
 		except subprocess.CalledProcessError:
 			raise TileError(f'Processing {path}: Command returned error')
 
@@ -157,6 +157,8 @@ def get_video_info(path):
 		return get_info_image(path)
 	if ext == '.mkv':
 		return get_info_matroska(path)
+	if ext == '.mp4':
+		return (round(extract_duration(path)), None, None)
 	
 	log.warning(f'Getting video info: unsupported filetype: {path}')
 	return (0, None, None)
