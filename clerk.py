@@ -38,7 +38,7 @@ import colorpicker
 from watch import Watcher
 import dbs
 
-loghelper.set_up_logging(console_level=loghelper.VERBOSE, file_level=loghelper.NOTSET, filename='clerk.log')
+loghelper.set_up_logging(console_level=loghelper.WARNING, file_level=loghelper.DEBUG, filename='clerk.log')
 log = loghelper.get_logger('Clerk', loghelper.Color.Red)
 # Enzyme spams the logs with stuff we don't care about
 logging.getLogger('enzyme').setLevel(logging.CRITICAL)
