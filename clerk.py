@@ -29,7 +29,6 @@ import logging
 import argparse
 import subprocess
 import collections
-import multiprocessing
 import PIL.Image
 import PIL.ImageOps
 
@@ -426,8 +425,10 @@ def scan(path):
 	#### Update covers/tile_color/duration etc; this is the expensive part
 	update_tiles = [tile for tile in real_tiles if tile.cover_needs_update]
 	paths = [tile.cover_source_path() for tile in update_tiles]
-	with multiprocessing.Pool() as pool:
-		new_info = pool.map(get_video_info, paths)
+	# Used to do this in multiprocessing.Pool(), but this deadlocked often
+	# https://pythonspeed.com/articles/python-multiprocessing/
+	# Maybe use a threadpool?
+	new_info = [get_video_info(p) for p in paths]
 	for tile, (duration, image, color) in zip(update_tiles, new_info):
 		tile.duration = duration
 		tile.cover_image = image
